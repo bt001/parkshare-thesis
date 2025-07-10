@@ -1,5 +1,5 @@
 ﻿namespace ParkShare.Infrastructure;
-public class Class1
+public class InfrastructureModule
 {
 
 }
