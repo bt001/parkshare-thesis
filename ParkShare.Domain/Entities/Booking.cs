@@ -61,7 +61,7 @@
         /// </summary>
         public string PaymentStatus { get; set; } = string.Empty;
 
-        public ICollection<ChatMessage> Messages { get; set; } = new List<ChatMessage>();
+        public ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
         public Rating? Rating { get; set; }
     }
 }

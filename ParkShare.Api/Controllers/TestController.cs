@@ -1,14 +1,17 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AutoMapper;
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using System;
 
 namespace ParkShare.Api.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
-    public class TestController: ControllerBase
+    public class TestController: BaseApiController
     {
         private readonly ILogger<TestController> _logger;
 
-        public TestController(ILogger<TestController> logger)
+        public TestController(ILogger<TestController> logger, IMediator mediator, IMapper mapper) : base(mediator, mapper)
         {
             _logger = logger;
         }
