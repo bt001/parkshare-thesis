@@ -4,8 +4,7 @@ using Microsoft.Extensions.Options;
 using ParkShare.Application.Interfaces;
 using ParkShare.Infrastructure.Configuration;
 using ParkShare.Infrastructure.Persistence;
-using ParkShare.Infrastructure.Services.Auth;
-using ParkShare.Infrastructure.Services.User;
+using ParkShare.Infrastructure.Services;
 
 namespace ParkShare.Infrastructure
 {
@@ -30,6 +29,7 @@ namespace ParkShare.Infrastructure
 
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IAuthenticationService, AuthenticationService>();
+            services.AddScoped<IListingService, ListingService>();
 
             return services;
         }

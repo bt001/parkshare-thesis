@@ -5,7 +5,7 @@ using ParkShare.Application.Dto.Infrastructure;
 using ParkShare.Application.Interfaces;
 using ParkShare.Infrastructure.Persistence;
 
-namespace ParkShare.Infrastructure.Services.Auth
+namespace ParkShare.Infrastructure.Services
 {
     public class AuthenticationService : IAuthenticationService
     {
