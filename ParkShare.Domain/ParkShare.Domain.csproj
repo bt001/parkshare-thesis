@@ -10,4 +10,8 @@
     <PackageReference Include="Autofac" Version="8.3.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\ParkShare.Common\ParkShare.Common.csproj" />
+  </ItemGroup>
+
 </Project>

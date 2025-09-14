@@ -34,7 +34,6 @@ namespace ParkShare.Api.Mappings
             cfg.CreateMap<SearchListingsRequest, SearchListingsQuery>();
             cfg.CreateMap<SearchListingsResponse, SearchListingsResult>();
             cfg.CreateMap<SearchListingItemDto, SearchListingItemResult>();
-
         }
     }
 }

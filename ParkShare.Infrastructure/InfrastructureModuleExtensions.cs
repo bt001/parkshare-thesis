@@ -31,6 +31,11 @@ namespace ParkShare.Infrastructure
             services.AddScoped<IAuthenticationService, AuthenticationService>();
             services.AddScoped<IListingService, ListingService>();
 
+            services.AddScoped<IBookingService, BookingService>();
+            services.AddScoped<IListingReadService, ListingReadService>();
+            services.AddScoped<IAvailabilityService, AvailabilityService>();
+
+
             return services;
         }
     }

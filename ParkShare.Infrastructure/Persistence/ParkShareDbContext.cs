@@ -36,6 +36,10 @@ namespace ParkShare.Infrastructure.Persistence
                 .HasIndex(u => u.UserName)
                 .IsUnique();
 
+            modelBuilder.Entity<Booking>()
+                .Property(b => b.Status)
+                .HasConversion<string>();
+
             modelBuilder.Entity<ListingAmenity>()
                 .HasKey(la => new { la.ListingId, la.AmenityId });
 
