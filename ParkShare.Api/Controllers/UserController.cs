@@ -9,18 +9,21 @@ using System.Threading.Tasks;
 
 namespace ParkShare.Api.Controllers
 {
+    [Route("api/[controller]")]
     [ApiController]
     public class UserController : BaseApiController
     {
-        private readonly ILogger<TestController> _logger;
+        private readonly ILogger<UserController> _logger;
 
-        public UserController(ILogger<TestController> logger, IMediator mediator, IMapper mapper) : base(mediator, mapper)
+        public UserController(ILogger<UserController> logger, IMediator mediator, IMapper mapper) : base(mediator, mapper)
         {
             _logger = logger;
         }
 
         [HttpGet("[action]")]
         [ProducesResponseType(typeof(GetUserByEmailResult), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> GetUserByEmail([FromQuery] string email)
             => await ProcessQueryAsync<GetUserByEmailRequest, GetUserByEmailResult, GetUserByEmailQuery, GetUserByEmailResponse>(new GetUserByEmailRequest { Email = email });
     }
