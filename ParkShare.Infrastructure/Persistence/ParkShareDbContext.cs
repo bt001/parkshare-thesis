@@ -1,0 +1,106 @@
+﻿using Microsoft.EntityFrameworkCore;
+using ParkShare.Domain.Entities;
+using ParkShare.Domain.Entities.JoinModels;
+
+namespace ParkShare.Infrastructure.Persistence
+{
+    /// <summary>
+    /// Entity Framework Core context for ParkShare.
+    /// </summary>
+    public class ParkShareDbContext : DbContext
+    {
+        public ParkShareDbContext(DbContextOptions<ParkShareDbContext> options)
+            : base(options) { }
+
+        public DbSet<User> Users => Set<User>();
+        public DbSet<Listing> Listings => Set<Listing>();
+        public DbSet<ListingPhoto> ListingPhotos => Set<ListingPhoto>();
+        public DbSet<Amenity> Amenities => Set<Amenity>();
+        public DbSet<ListingAmenity> ListingAmenities => Set<ListingAmenity>();
+        public DbSet<AvailabilityWindow> AvailabilityWindows => Set<AvailabilityWindow>();
+        public DbSet<Booking> Bookings => Set<Booking>();
+        public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+        public DbSet<Notification> Notifications => Set<Notification>();
+        public DbSet<Rating> Ratings => Set<Rating>();
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            
+            foreach (var relationship in modelBuilder.Model.GetEntityTypes()
+                .SelectMany(e => e.GetForeignKeys()))
+            {
+                relationship.DeleteBehavior = DeleteBehavior.NoAction;
+            }
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.UserName)
+                .IsUnique();
+
+            modelBuilder.Entity<Booking>()
+                .Property(b => b.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<ListingAmenity>()
+                .HasKey(la => new { la.ListingId, la.AmenityId });
+
+            modelBuilder.Entity<ListingAmenity>()
+                .HasOne(la => la.Listing)
+                .WithMany(l => l.ListingAmenities)
+                .HasForeignKey(la => la.ListingId);
+
+            modelBuilder.Entity<ListingAmenity>()
+                .HasOne(la => la.Amenity)
+                .WithMany(a => a.ListingAmenities)
+                .HasForeignKey(la => la.AmenityId);
+
+            
+            modelBuilder.Entity<Rating>()
+                .HasIndex(r => r.BookingId)
+                .IsUnique();
+
+            
+            modelBuilder.Entity<Listing>(entity =>
+            {
+                entity.Property(e => e.Latitude).HasColumnType("decimal(9,6)");
+                entity.Property(e => e.Longitude).HasColumnType("decimal(9,6)");
+                entity.Property(e => e.PricePerHour).HasColumnType("decimal(10,2)");
+            });
+
+            modelBuilder.Entity<ListingPhoto>()
+                .HasOne(lp => lp.Listing)
+                .WithMany(l => l.Photos)
+                .HasForeignKey(lp => lp.ListingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AvailabilityWindow>()
+                .HasOne(aw => aw.Listing)
+                .WithMany(l => l.AvailabilityWindows)
+                .HasForeignKey(aw => aw.ListingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ListingAmenity>()
+                .HasOne(la => la.Listing)
+                .WithMany(l => l.ListingAmenities)
+                .HasForeignKey(la => la.ListingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ListingAmenity>()
+                .HasOne(la => la.Amenity)
+                .WithMany(a => a.ListingAmenities)
+                .HasForeignKey(la => la.AmenityId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(cm => cm.Booking)
+                .WithMany(b => b.ChatMessages)
+                .HasForeignKey(cm => cm.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Rating>()
+                .HasOne(r => r.Booking)
+                .WithOne(b => b.Rating)
+                .HasForeignKey<Rating>(r => r.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+        }
+    }
+}

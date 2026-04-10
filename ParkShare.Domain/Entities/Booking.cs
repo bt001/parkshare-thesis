@@ -1,4 +1,6 @@
-﻿namespace ParkShare.Domain.Entities
+﻿using ParkShare.Common.Enums;
+
+namespace ParkShare.Domain.Entities
 {
     /// <summary>
     /// Booking for a listing.
@@ -44,7 +46,7 @@
         /// <summary>
         /// Request status (Pending, Approved, etc.).
         /// </summary>
-        public string Status { get; set; } = string.Empty;
+        public BookingStatus Status { get; set; } = BookingStatus.Pending;
 
         /// <summary>
         /// Booking creation date.
@@ -61,7 +63,7 @@
         /// </summary>
         public string PaymentStatus { get; set; } = string.Empty;
 
-        public ICollection<ChatMessage> Messages { get; set; } = new List<ChatMessage>();
+        public ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
         public Rating? Rating { get; set; }
     }
 }

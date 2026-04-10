@@ -1,43 +1,72 @@
-using Microsoft.AspNetCore.Mvc.ApplicationModels;
-using ParkShare.Api.Conventions;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using ParkShare.Api;
+using ParkShare.Application;
+using ParkShare.Application.Infrastructure.Automapper;
+using ParkShare.Infrastructure;
+using ParkShare.Infrastructure.Configuration;
+using System.Reflection;
+using Autofac;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-builder.Services.AddControllers(options =>
+internal class Program
 {
-    options.Conventions.Add(new RouteTokenTransformerConvention(new SlugifyParameterTransformer()));
-});
+    private static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowNgDev",
-        policy =>
+        // ---- CONFIGURATION ----
+        builder.Services.Configure<DatabaseConfig>(builder.Configuration.GetSection("DatabaseConfig"));
+
+        // ---- MODULES ----
+
+        builder.Services.AddApiModule();
+        builder.Services.AddApplicationModule();
+        builder.Services.AddInfrastructureModule();
+
+        // ---- CONTROLLERS & ROUTING ----
+        builder.Services.AddControllers();
+
+        builder.Services.AddRouting(options =>
         {
-            policy.WithOrigins("http://localhost:4200", "http://127.0.0.1:4200")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
+            options.LowercaseUrls = true; // Ensures all URLs are lowercase
+            options.LowercaseQueryStrings = true; // Ensures query strings are lowercase
         });
-});
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
-var app = builder.Build();
+        // ---- CORS ----
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowNgDev", policy =>
+            {
+                policy.WithOrigins("http://localhost:4200", "http://127.0.0.1:4200")
+                      .AllowAnyHeader()
+                      .AllowAnyMethod();
+            });
+        });
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
+        // ---- AUTOMAPPER ----
+
+        builder.Services.AddAutoMapper([typeof(AutoMapperProfile).GetTypeInfo().Assembly]);
+
+        // ---- SWAGGER ----
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen();
+
+        var app = builder.Build();
+
+        // ---- MIDDLEWARE PIPELINE ----
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI();
+        }
+
+        app.UseCors("AllowNgDev");
+
+        app.UseHttpsRedirection();
+        app.UseAuthorization();
+        app.MapControllers();
+
+        app.Run();
+    }
 }
-
-app.UseCors("AllowNgDev"); 
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();

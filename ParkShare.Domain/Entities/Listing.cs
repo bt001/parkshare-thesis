@@ -72,7 +72,7 @@ namespace ParkShare.Domain.Entities
         public ICollection<ListingPhoto> Photos { get; set; } = new List<ListingPhoto>();
         public ICollection<ListingAmenity> ListingAmenities { get; set; } = new List<ListingAmenity>();
         public ICollection<AvailabilityWindow> AvailabilityWindows { get; set; } = new List<AvailabilityWindow>();
-        public ICollection<Booking> BookingRequests { get; set; } = new List<Booking>();
+        public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
         public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
     }
 }

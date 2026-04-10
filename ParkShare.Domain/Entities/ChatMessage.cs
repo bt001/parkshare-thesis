@@ -14,12 +14,12 @@
         /// <summary>
         /// Booking request ID.
         /// </summary>
-        public long BookingRequestId { get; set; }
+        public long BookingId { get; set; }
 
         /// <summary>
         /// Parent booking request.
         /// </summary>
-        public Booking BookingRequest { get; set; } = default!;
+        public Booking Booking { get; set; } = default!;
 
         /// <summary>
         /// Sender user ID.

@@ -1,0 +1,46 @@
+﻿using MediatR;
+using ParkShare.Application.Dto;
+using ParkShare.Application.Dto.Application;
+using ParkShare.Application.Interfaces;
+
+namespace ParkShare.Application.Commands
+{
+    public class CreateListingCommand : IRequest<ServiceResult<CreateListingResponse>>
+    {
+        public long OwnerId { get; init; }
+        public string Title { get; init; } = string.Empty;
+        public string Description { get; init; } = string.Empty;
+        public decimal PricePerHour { get; init; }
+        public double Latitude { get; init; }
+        public double Longitude { get; init; }
+        public string? Address { get; init; }
+    }
+
+
+    public class CreateListingHandler : IRequestHandler<CreateListingCommand, ServiceResult<CreateListingResponse>>
+    {
+        private readonly IListingService _listingService;
+
+        public CreateListingHandler(IListingService listingService)
+            => _listingService = listingService ?? throw new ArgumentNullException(nameof(listingService));
+
+        public async Task<ServiceResult<CreateListingResponse>> Handle(CreateListingCommand request, CancellationToken cancellationToken)
+        {
+            var response = await _listingService.CreateAsync(
+                request.OwnerId,
+                request.Title,
+                request.Description,
+                request.PricePerHour,
+                request.Latitude,
+                request.Longitude,
+                request.Address,
+                cancellationToken);
+
+            if (!response.IsSuccessful)
+                return ServiceResult<CreateListingResponse>.WithErrors(response.Errors);
+
+            return ServiceResult<CreateListingResponse>.Success(response.Payload);
+        }
+    }
+
+}
