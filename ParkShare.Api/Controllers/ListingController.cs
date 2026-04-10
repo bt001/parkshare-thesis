@@ -54,15 +54,17 @@ namespace ParkShare.Api.Controllers
                 IsAlwaysAvailable = body.IsAlwaysAvailable
             });
 
-        [HttpPatch("/deactivate")]
+        [HttpPatch("[action]")]
         [ProducesResponseType(typeof(DeactivateListingResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public Task<IActionResult> Deactivate([FromBody] DeactivateListingRequest body)
           => ProcessCommandAsync<DeactivateListingRequest, DeactivateListingResult, DeactivateListingCommand, DeactivateListingResponse>(body);
 
-        [HttpPatch("/activate")]
+        [HttpPatch("[action]")]
         [ProducesResponseType(typeof(ActivateListingResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public Task<IActionResult> Activate([FromBody] ActivateListingRequest body)
             => ProcessCommandAsync<ActivateListingRequest, ActivateListingResult, ActivateListingCommand, ActivateListingResponse>(body);
 

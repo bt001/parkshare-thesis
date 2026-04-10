@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 
 namespace ParkShare.Api.Controllers
 {
+    [Route("api/[controller]")]
     [ApiController]
     public class BookingController : BaseApiController
     {
@@ -22,23 +23,31 @@ namespace ParkShare.Api.Controllers
             _logger = logger;
         }
 
-        [HttpPost("request")]
+        [HttpPost("[action]")]
         [ProducesResponseType(typeof(BookingResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public Task<IActionResult> BookingRequest([FromBody] CreateBookingRequest body)
             => ProcessCommandAsync<CreateBookingRequest, BookingResult, CreateBookingCommand, CreateBookingResponse>(body);
 
-        [HttpPatch("approve")]
+        [HttpPatch("[action]")]
         [ProducesResponseType(typeof(BookingResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public Task<IActionResult> ApproveBooking([FromBody] ApproveBookingRequest body)
             => ProcessCommandAsync<ApproveBookingRequest, BookingResult, ApproveBookingCommand, ApproveBookingResponse>(body);
 
-        [HttpPatch("reject")]
+        [HttpPatch("[action]")]
         [ProducesResponseType(typeof(BookingResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public Task<IActionResult> RejectBooking([FromBody] RejectBookingRequest body)
             => ProcessCommandAsync<RejectBookingRequest, BookingResult, RejectBookingCommand, RejectBookingResponse>(body);
 
         [HttpGet("{id:long}")]
         [ProducesResponseType(typeof(BookingResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public Task<IActionResult> GetBookingById([FromRoute] long id)
             => ProcessQueryAsync<GetBookingByIdRequest, BookingResult, GetBookingByIdQuery, GetBookingByIdResponse>(new GetBookingByIdRequest { Id = id });
 
