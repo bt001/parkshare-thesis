@@ -1,8 +1,12 @@
 <h2>Dashboard</h2>
 <button (click)="pingApi()">Ping API</button>
-<div *ngIf="pong" style="margin-top: 1rem;">
-  <strong>Response:</strong> {{ pong }}
-</div>
-<div *ngIf="error" style="margin-top: 1rem; color: red;">
-  <strong>Error:</strong> {{ error }}
-</div>
+@if (pong) {
+  <div style="margin-top: 1rem;">
+    <strong>Response:</strong> {{ pong }}
+  </div>
+}
+@if (error) {
+  <div style="margin-top: 1rem; color: red;">
+    <strong>Error:</strong> {{ error }}
+  </div>
+}
