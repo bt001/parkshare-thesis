@@ -13,6 +13,7 @@ namespace ParkShare.Api.Mappings
         public void CreateMappings(Profile cfg)
         {
             cfg.CreateMap<LoginRequest, LoginQuery>();
+            cfg.CreateMap<RefreshTokenRequest, RefreshTokenQuery>();
             cfg.CreateMap<LoginResponse, LoginResult>();
         }
     }

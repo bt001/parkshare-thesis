@@ -5,6 +5,9 @@ namespace ParkShare.Shared.Requests.Bookings
 {
     public class GetOwnerBookingsRequest : IApiRequest
     {
+        /// <summary>
+        /// Owner ID, set by the API from the authenticated user.
+        /// </summary>
         public long OwnerId { get; set; }
         public long? ListingId { get; set; }
         public List<BookingStatus>? Statuses { get; set; }

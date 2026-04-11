@@ -1,10 +1,12 @@
 ﻿using AutoMapper;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using ParkShare.Application.Commands;
 using ParkShare.Application.Dto.Application;
+using ParkShare.Application.Interfaces;
 using ParkShare.Application.Queries;
 using ParkShare.Shared.Requests.Bookings;
 using ParkShare.Shared.Results.Bookings;
@@ -14,20 +16,34 @@ namespace ParkShare.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class BookingController : BaseApiController
     {
         private readonly ILogger<BookingController> _logger;
+        private readonly ICurrentUserService _currentUser;
 
-        public BookingController(ILogger<BookingController> logger, IMediator mediator, IMapper mapper) : base(mediator, mapper)
+        /// <summary>
+        /// Creates the controller.
+        /// </summary>
+        /// <param name="logger">Logger instance.</param>
+        /// <param name="mediator">Mediator instance.</param>
+        /// <param name="mapper">Mapper instance.</param>
+        /// <param name="currentUser">Current user context.</param>
+        public BookingController(ILogger<BookingController> logger, IMediator mediator, IMapper mapper, ICurrentUserService currentUser) : base(mediator, mapper)
         {
             _logger = logger;
+            _currentUser = currentUser ?? throw new System.ArgumentNullException(nameof(currentUser));
         }
 
         [HttpPost("[action]")]
         [ProducesResponseType(typeof(BookingResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public Task<IActionResult> BookingRequest([FromBody] CreateBookingRequest body)
-            => ProcessCommandAsync<CreateBookingRequest, BookingResult, CreateBookingCommand, CreateBookingResponse>(body);
+            => ProcessAuthenticatedCommandAsync<CreateBookingRequest, BookingResult, CreateBookingCommand, CreateBookingResponse>(
+                body,
+                _currentUser,
+                (request, userId) => request.RenterId = userId);
 
         [HttpPatch("[action]")]
         [ProducesResponseType(typeof(BookingResult), StatusCodes.Status200OK)]
@@ -35,7 +51,10 @@ namespace ParkShare.Api.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public Task<IActionResult> ApproveBooking([FromBody] ApproveBookingRequest body)
-            => ProcessCommandAsync<ApproveBookingRequest, BookingResult, ApproveBookingCommand, ApproveBookingResponse>(body);
+            => ProcessAuthenticatedCommandAsync<ApproveBookingRequest, BookingResult, ApproveBookingCommand, ApproveBookingResponse>(
+                body,
+                _currentUser,
+                (request, userId) => request.OwnerId = userId);
 
         [HttpPatch("[action]")]
         [ProducesResponseType(typeof(BookingResult), StatusCodes.Status200OK)]
@@ -43,18 +62,29 @@ namespace ParkShare.Api.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public Task<IActionResult> RejectBooking([FromBody] RejectBookingRequest body)
-            => ProcessCommandAsync<RejectBookingRequest, BookingResult, RejectBookingCommand, RejectBookingResponse>(body);
+            => ProcessAuthenticatedCommandAsync<RejectBookingRequest, BookingResult, RejectBookingCommand, RejectBookingResponse>(
+                body,
+                _currentUser,
+                (request, userId) => request.OwnerId = userId);
 
         [HttpGet("{id:long}")]
         [ProducesResponseType(typeof(BookingResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public Task<IActionResult> GetBookingById([FromRoute] long id)
-            => ProcessQueryAsync<GetBookingByIdRequest, BookingResult, GetBookingByIdQuery, GetBookingByIdResponse>(new GetBookingByIdRequest { Id = id });
+            => ProcessAuthenticatedQueryAsync<GetBookingByIdRequest, BookingResult, GetBookingByIdQuery, GetBookingByIdResponse>(
+                new GetBookingByIdRequest { Id = id },
+                _currentUser,
+                (request, userId) => request.RequesterId = userId);
 
         [HttpGet("owner")]
         [ProducesResponseType(typeof(GetOwnerBookingsResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public Task<IActionResult> GetOwnerBookings([FromQuery] GetOwnerBookingsRequest query)
-            => ProcessQueryAsync<GetOwnerBookingsRequest, GetOwnerBookingsResult, GetOwnerBookingsQuery, GetOwnerBookingsResponse>(query);
+            => ProcessAuthenticatedQueryAsync<GetOwnerBookingsRequest, GetOwnerBookingsResult, GetOwnerBookingsQuery, GetOwnerBookingsResponse>(
+                query,
+                _currentUser,
+                (request, userId) => request.OwnerId = userId);
     }
 }

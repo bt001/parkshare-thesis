@@ -10,6 +10,12 @@ namespace ParkShare.Infrastructure.Mappings
         public void CreateMappings(Profile cfg)
         {
             cfg.CreateMap<User, UserResponse>();
+            cfg.CreateMap<User, AuthenticatedUserResponse>()
+                .ForMember(dest => dest.AccessToken, opt => opt.Ignore())
+                .ForMember(dest => dest.AccessTokenExpiresAt, opt => opt.Ignore())
+                .ForMember(dest => dest.RefreshToken, opt => opt.Ignore())
+                .ForMember(dest => dest.RefreshTokenExpiresAt, opt => opt.Ignore())
+                .ForMember(dest => dest.TokenType, opt => opt.Ignore());
         }
     }
 }

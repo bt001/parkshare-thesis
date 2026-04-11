@@ -8,7 +8,7 @@ namespace ParkShare.Shared.Requests.Availability
     public class GetOwnerAvailabilityRequest : IApiRequest
     {
         /// <summary>
-        /// Owner ID.
+        /// Owner ID, set by the API from the authenticated user.
         /// </summary>
         public long OwnerId { get; set; }
         /// <summary>

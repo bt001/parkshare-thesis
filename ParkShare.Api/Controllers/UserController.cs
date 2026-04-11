@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using ParkShare.Application.Dto.Application;
@@ -11,6 +12,7 @@ namespace ParkShare.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class UserController : BaseApiController
     {
         private readonly ILogger<UserController> _logger;
@@ -24,6 +26,7 @@ namespace ParkShare.Api.Controllers
         [ProducesResponseType(typeof(GetUserByEmailResult), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
+        [ProducesResponseType(401)]
         public async Task<IActionResult> GetUserByEmail([FromQuery] string email)
             => await ProcessQueryAsync<GetUserByEmailRequest, GetUserByEmailResult, GetUserByEmailQuery, GetUserByEmailResponse>(new GetUserByEmailRequest { Email = email });
     }
