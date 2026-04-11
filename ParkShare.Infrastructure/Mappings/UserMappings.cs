@@ -10,6 +10,7 @@ namespace ParkShare.Infrastructure.Mappings
         public void CreateMappings(Profile cfg)
         {
             cfg.CreateMap<User, UserResponse>();
+            cfg.CreateMap<User, AuthenticatedUserResponse>();
         }
     }
 }
