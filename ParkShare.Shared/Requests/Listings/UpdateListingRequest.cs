@@ -10,6 +10,9 @@ namespace ParkShare.Shared.Requests.Listings
     public class UpdateListingRequest : IApiRequest
     {
         public long Id { get; set; }
+        /// <summary>
+        /// Owner ID, set by the API from the authenticated user.
+        /// </summary>
         public long OwnerId { get; set; }
         public string Title { get; set; } = string.Empty;      // 1–120
         public string Description { get; set; } = string.Empty; // ≤2000

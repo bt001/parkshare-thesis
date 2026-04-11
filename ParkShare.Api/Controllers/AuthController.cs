@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using ParkShare.Application.Dto.Application;
@@ -17,6 +18,7 @@ namespace ParkShare.Api.Controllers
     /// Authentication is intentionally kept lightweight for the thesis MVP so implementation effort stays focused on parking rental workflows rather than production-grade security features.
     /// </remarks>
     [Route("api/[controller]")]
+    [AllowAnonymous]
     public class AuthController : BaseApiController
     {
         /// <summary>

@@ -4,6 +4,9 @@ namespace ParkShare.Shared.Requests.Listings
 {
     public class CreateListingRequest : IApiRequest
     {
+        /// <summary>
+        /// Owner ID, set by the API from the authenticated user.
+        /// </summary>
         public long OwnerId { get; set; }
 
         public string Title { get; set; } = string.Empty;   // 1–120

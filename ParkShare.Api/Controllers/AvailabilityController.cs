@@ -1,9 +1,11 @@
 using AutoMapper;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using ParkShare.Application.Commands;
 using ParkShare.Application.Dto.Application;
+using ParkShare.Application.Interfaces;
 using ParkShare.Application.Queries;
 using ParkShare.Shared.Requests.Availability;
 using ParkShare.Shared.Results.Availability;
@@ -17,16 +19,21 @@ namespace ParkShare.Api.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class AvailabilityController : BaseApiController
     {
+        private readonly ICurrentUserService _currentUser;
+
         /// <summary>
         /// Creates the controller.
         /// </summary>
         /// <param name="mediator">Mediator instance.</param>
         /// <param name="mapper">Mapper instance.</param>
-        public AvailabilityController(IMediator mediator, IMapper mapper)
+        /// <param name="currentUser">Current user context.</param>
+        public AvailabilityController(IMediator mediator, IMapper mapper, ICurrentUserService currentUser)
             : base(mediator, mapper)
         {
+            _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
         }
 
         /// <summary>
@@ -36,8 +43,12 @@ namespace ParkShare.Api.Controllers
         [ProducesResponseType(typeof(AvailabilityWindowMutationResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public Task<IActionResult> Create([FromBody] CreateAvailabilityWindowRequest request)
-            => ProcessCommandAsync<CreateAvailabilityWindowRequest, AvailabilityWindowMutationResult, CreateAvailabilityWindowCommand, CreateAvailabilityWindowResponse>(request);
+            => ProcessAuthenticatedCommandAsync<CreateAvailabilityWindowRequest, AvailabilityWindowMutationResult, CreateAvailabilityWindowCommand, CreateAvailabilityWindowResponse>(
+                request,
+                _currentUser,
+                (apiRequest, userId) => apiRequest.OwnerId = userId);
 
         /// <summary>
         /// Updates an availability window.
@@ -46,16 +57,19 @@ namespace ParkShare.Api.Controllers
         [ProducesResponseType(typeof(AvailabilityWindowMutationResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public Task<IActionResult> Update([FromRoute] long id, [FromBody] UpdateAvailabilityWindowRequest body)
-            => ProcessCommandAsync<UpdateAvailabilityWindowRequest, AvailabilityWindowMutationResult, UpdateAvailabilityWindowCommand, UpdateAvailabilityWindowResponse>(new UpdateAvailabilityWindowRequest
+            => ProcessAuthenticatedCommandAsync<UpdateAvailabilityWindowRequest, AvailabilityWindowMutationResult, UpdateAvailabilityWindowCommand, UpdateAvailabilityWindowResponse>(
+                new UpdateAvailabilityWindowRequest
             {
                 Id = id,
-                OwnerId = body.OwnerId,
                 StartDateTime = body.StartDateTime,
                 EndDateTime = body.EndDateTime,
                 IsBlocked = body.IsBlocked,
                 Note = body.Note
-            });
+            },
+                _currentUser,
+                (request, userId) => request.OwnerId = userId);
 
         /// <summary>
         /// Deletes an availability window.
@@ -64,17 +78,18 @@ namespace ParkShare.Api.Controllers
         [ProducesResponseType(typeof(DeleteAvailabilityWindowResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public Task<IActionResult> Delete([FromRoute] long id, [FromQuery] long ownerId)
-            => ProcessCommandAsync<DeleteAvailabilityWindowRequest, DeleteAvailabilityWindowResult, DeleteAvailabilityWindowCommand, DeleteAvailabilityWindowResponse>(new DeleteAvailabilityWindowRequest
-            {
-                Id = id,
-                OwnerId = ownerId
-            });
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public Task<IActionResult> Delete([FromRoute] long id)
+            => ProcessAuthenticatedCommandAsync<DeleteAvailabilityWindowRequest, DeleteAvailabilityWindowResult, DeleteAvailabilityWindowCommand, DeleteAvailabilityWindowResponse>(
+                new DeleteAvailabilityWindowRequest { Id = id },
+                _currentUser,
+                (request, userId) => request.OwnerId = userId);
 
         /// <summary>
         /// Returns availability windows for a listing.
         /// </summary>
         [HttpGet("listing/{listingId:long}")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(GetAvailabilityWindowsResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -93,7 +108,11 @@ namespace ParkShare.Api.Controllers
         [ProducesResponseType(typeof(GetAvailabilityWindowsResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public Task<IActionResult> GetOwnerAvailability([FromQuery] GetOwnerAvailabilityRequest request)
-            => ProcessQueryAsync<GetOwnerAvailabilityRequest, GetAvailabilityWindowsResult, GetOwnerAvailabilityQuery, GetAvailabilityWindowsResponse>(request);
+            => ProcessAuthenticatedQueryAsync<GetOwnerAvailabilityRequest, GetAvailabilityWindowsResult, GetOwnerAvailabilityQuery, GetAvailabilityWindowsResponse>(
+                request,
+                _currentUser,
+                (apiRequest, userId) => apiRequest.OwnerId = userId);
     }
 }

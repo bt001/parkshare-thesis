@@ -12,7 +12,7 @@ namespace ParkShare.Shared.Requests.Availability
         /// </summary>
         public long Id { get; set; }
         /// <summary>
-        /// Owner ID.
+        /// Owner ID, set by the API from the authenticated user.
         /// </summary>
         public long OwnerId { get; set; }
         /// <summary>
