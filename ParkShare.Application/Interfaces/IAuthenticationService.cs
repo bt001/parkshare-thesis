@@ -9,6 +9,24 @@ namespace ParkShare.Application.Interfaces
     public interface IAuthenticationService
     {
         /// <summary>
+        /// Registers a new user and returns token-backed identity data.
+        /// </summary>
+        /// <param name="userName">Requested username.</param>
+        /// <param name="firstName">User first name.</param>
+        /// <param name="lastName">User last name.</param>
+        /// <param name="email">User email.</param>
+        /// <param name="password">User password.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Authenticated user data.</returns>
+        Task<ServiceResult<AuthenticatedUserResponse>> RegisterUser(
+            string userName,
+            string firstName,
+            string lastName,
+            string email,
+            string password,
+            CancellationToken cancellationToken);
+
+        /// <summary>
         /// Authenticates a user and returns token-backed identity data.
         /// </summary>
         /// <param name="email">User email.</param>
