@@ -83,8 +83,20 @@ internal class Program
         });
 
         // ---- AUTOMAPPER ----
-
-        builder.Services.AddAutoMapper([typeof(AutoMapperProfile).GetTypeInfo().Assembly]);
+        // AutoMapper remains in use here for thesis delivery speed and readability.
+        // This repository is a non-commercial academic project, so a local
+        // Community license key can be supplied via configuration without
+        // committing secrets to source control. If ParkShare evolves into a
+        // real production product, revisit both the mapping approach and the
+        // long-term licensing/compliance decision.
+        var autoMapperLicenseKey = builder.Configuration["AutoMapper:LicenseKey"];
+        builder.Services.AddAutoMapper(
+            cfg =>
+            {
+                if (!string.IsNullOrWhiteSpace(autoMapperLicenseKey))
+                    cfg.LicenseKey = autoMapperLicenseKey;
+            },
+            [typeof(AutoMapperProfile).GetTypeInfo().Assembly]);
 
         // ---- SWAGGER ----
         builder.Services.AddEndpointsApiExplorer();
