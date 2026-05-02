@@ -1,26 +1,36 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using ParkShare.Application.Dto;
 using ParkShare.Application.Dto.Application;
 using ParkShare.Application.Interfaces;
+using ParkShare.Common.Enums;
 using ParkShare.Domain.Entities;
 using ParkShare.Infrastructure.Persistence;
 
 namespace ParkShare.Infrastructure.Services
 {
+    /// <summary>
+    /// Provides listing persistence operations.
+    /// </summary>
     public class ListingService : IListingService
     {
         private readonly ParkShareDbContext _db;
 
+        /// <summary>
+        /// Creates the listing service.
+        /// </summary>
+        /// <param name="db">Database context.</param>
         public ListingService(ParkShareDbContext db)
             => _db = db ?? throw new ArgumentNullException(nameof(db));
 
+        /// <inheritdoc/>
         public async Task<ServiceResult<CreateListingResponse>> CreateAsync(long ownerId, string title, string description, decimal pricePerHour,
             double latitude, double longitude, string? address, CancellationToken ct)
         {
-            // 1) Guard: Owner must exist
-            var ownerExists = await _db.Users.AnyAsync(u => u.Id == ownerId, ct);
-            if (!ownerExists)
+            var owner = await _db.Users.FirstOrDefaultAsync(u => u.Id == ownerId, ct);
+            if (owner is null)
                 return ServiceResult<CreateListingResponse>.WithError("Owner not found.");
+
+            owner.Capabilities = owner.Capabilities.AddOwnerCapability();
 
             var entity = new Listing
             {
@@ -53,30 +63,33 @@ namespace ParkShare.Infrastructure.Services
             }
         }
 
+        /// <inheritdoc/>
         public async Task<ServiceResult<GetListingByIdResponse>> GetByIdAsync(long id, CancellationToken ct)
         {
             var e = await _db.Listings.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
             if (e is null)
                 return ServiceResult<GetListingByIdResponse>.WithError("Listing not found.");
 
-            var payload = new GetListingByIdResponse 
-            { 
+            var payload = new GetListingByIdResponse
+            {
                 Id = e.Id,
                 OwnerId = e.OwnerId,
                 Title = e.Title,
                 Description = e.Description,
                 Address = e.Address,
                 Latitude = e.Latitude,
-                Longitude = e.Longitude, Size = e.Size,
+                Longitude = e.Longitude,
+                Size = e.Size,
                 PricePerHour = e.PricePerHour,
                 IsActive = e.IsActive,
                 IsAlwaysAvailable = e.IsAlwaysAvailable,
-                CreatedAt = e.CreatedAt 
+                CreatedAt = e.CreatedAt
             };
 
             return ServiceResult<GetListingByIdResponse>.Success(payload);
         }
 
+        /// <inheritdoc/>
         public async Task<ServiceResult<GetOwnerListingsResponse>> GetByOwnerAsync(long ownerId, CancellationToken ct)
         {
             var exists = await _db.Users.AsNoTracking().AnyAsync(u => u.Id == ownerId, ct);
@@ -108,6 +121,7 @@ namespace ParkShare.Infrastructure.Services
             return ServiceResult<GetOwnerListingsResponse>.Success(payload);
         }
 
+        /// <inheritdoc/>
         public async Task<ServiceResult<UpdateListingResponse>> UpdateAsync(long id, long ownerId, string title, string description, decimal pricePerHour, double latitude, double longitude, string? address, string? size, bool isAlwaysAvailable, CancellationToken ct)
         {
             var e = await _db.Listings.FirstOrDefaultAsync(x => x.Id == id, ct);
@@ -142,6 +156,7 @@ namespace ParkShare.Infrastructure.Services
             }
         }
 
+        /// <inheritdoc/>
         public async Task<ServiceResult<DeactivateListingResponse>> DeactivateAsync(long id, long ownerId, CancellationToken ct)
         {
             var e = await _db.Listings.FirstOrDefaultAsync(x => x.Id == id, ct);
@@ -154,7 +169,7 @@ namespace ParkShare.Infrastructure.Services
             if (!e.IsActive)
             {
                 var already = new DeactivateListingResponse { ListingId = e.Id, IsActive = e.IsActive };
-                return ServiceResult<DeactivateListingResponse>.Success(already); // idempotent
+                return ServiceResult<DeactivateListingResponse>.Success(already);
             }
 
             e.IsActive = false;
@@ -175,6 +190,7 @@ namespace ParkShare.Infrastructure.Services
             }
         }
 
+        /// <inheritdoc/>
         public async Task<ServiceResult<ActivateListingResponse>> ActivateAsync(long id, long ownerId, CancellationToken ct)
         {
             var e = await _db.Listings.FirstOrDefaultAsync(x => x.Id == id, ct);
@@ -204,6 +220,7 @@ namespace ParkShare.Infrastructure.Services
             }
         }
 
+        /// <inheritdoc/>
         public async Task<ServiceResult<SearchListingsResponse>> SearchAsync(double? lat, double? lng, double? radiusKm, decimal? minPrice, decimal? maxPrice, bool? onlyActive, bool? onlyAlwaysAvailable, string? titleContains, string? addressContains, int page, int pageSize, CancellationToken ct)
         {
             var query = _db.Listings.AsNoTracking().AsQueryable();

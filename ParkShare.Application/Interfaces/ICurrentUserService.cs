@@ -1,3 +1,5 @@
+using ParkShare.Common.Enums;
+
 namespace ParkShare.Application.Interfaces
 {
     /// <summary>
@@ -16,9 +18,14 @@ namespace ParkShare.Application.Interfaces
         string? Email { get; }
 
         /// <summary>
-        /// Current user role when authenticated.
+        /// Current user capabilities when authenticated.
         /// </summary>
-        string? Role { get; }
+        Roles Capabilities { get; }
+
+        /// <summary>
+        /// Current user capability names when authenticated.
+        /// </summary>
+        IReadOnlyCollection<string> RoleNames { get; }
 
         /// <summary>
         /// Whether the current request has an authenticated user.

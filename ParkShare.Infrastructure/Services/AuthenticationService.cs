@@ -1,10 +1,11 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using ParkShare.Application.Dto;
 using ParkShare.Application.Dto.Infrastructure;
 using ParkShare.Application.Interfaces;
+using ParkShare.Common.Enums;
 using ParkShare.Domain.Entities;
 using ParkShare.Infrastructure.Configuration;
 using ParkShare.Infrastructure.Persistence;
@@ -48,6 +49,7 @@ namespace ParkShare.Infrastructure.Services
             if (!user.IsActive)
                 return ServiceResult<AuthenticatedUserResponse>.WithError("User account is inactive.");
 
+            await NormalizeCapabilitiesAsync(user, cancellationToken);
             return ServiceResult<AuthenticatedUserResponse>.Success(CreateAuthenticatedUserResponse(user));
         }
 
@@ -66,6 +68,7 @@ namespace ParkShare.Infrastructure.Services
             if (user is null || !user.IsActive)
                 return ServiceResult<AuthenticatedUserResponse>.WithError("Invalid refresh token.");
 
+            await NormalizeCapabilitiesAsync(user, cancellationToken);
             return ServiceResult<AuthenticatedUserResponse>.Success(CreateAuthenticatedUserResponse(user));
         }
 
@@ -99,16 +102,16 @@ namespace ParkShare.Infrastructure.Services
         {
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtConfig.SigningKey));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var claims = new[]
+            var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.UserName),
                 new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role),
                 new Claim(TokenTypeClaim, tokenType)
             };
+            claims.AddRange(user.Capabilities.ToRoleNames().Select(roleName => new Claim(ClaimTypes.Role, roleName)));
 
             var token = new JwtSecurityToken(
                 issuer: _jwtConfig.Issuer,
@@ -118,6 +121,22 @@ namespace ParkShare.Infrastructure.Services
                 signingCredentials: credentials);
 
             return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
+        }
+
+        /// <summary>
+        /// Persists canonical capability strings for legacy user records.
+        /// </summary>
+        /// <param name="user">Authenticated user.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        private async Task NormalizeCapabilitiesAsync(User user, CancellationToken cancellationToken)
+        {
+            var normalizedCapabilities = user.Capabilities.NormalizeMarketplaceCapabilities();
+            var canonicalRoleValue = normalizedCapabilities.ToCanonicalRoleString();
+            if (string.Equals(user.Role, canonicalRoleValue, StringComparison.Ordinal))
+                return;
+
+            user.Capabilities = normalizedCapabilities;
+            await _db.SaveChangesAsync(cancellationToken);
         }
 
         /// <summary>

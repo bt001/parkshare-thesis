@@ -22,7 +22,17 @@ export class AuthService {
   }
 
   get roles(): string[] {
-    return this.session?.role ? [this.session.role] : [];
+    if (!this.session) {
+      return [];
+    }
+
+    if (Array.isArray(this.session.roles) && this.session.roles.length > 0) {
+      return this.session.roles;
+    }
+
+    return this.session.role
+      ? this.session.role.split(',').map((role) => role.trim()).filter((role) => role.length > 0)
+      : [];
   }
 
   hasRole(role: string): boolean {

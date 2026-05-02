@@ -7,6 +7,7 @@ namespace ParkShare.Application.Mappings
 {
     public class AuthMappings : IHaveCustomMapping
     {
+        /// <inheritdoc/>
         public void CreateMappings(Profile cfg)
         {
             cfg.CreateMap<AuthenticatedUserResponse, LoginResponse>()

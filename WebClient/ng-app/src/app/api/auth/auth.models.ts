@@ -12,6 +12,7 @@ export interface LoginResult {
   userName: string;
   email: string;
   role: string;
+  roles?: string[];
   name: string;
   accessToken: string;
   accessTokenExpiresAt: string;

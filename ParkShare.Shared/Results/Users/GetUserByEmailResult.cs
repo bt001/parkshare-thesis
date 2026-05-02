@@ -1,7 +1,10 @@
-﻿using ParkShare.Shared.Results;
+using ParkShare.Shared.Results;
 
 namespace ParkShare.Shared.Requests.Users
 {
+    /// <summary>
+    /// API result for fetching a user by email.
+    /// </summary>
     public class GetUserByEmailResult : IApiResult
     {
         /// <summary>
@@ -28,9 +31,14 @@ namespace ParkShare.Shared.Requests.Users
         public string Email { get; set; } = default!;
 
         /// <summary>
-        /// User role: Owner, Renter, or both.
+        /// Canonical serialized user capabilities.
         /// </summary>
         public string Role { get; set; } = default!;
+
+        /// <summary>
+        /// Individual user capability names.
+        /// </summary>
+        public string[] Roles { get; set; } = Array.Empty<string>();
 
         /// <summary>
         /// Account creation date.

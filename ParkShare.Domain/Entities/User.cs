@@ -1,8 +1,11 @@
-﻿namespace ParkShare.Domain.Entities
+using System.ComponentModel.DataAnnotations.Schema;
+using ParkShare.Common.Enums;
+
+namespace ParkShare.Domain.Entities
 {
     /// <summary>
     /// User account.
-    /// Can be owner, renter, or both.
+    /// Can hold additive marketplace capabilities such as renter and owner.
     /// </summary>
     public class User
     {
@@ -35,9 +38,19 @@
         public string PasswordHash { get; set; } = null!;
 
         /// <summary>
-        /// User role: Owner, Renter, or both.
+        /// Canonical serialized user capabilities for persistence and API contracts.
         /// </summary>
-        public string Role { get; set; } = null!;
+        public string Role { get; set; } = RoleCapabilityExtensions.GetDefaultMarketplaceRoleValue();
+
+        /// <summary>
+        /// Additive user capabilities for marketplace actions.
+        /// </summary>
+        [NotMapped]
+        public Roles Capabilities
+        {
+            get => RoleCapabilityExtensions.ParseCapabilities(Role).NormalizeMarketplaceCapabilities();
+            set => Role = value.NormalizeMarketplaceCapabilities().ToCanonicalRoleString();
+        }
 
         /// <summary>
         /// Account creation date.
@@ -49,10 +62,29 @@
         /// </summary>
         public bool IsActive { get; set; } = true;
 
+        /// <summary>
+        /// Listings owned by the user.
+        /// </summary>
         public ICollection<Listing> Listings { get; set; } = new List<Listing>();
+
+        /// <summary>
+        /// Bookings created by the user as renter.
+        /// </summary>
         public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+
+        /// <summary>
+        /// Chat messages sent by the user.
+        /// </summary>
         public ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
+
+        /// <summary>
+        /// Notifications for the user.
+        /// </summary>
         public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+
+        /// <summary>
+        /// Ratings created by the user as renter.
+        /// </summary>
         public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
     }
 }
