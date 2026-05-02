@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+using AutoMapper;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Reflection;
 
 namespace ParkShare.Application.Infrastructure.Automapper
@@ -12,7 +13,9 @@ namespace ParkShare.Application.Infrastructure.Automapper
             var generalNamespace = Assembly.GetExecutingAssembly()?.FullName?.Split('.').FirstOrDefault()
                 ?? throw new ArgumentNullException("Wrong Namespace");
 
-            _supportedAssemblies = AppDomain.CurrentDomain.GetAssemblies().Where(asm => asm.FullName.Contains(generalNamespace)).ToArray();
+            _supportedAssemblies = AppDomain.CurrentDomain.GetAssemblies()
+                .Where(asm => asm.FullName.Contains(generalNamespace))
+                .ToArray();
 
             LoadStandardMappings();
             LoadCustomMappings();
@@ -48,7 +51,7 @@ namespace ParkShare.Application.Infrastructure.Automapper
 
         private void ConfigurationValid()
         {
-            var config = new MapperConfiguration(cfg => cfg.AddProfile(this));
+            var config = new MapperConfiguration(cfg => cfg.AddProfile(this), NullLoggerFactory.Instance);
             config.AssertConfigurationIsValid();
         }
     }
