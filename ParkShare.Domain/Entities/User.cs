@@ -1,8 +1,9 @@
-﻿namespace ParkShare.Domain.Entities
+using ParkShare.Domain.Entities.JoinModels;
+
+namespace ParkShare.Domain.Entities
 {
     /// <summary>
     /// User account.
-    /// Can be owner, renter, or both.
     /// </summary>
     public class User
     {
@@ -35,11 +36,6 @@
         public string PasswordHash { get; set; } = null!;
 
         /// <summary>
-        /// User role: Owner, Renter, or both.
-        /// </summary>
-        public string Role { get; set; } = null!;
-
-        /// <summary>
         /// Account creation date.
         /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -49,10 +45,34 @@
         /// </summary>
         public bool IsActive { get; set; } = true;
 
+        /// <summary>
+        /// Listings owned by the user.
+        /// </summary>
         public ICollection<Listing> Listings { get; set; } = new List<Listing>();
+
+        /// <summary>
+        /// Bookings created by the user as renter.
+        /// </summary>
         public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+
+        /// <summary>
+        /// Chat messages sent by the user.
+        /// </summary>
         public ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
+
+        /// <summary>
+        /// Notifications for the user.
+        /// </summary>
         public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+
+        /// <summary>
+        /// Ratings created by the user as renter.
+        /// </summary>
         public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
+
+        /// <summary>
+        /// Assigned user roles.
+        /// </summary>
+        public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     }
 }

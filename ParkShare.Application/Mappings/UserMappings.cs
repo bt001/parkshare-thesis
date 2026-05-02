@@ -7,6 +7,7 @@ namespace ParkShare.Application.Mappings
 {
     public class UserMappings : IHaveCustomMapping
     {
+        /// <inheritdoc/>
         public void CreateMappings(Profile cfg)
         {
             cfg.CreateMap<UserResponse, GetUserByEmailResponse>();

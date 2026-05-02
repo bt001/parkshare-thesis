@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Http;
 using ParkShare.Application.Interfaces;
+using ParkShare.Common.Enums;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
 
 namespace ParkShare.Api.Services
@@ -33,7 +36,21 @@ namespace ParkShare.Api.Services
         public string? Email => _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Email);
 
         /// <inheritdoc/>
-        public string? Role => _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Role);
+        public Roles Capabilities
+            => !IsAuthenticated
+                ? Roles.None
+                : (_httpContextAccessor.HttpContext?.User.FindAll(ClaimTypes.Role) ?? [])
+                    .Select(claim => claim.Value)
+                    .ToCapabilities();
+
+        /// <inheritdoc/>
+        public IReadOnlyCollection<string> RoleNames
+            => IsAuthenticated
+                ? (_httpContextAccessor.HttpContext?.User.FindAll(ClaimTypes.Role) ?? [])
+                    .Select(claim => claim.Value)
+                    .ToCanonicalRoleString()
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                : Array.Empty<string>();
 
         /// <inheritdoc/>
         public bool IsAuthenticated => _httpContextAccessor.HttpContext?.User.Identity?.IsAuthenticated == true;

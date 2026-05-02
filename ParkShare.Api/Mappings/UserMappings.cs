@@ -8,6 +8,7 @@ namespace ParkShare.Api.Mappings
 {
     public class UserMappings : IHaveCustomMapping
     {
+        /// <inheritdoc/>
         public void CreateMappings(Profile cfg)
         {
             cfg.CreateMap<GetUserByEmailRequest, GetUserByEmailQuery>();

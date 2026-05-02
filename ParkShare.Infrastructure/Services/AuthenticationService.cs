@@ -1,10 +1,11 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using ParkShare.Application.Dto;
 using ParkShare.Application.Dto.Infrastructure;
 using ParkShare.Application.Interfaces;
+using ParkShare.Common.Enums;
 using ParkShare.Domain.Entities;
 using ParkShare.Infrastructure.Configuration;
 using ParkShare.Infrastructure.Persistence;
@@ -40,7 +41,10 @@ namespace ParkShare.Infrastructure.Services
         /// <inheritdoc/>
         public async Task<ServiceResult<AuthenticatedUserResponse>> AuthenticateUser(string email, string password, CancellationToken cancellationToken)
         {
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+            var user = await _db.Users
+                .Include(currentUser => currentUser.UserRoles)
+                .ThenInclude(userRole => userRole.Role)
+                .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
             if (user == null || user.PasswordHash != password)
                 return ServiceResult<AuthenticatedUserResponse>.WithError("Invalid email or password.");
@@ -62,7 +66,11 @@ namespace ParkShare.Infrastructure.Services
             if (!long.TryParse(userIdValue, out var userId))
                 return ServiceResult<AuthenticatedUserResponse>.WithError("Invalid refresh token.");
 
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+            var user = await _db.Users
+                .Include(currentUser => currentUser.UserRoles)
+                .ThenInclude(userRole => userRole.Role)
+                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
             if (user is null || !user.IsActive)
                 return ServiceResult<AuthenticatedUserResponse>.WithError("Invalid refresh token.");
 
@@ -99,16 +107,19 @@ namespace ParkShare.Infrastructure.Services
         {
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtConfig.SigningKey));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var claims = new[]
+            var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.UserName),
                 new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role),
                 new Claim(TokenTypeClaim, tokenType)
             };
+
+            claims.AddRange(user.UserRoles
+                .OrderBy(userRole => userRole.RoleId)
+                .Select(userRole => new Claim(ClaimTypes.Role, userRole.Role.Name)));
 
             var token = new JwtSecurityToken(
                 issuer: _jwtConfig.Issuer,

@@ -1,9 +1,16 @@
-﻿namespace ParkShare.Domain.Enums
+using System;
+
+namespace ParkShare.Common.Enums
 {
+    /// <summary>
+    /// Additive marketplace roles for a user account.
+    /// </summary>
+    [Flags]
     public enum Roles
     {
-        Renter = 1 ,
-        Owner,
-        Admin,
+        None = 0,
+        Renter = 1,
+        Owner = 2,
+        Admin = 4,
     }
 }

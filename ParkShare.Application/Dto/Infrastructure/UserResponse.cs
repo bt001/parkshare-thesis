@@ -1,5 +1,8 @@
-﻿namespace ParkShare.Application.Dto.Infrastructure
+namespace ParkShare.Application.Dto.Infrastructure
 {
+    /// <summary>
+    /// User profile data returned from infrastructure services.
+    /// </summary>
     public class UserResponse
     {
         /// <summary>
@@ -26,9 +29,14 @@
         public string Email { get; set; } = default!;
 
         /// <summary>
-        /// User role: Owner, Renter, or both.
+        /// Canonical serialized user roles.
         /// </summary>
         public string Role { get; set; } = default!;
+
+        /// <summary>
+        /// Individual user capability names.
+        /// </summary>
+        public string[] Roles { get; set; } = Array.Empty<string>();
 
         /// <summary>
         /// Account creation date.
