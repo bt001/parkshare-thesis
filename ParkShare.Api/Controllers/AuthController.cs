@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using ParkShare.Application.Dto.Application;
+using ParkShare.Application.Commands;
 using ParkShare.Application.Queries;
 using ParkShare.Shared.Requests.Auth;
 using ParkShare.Shared.Results.Auth;
@@ -38,6 +39,17 @@ namespace ParkShare.Api.Controllers
         [ProducesResponseType(typeof(string[]), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
             =>  await ProcessQueryAsync<LoginRequest, LoginResult, LoginQuery, LoginResponse>(request);
+
+        /// <summary>
+        /// Registers a user account and returns authenticated session data.
+        /// </summary>
+        /// <param name="request">Registration details.</param>
+        /// <returns>Authenticated user information on success.</returns>
+        [HttpPost("register")]
+        [ProducesResponseType(typeof(LoginResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string[]), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+            => await ProcessCommandAsync<RegisterRequest, LoginResult, RegisterCommand, LoginResponse>(request);
 
         /// <summary>
         /// Refreshes authentication tokens.

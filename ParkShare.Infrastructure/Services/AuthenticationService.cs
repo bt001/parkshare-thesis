@@ -7,6 +7,7 @@ using ParkShare.Application.Dto.Infrastructure;
 using ParkShare.Application.Interfaces;
 using ParkShare.Common.Enums;
 using ParkShare.Domain.Entities;
+using ParkShare.Domain.Entities.JoinModels;
 using ParkShare.Infrastructure.Configuration;
 using ParkShare.Infrastructure.Persistence;
 using System.IdentityModel.Tokens.Jwt;
@@ -36,6 +37,51 @@ namespace ParkShare.Infrastructure.Services
             _db = db ?? throw new ArgumentNullException(nameof(db));
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
             _jwtConfig = jwtOptions?.Value ?? throw new ArgumentNullException(nameof(jwtOptions));
+        }
+
+        /// <inheritdoc/>
+        public async Task<ServiceResult<AuthenticatedUserResponse>> RegisterUser(
+            string userName,
+            string firstName,
+            string lastName,
+            string email,
+            string password,
+            CancellationToken cancellationToken)
+        {
+            if (await _db.Users.AnyAsync(user => user.Email == email, cancellationToken))
+                return ServiceResult<AuthenticatedUserResponse>.WithError("An account with this email already exists.");
+
+            if (await _db.Users.AnyAsync(user => user.UserName == userName, cancellationToken))
+                return ServiceResult<AuthenticatedUserResponse>.WithError("An account with this username already exists.");
+
+            var user = new User
+            {
+                UserName = userName,
+                FirstName = firstName,
+                LastName = lastName,
+                Email = email,
+                PasswordHash = password,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true,
+                UserRoles =
+                [
+                    new UserRole
+                    {
+                        RoleId = (long)Roles.Renter
+                    }
+                ]
+            };
+
+            _db.Users.Add(user);
+            await _db.SaveChangesAsync(cancellationToken);
+
+            await _db.Entry(user)
+                .Collection(currentUser => currentUser.UserRoles)
+                .Query()
+                .Include(userRole => userRole.Role)
+                .LoadAsync(cancellationToken);
+
+            return ServiceResult<AuthenticatedUserResponse>.Success(CreateAuthenticatedUserResponse(user));
         }
 
         /// <inheritdoc/>
