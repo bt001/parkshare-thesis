@@ -1,0 +1,83 @@
+:host {
+  display: block;
+}
+
+.dashboard {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.hero-card,
+.detail-card {
+  padding: 1.5rem;
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(95, 124, 163, 0.16);
+  box-shadow: 0 1rem 2rem rgba(20, 38, 67, 0.08);
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #567896;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+.summary,
+.detail-card p,
+dd {
+  color: #4d6379;
+  line-height: 1.6;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1.5rem;
+}
+
+dl {
+  display: grid;
+  gap: 0.9rem;
+  margin: 0;
+}
+
+dt {
+  font-weight: 700;
+  color: #16324f;
+}
+
+dd {
+  margin: 0.25rem 0 0;
+}
+
+button {
+  padding: 0.85rem 1rem;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #165482, #2a9d8f);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.response {
+  margin-bottom: 0;
+}
+
+.response.success {
+  color: #1c6a53;
+}
+
+.response.error {
+  color: #b03539;
+}

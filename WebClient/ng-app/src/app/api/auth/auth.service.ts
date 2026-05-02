@@ -9,7 +9,7 @@ import { AuthSession, LoginRequest, LoginResult, RefreshTokenRequest } from './a
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly tokenStorage = inject(AuthTokenStorageService);
-  private readonly sessionSubject = new BehaviorSubject<AuthSession | null>(this.tokenStorage.getSession());
+  private readonly sessionSubject = new BehaviorSubject<AuthSession | null>(this.restoreSession());
 
   readonly session$ = this.sessionSubject.asObservable();
 
@@ -18,7 +18,7 @@ export class AuthService {
   }
 
   get isAuthenticated(): boolean {
-    return this.hasUsableAccessToken(this.session);
+    return this.hasAuthenticatedSession();
   }
 
   get roles(): string[] {
@@ -27,6 +27,10 @@ export class AuthService {
 
   hasRole(role: string): boolean {
     return this.roles.includes(role);
+  }
+
+  hasAuthenticatedSession(): boolean {
+    return this.hasUsableAccessToken(this.session);
   }
 
   login(request: LoginRequest): Observable<AuthSession> {
@@ -55,6 +59,16 @@ export class AuthService {
   private setSession(session: AuthSession): void {
     this.tokenStorage.setSession(session);
     this.sessionSubject.next(session);
+  }
+
+  private restoreSession(): AuthSession | null {
+    const session = this.tokenStorage.getSession();
+    if (!this.hasUsableAccessToken(session)) {
+      this.tokenStorage.clear();
+      return null;
+    }
+
+    return session;
   }
 
   private hasUsableAccessToken(session: AuthSession | null): boolean {
