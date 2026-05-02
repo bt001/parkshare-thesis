@@ -420,3 +420,4 @@ FodyWeavers.xsd
 # Codex local context
 /agents.md
 /CodexResourses/
+/.idea
