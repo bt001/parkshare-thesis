@@ -3,7 +3,7 @@ using System;
 namespace ParkShare.Common.Enums
 {
     /// <summary>
-    /// Additive marketplace capabilities for a user account.
+    /// Additive marketplace roles for a user account.
     /// </summary>
     [Flags]
     public enum Roles

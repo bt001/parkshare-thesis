@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -9,6 +10,7 @@ using ParkShare.Application;
 using ParkShare.Application.Infrastructure.Automapper;
 using ParkShare.Infrastructure;
 using ParkShare.Infrastructure.Configuration;
+using ParkShare.Infrastructure.Persistence;
 using System.Reflection;
 using Autofac;
 using System;
@@ -103,6 +105,12 @@ internal class Program
         builder.Services.AddSwaggerGen();
 
         var app = builder.Build();
+
+        using (var scope = app.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ParkShareDbContext>();
+            dbContext.Database.Migrate();
+        }
 
         // ---- MIDDLEWARE PIPELINE ----
         if (app.Environment.IsDevelopment())

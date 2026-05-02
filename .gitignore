@@ -421,3 +421,9 @@ FodyWeavers.xsd
 /agents.md
 /CodexResourses/
 /.idea
+/ParkShare.Application/.tmpobj
+/ParkShare.Common/.tmpobj
+/ParkShare.Api/.tmpobj
+/ParkShare.Domain/.tmpobj
+/ParkShare.Infrastructure/.tmpobj
+/ParkShare.Shared/.tmpobj

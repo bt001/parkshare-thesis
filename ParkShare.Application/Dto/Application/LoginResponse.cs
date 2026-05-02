@@ -21,7 +21,7 @@ namespace ParkShare.Application.Dto.Application
         public string Email { get; set; } = string.Empty;
 
         /// <summary>
-        /// Canonical serialized user capabilities.
+        /// Canonical serialized user roles.
         /// </summary>
         public string Role { get; set; } = string.Empty;
 

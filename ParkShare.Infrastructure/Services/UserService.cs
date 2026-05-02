@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using ParkShare.Application.Dto;
 using ParkShare.Application.Dto.Infrastructure;
 using ParkShare.Application.Interfaces;
-using ParkShare.Common.Enums;
 using ParkShare.Infrastructure.Persistence;
 
 namespace ParkShare.Infrastructure.Services
@@ -30,17 +29,13 @@ namespace ParkShare.Infrastructure.Services
         /// <inheritdoc/>
         public async Task<ServiceResult<UserResponse>> GetUserByEmail(string email, CancellationToken cancellationToken)
         {
-            var persistenceResult = await _db.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+            var persistenceResult = await _db.Users
+                .Include(user => user.UserRoles)
+                .ThenInclude(userRole => userRole.Role)
+                .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
             if (persistenceResult == null)
                 return ServiceResult<UserResponse>.WithError($"User with email {email} not found.");
-
-            var canonicalRoleValue = persistenceResult.Capabilities.ToCanonicalRoleString();
-            if (!string.Equals(persistenceResult.Role, canonicalRoleValue, StringComparison.Ordinal))
-            {
-                persistenceResult.Capabilities = persistenceResult.Capabilities;
-                await _db.SaveChangesAsync(cancellationToken);
-            }
 
             return ServiceResult<UserResponse>.Success(_mapper.Map<UserResponse>(persistenceResult));
         }

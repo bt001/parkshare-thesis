@@ -41,7 +41,10 @@ namespace ParkShare.Infrastructure.Services
         /// <inheritdoc/>
         public async Task<ServiceResult<AuthenticatedUserResponse>> AuthenticateUser(string email, string password, CancellationToken cancellationToken)
         {
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+            var user = await _db.Users
+                .Include(currentUser => currentUser.UserRoles)
+                .ThenInclude(userRole => userRole.Role)
+                .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
             if (user == null || user.PasswordHash != password)
                 return ServiceResult<AuthenticatedUserResponse>.WithError("Invalid email or password.");
@@ -49,7 +52,6 @@ namespace ParkShare.Infrastructure.Services
             if (!user.IsActive)
                 return ServiceResult<AuthenticatedUserResponse>.WithError("User account is inactive.");
 
-            await NormalizeCapabilitiesAsync(user, cancellationToken);
             return ServiceResult<AuthenticatedUserResponse>.Success(CreateAuthenticatedUserResponse(user));
         }
 
@@ -64,11 +66,14 @@ namespace ParkShare.Infrastructure.Services
             if (!long.TryParse(userIdValue, out var userId))
                 return ServiceResult<AuthenticatedUserResponse>.WithError("Invalid refresh token.");
 
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+            var user = await _db.Users
+                .Include(currentUser => currentUser.UserRoles)
+                .ThenInclude(userRole => userRole.Role)
+                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
             if (user is null || !user.IsActive)
                 return ServiceResult<AuthenticatedUserResponse>.WithError("Invalid refresh token.");
 
-            await NormalizeCapabilitiesAsync(user, cancellationToken);
             return ServiceResult<AuthenticatedUserResponse>.Success(CreateAuthenticatedUserResponse(user));
         }
 
@@ -111,7 +116,10 @@ namespace ParkShare.Infrastructure.Services
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(TokenTypeClaim, tokenType)
             };
-            claims.AddRange(user.Capabilities.ToRoleNames().Select(roleName => new Claim(ClaimTypes.Role, roleName)));
+
+            claims.AddRange(user.UserRoles
+                .OrderBy(userRole => userRole.RoleId)
+                .Select(userRole => new Claim(ClaimTypes.Role, userRole.Role.Name)));
 
             var token = new JwtSecurityToken(
                 issuer: _jwtConfig.Issuer,
@@ -121,22 +129,6 @@ namespace ParkShare.Infrastructure.Services
                 signingCredentials: credentials);
 
             return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
-        }
-
-        /// <summary>
-        /// Persists canonical capability strings for legacy user records.
-        /// </summary>
-        /// <param name="user">Authenticated user.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        private async Task NormalizeCapabilitiesAsync(User user, CancellationToken cancellationToken)
-        {
-            var normalizedCapabilities = user.Capabilities.NormalizeMarketplaceCapabilities();
-            var canonicalRoleValue = normalizedCapabilities.ToCanonicalRoleString();
-            if (string.Equals(user.Role, canonicalRoleValue, StringComparison.Ordinal))
-                return;
-
-            user.Capabilities = normalizedCapabilities;
-            await _db.SaveChangesAsync(cancellationToken);
         }
 
         /// <summary>

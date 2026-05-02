@@ -40,12 +40,17 @@ namespace ParkShare.Api.Services
             => !IsAuthenticated
                 ? Roles.None
                 : (_httpContextAccessor.HttpContext?.User.FindAll(ClaimTypes.Role) ?? [])
-                    .Select(claim => RoleCapabilityExtensions.ParseCapabilities(claim.Value))
-                    .Aggregate(Roles.None, (current, next) => current | next)
-                    .NormalizeMarketplaceCapabilities();
+                    .Select(claim => claim.Value)
+                    .ToCapabilities();
 
         /// <inheritdoc/>
-        public IReadOnlyCollection<string> RoleNames => IsAuthenticated ? Capabilities.ToRoleNames() : Array.Empty<string>();
+        public IReadOnlyCollection<string> RoleNames
+            => IsAuthenticated
+                ? (_httpContextAccessor.HttpContext?.User.FindAll(ClaimTypes.Role) ?? [])
+                    .Select(claim => claim.Value)
+                    .ToCanonicalRoleString()
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                : Array.Empty<string>();
 
         /// <inheritdoc/>
         public bool IsAuthenticated => _httpContextAccessor.HttpContext?.User.Identity?.IsAuthenticated == true;

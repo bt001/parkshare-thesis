@@ -15,12 +15,22 @@ namespace ParkShare.Infrastructure.Mappings
         public void CreateMappings(Profile cfg)
         {
             cfg.CreateMap<User, UserResponse>()
-                .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Capabilities.ToCanonicalRoleString()))
-                .ForMember(dest => dest.Roles, opt => opt.MapFrom(src => src.Capabilities.ToRoleNames()));
+                .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.UserRoles
+                    .Select(userRole => userRole.Role.Name)
+                    .ToCanonicalRoleString()))
+                .ForMember(dest => dest.Roles, opt => opt.MapFrom(src => src.UserRoles
+                    .OrderBy(userRole => userRole.RoleId)
+                    .Select(userRole => userRole.Role.Name)
+                    .ToArray()));
 
             cfg.CreateMap<User, AuthenticatedUserResponse>()
-                .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Capabilities.ToCanonicalRoleString()))
-                .ForMember(dest => dest.Roles, opt => opt.MapFrom(src => src.Capabilities.ToRoleNames()))
+                .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.UserRoles
+                    .Select(userRole => userRole.Role.Name)
+                    .ToCanonicalRoleString()))
+                .ForMember(dest => dest.Roles, opt => opt.MapFrom(src => src.UserRoles
+                    .OrderBy(userRole => userRole.RoleId)
+                    .Select(userRole => userRole.Role.Name)
+                    .ToArray()))
                 .ForMember(dest => dest.AccessToken, opt => opt.Ignore())
                 .ForMember(dest => dest.AccessTokenExpiresAt, opt => opt.Ignore())
                 .ForMember(dest => dest.RefreshToken, opt => opt.Ignore())

@@ -1,11 +1,9 @@
-using System.ComponentModel.DataAnnotations.Schema;
-using ParkShare.Common.Enums;
+using ParkShare.Domain.Entities.JoinModels;
 
 namespace ParkShare.Domain.Entities
 {
     /// <summary>
     /// User account.
-    /// Can hold additive marketplace capabilities such as renter and owner.
     /// </summary>
     public class User
     {
@@ -36,21 +34,6 @@ namespace ParkShare.Domain.Entities
         /// Password hash.
         /// </summary>
         public string PasswordHash { get; set; } = null!;
-
-        /// <summary>
-        /// Canonical serialized user capabilities for persistence and API contracts.
-        /// </summary>
-        public string Role { get; set; } = RoleCapabilityExtensions.GetDefaultMarketplaceRoleValue();
-
-        /// <summary>
-        /// Additive user capabilities for marketplace actions.
-        /// </summary>
-        [NotMapped]
-        public Roles Capabilities
-        {
-            get => RoleCapabilityExtensions.ParseCapabilities(Role).NormalizeMarketplaceCapabilities();
-            set => Role = value.NormalizeMarketplaceCapabilities().ToCanonicalRoleString();
-        }
 
         /// <summary>
         /// Account creation date.
@@ -86,5 +69,10 @@ namespace ParkShare.Domain.Entities
         /// Ratings created by the user as renter.
         /// </summary>
         public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
+
+        /// <summary>
+        /// Assigned user roles.
+        /// </summary>
+        public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     }
 }

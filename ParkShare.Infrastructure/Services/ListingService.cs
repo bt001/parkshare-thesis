@@ -4,6 +4,7 @@ using ParkShare.Application.Dto.Application;
 using ParkShare.Application.Interfaces;
 using ParkShare.Common.Enums;
 using ParkShare.Domain.Entities;
+using ParkShare.Domain.Entities.JoinModels;
 using ParkShare.Infrastructure.Persistence;
 
 namespace ParkShare.Infrastructure.Services
@@ -26,11 +27,21 @@ namespace ParkShare.Infrastructure.Services
         public async Task<ServiceResult<CreateListingResponse>> CreateAsync(long ownerId, string title, string description, decimal pricePerHour,
             double latitude, double longitude, string? address, CancellationToken ct)
         {
-            var owner = await _db.Users.FirstOrDefaultAsync(u => u.Id == ownerId, ct);
+            var owner = await _db.Users
+                .Include(user => user.UserRoles)
+                .FirstOrDefaultAsync(u => u.Id == ownerId, ct);
             if (owner is null)
                 return ServiceResult<CreateListingResponse>.WithError("Owner not found.");
 
-            owner.Capabilities = owner.Capabilities.AddOwnerCapability();
+            var ownerRoleId = (long)Roles.Owner;
+            if (!owner.UserRoles.Any(userRole => userRole.RoleId == ownerRoleId))
+            {
+                owner.UserRoles.Add(new UserRole
+                {
+                    UserId = ownerId,
+                    RoleId = ownerRoleId
+                });
+            }
 
             var entity = new Listing
             {
