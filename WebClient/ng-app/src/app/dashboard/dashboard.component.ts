@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 
+import { AuthService } from '../api/auth/auth.service';
 import { UserService } from '../services/user.service';
 import { TestService } from '../api/test/test.service';
 
@@ -7,15 +8,20 @@ import { TestService } from '../api/test/test.service';
   selector: 'app-dashboard',
   standalone: true,
   imports: [],
-  templateUrl: './dashboard.component.html'
+  templateUrl: './dashboard.component.html',
+  styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent {
   pong?: string;
   error?: string;
 
-  constructor(public user: UserService, private testService: TestService) {}
+  constructor(
+    public user: UserService,
+    public auth: AuthService,
+    private testService: TestService
+  ) {}
 
-  pingApi() {
+  pingApi(): void {
     this.pong = undefined;
     this.error = undefined;
     this.testService.ping().subscribe({
