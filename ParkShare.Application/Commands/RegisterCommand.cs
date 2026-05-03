@@ -1,4 +1,3 @@
-using AutoMapper;
 using MediatR;
 using ParkShare.Application.Dto;
 using ParkShare.Application.Dto.Application;
@@ -43,18 +42,13 @@ namespace ParkShare.Application.Commands
     public class RegisterHandler : IRequestHandler<RegisterCommand, ServiceResult<LoginResponse>>
     {
         private readonly IAuthenticationService _authService;
-        private readonly IMapper _mapper;
 
         /// <summary>
         /// Creates the handler.
         /// </summary>
         /// <param name="authService">Authentication service.</param>
-        /// <param name="mapper">Mapper instance.</param>
-        public RegisterHandler(IAuthenticationService authService, IMapper mapper)
-        {
-            _authService = authService ?? throw new ArgumentNullException(nameof(authService));
-            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
-        }
+        public RegisterHandler(IAuthenticationService authService)
+            => _authService = authService ?? throw new ArgumentNullException(nameof(authService));
 
         /// <inheritdoc/>
         public async Task<ServiceResult<LoginResponse>> Handle(RegisterCommand request, CancellationToken cancellationToken)
@@ -70,7 +64,7 @@ namespace ParkShare.Application.Commands
             if (!result.IsSuccessful)
                 return ServiceResult<LoginResponse>.WithErrors(result.Errors);
 
-            return ServiceResult<LoginResponse>.Success(_mapper.Map<LoginResponse>(result.Payload));
+            return ServiceResult<LoginResponse>.Success(result.Payload);
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿using ParkShare.Application.Dto;
-using ParkShare.Application.Dto.Infrastructure;
+using ParkShare.Application.Dto.Application;
 
 namespace ParkShare.Application.Interfaces
 {
@@ -18,7 +18,7 @@ namespace ParkShare.Application.Interfaces
         /// <param name="password">User password.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Authenticated user data.</returns>
-        Task<ServiceResult<AuthenticatedUserResponse>> RegisterUser(
+        Task<ServiceResult<LoginResponse>> RegisterUser(
             string userName,
             string firstName,
             string lastName,
@@ -33,7 +33,7 @@ namespace ParkShare.Application.Interfaces
         /// <param name="password">User password.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Authenticated user data.</returns>
-        Task<ServiceResult<AuthenticatedUserResponse>> AuthenticateUser(string email, string password, CancellationToken cancellationToken);
+        Task<ServiceResult<LoginResponse>> AuthenticateUser(string email, string password, CancellationToken cancellationToken);
 
         /// <summary>
         /// Refreshes authentication tokens using a valid refresh token.
@@ -41,6 +41,6 @@ namespace ParkShare.Application.Interfaces
         /// <param name="refreshToken">Refresh token.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Authenticated user data with refreshed tokens.</returns>
-        Task<ServiceResult<AuthenticatedUserResponse>> RefreshTokens(string refreshToken, CancellationToken cancellationToken);
+        Task<ServiceResult<LoginResponse>> RefreshTokens(string refreshToken, CancellationToken cancellationToken);
     }
 }
