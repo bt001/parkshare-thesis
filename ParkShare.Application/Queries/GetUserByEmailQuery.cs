@@ -1,4 +1,3 @@
-﻿using AutoMapper;
 using MediatR;
 using ParkShare.Application.Dto;
 using ParkShare.Application.Dto.Application;
@@ -6,6 +5,9 @@ using ParkShare.Application.Interfaces;
 
 namespace ParkShare.Application.Queries
 {
+    /// <summary>
+    /// Returns a user profile by email.
+    /// </summary>
     public class GetUserByEmailQuery : IRequest<ServiceResult<GetUserByEmailResponse>>
     {
         /// <summary>
@@ -14,25 +16,29 @@ namespace ParkShare.Application.Queries
         public string Email { get; set; } = string.Empty;
     }
 
+    /// <summary>
+    /// Handles user-by-email queries.
+    /// </summary>
     public class GetUserByEmailHandler : IRequestHandler<GetUserByEmailQuery, ServiceResult<GetUserByEmailResponse>>
     {
         private readonly IUserService _userService;
-        private readonly IMapper _mapper;
 
-        public GetUserByEmailHandler(IUserService userService, IMapper mapper)
-        {
-            _userService = userService ?? throw new ArgumentNullException(nameof(userService));
-            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
-        }
+        /// <summary>
+        /// Creates the handler.
+        /// </summary>
+        /// <param name="userService">User service.</param>
+        public GetUserByEmailHandler(IUserService userService)
+            => _userService = userService ?? throw new ArgumentNullException(nameof(userService));
 
+        /// <inheritdoc/>
         public async Task<ServiceResult<GetUserByEmailResponse>> Handle(GetUserByEmailQuery request, CancellationToken cancellationToken)
         {
             var response = await _userService.GetUserByEmail(request.Email, cancellationToken);
 
-            if (!response.IsSuccessful)         
+            if (!response.IsSuccessful)
                 return ServiceResult<GetUserByEmailResponse>.WithErrors(response.Errors);
-          
-            return ServiceResult<GetUserByEmailResponse>.Success(_mapper.Map<GetUserByEmailResponse>(response.Payload));
+
+            return ServiceResult<GetUserByEmailResponse>.Success(response.Payload);
         }
     }
 }

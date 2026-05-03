@@ -1,15 +1,25 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using ParkShare.Application.Interfaces;
+using ParkShare.Application.Interfaces.Repositories;
 using ParkShare.Infrastructure.Configuration;
 using ParkShare.Infrastructure.Persistence;
+using ParkShare.Infrastructure.Repositories;
 using ParkShare.Infrastructure.Services;
 
 namespace ParkShare.Infrastructure
 {
+    /// <summary>
+    /// Registers infrastructure services and repositories.
+    /// </summary>
     public static class InfrastructureModuleExtensions
-    {            
+    {
+        /// <summary>
+        /// Adds the infrastructure module.
+        /// </summary>
+        /// <param name="services">Service collection.</param>
+        /// <returns>Updated service collection.</returns>
         public static IServiceCollection AddInfrastructureModule(this IServiceCollection services)
         {
             services.AddDbContext<ParkShareDbContext>((serviceProvider, options) =>
@@ -19,22 +29,20 @@ namespace ParkShare.Infrastructure
                     .Value.ParkShareDb;
 
                 var connectionString = dbConfig.ConnectionString
-                    //.Replace("{User}", dbConfig.User)
-                    //.Replace("{Password}", dbConfig.Password)
                     .Replace("{ServerUrl}", dbConfig.ServerUrl)
                     .Replace("{InitialDb}", dbConfig.InitialDb);
 
                 options.UseSqlServer(connectionString);
             });
 
-            services.AddScoped<IUserService, UserService>();
-            services.AddScoped<IAuthenticationService, AuthenticationService>();
-            services.AddScoped<IListingService, ListingService>();
-
-            services.AddScoped<IBookingService, BookingService>();
-            services.AddScoped<IListingReadService, ListingReadService>();
-            services.AddScoped<IAvailabilityService, AvailabilityService>();
-
+            services.AddScoped<IUserRepository, UserRepository>();
+            services.AddScoped<IRoleRepository, RoleRepository>();
+            services.AddScoped<IUserRoleRepository, UserRoleRepository>();
+            services.AddScoped<IListingRepository, ListingRepository>();
+            services.AddScoped<IAvailabilityWindowRepository, AvailabilityWindowRepository>();
+            services.AddScoped<IBookingRepository, BookingRepository>();
+            services.AddScoped<IJwtTokenService, JwtTokenService>();
+            services.AddScoped<IRepositoryTransactionCoordinator, RepositoryTransactionCoordinator>();
 
             return services;
         }

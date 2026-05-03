@@ -1,4 +1,3 @@
-using AutoMapper;
 using MediatR;
 using ParkShare.Application.Dto;
 using ParkShare.Application.Dto.Application;
@@ -23,25 +22,15 @@ namespace ParkShare.Application.Queries
     public class RefreshTokenHandler : IRequestHandler<RefreshTokenQuery, ServiceResult<LoginResponse>>
     {
         private readonly IAuthenticationService _authService;
-        private readonly IMapper _mapper;
 
         /// <summary>
         /// Creates the handler.
         /// </summary>
         /// <param name="authService">Authentication service.</param>
-        /// <param name="mapper">Mapper instance.</param>
-        public RefreshTokenHandler(IAuthenticationService authService, IMapper mapper)
-        {
-            _authService = authService ?? throw new ArgumentNullException(nameof(authService));
-            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
-        }
+        public RefreshTokenHandler(IAuthenticationService authService)
+            => _authService = authService ?? throw new ArgumentNullException(nameof(authService));
 
-        /// <summary>
-        /// Handles the query.
-        /// </summary>
-        /// <param name="request">Refresh token query.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Refreshed authentication data.</returns>
+        /// <inheritdoc/>
         public async Task<ServiceResult<LoginResponse>> Handle(RefreshTokenQuery request, CancellationToken cancellationToken)
         {
             var result = await _authService.RefreshTokens(request.RefreshToken, cancellationToken);
@@ -49,7 +38,7 @@ namespace ParkShare.Application.Queries
             if (!result.IsSuccessful)
                 return ServiceResult<LoginResponse>.WithErrors(result.Errors);
 
-            return ServiceResult<LoginResponse>.Success(_mapper.Map<LoginResponse>(result.Payload));
+            return ServiceResult<LoginResponse>.Success(result.Payload);
         }
     }
 }
