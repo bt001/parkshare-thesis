@@ -3,6 +3,7 @@ import { Routes } from '@angular/router';
 import { authGuard, authLandingGuard } from './auth/auth.guards';
 import { AuthRedirectComponent } from './auth/auth-redirect.component';
 import { LoginComponent } from './auth/login/login.component';
+import { RegisterComponent } from './auth/register/register.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { AppShellComponent } from './layout/app-shell.component';
 
@@ -16,6 +17,10 @@ export const routes: Routes = [
   {
     path: 'login',
     component: LoginComponent
+  },
+  {
+    path: 'register',
+    component: RegisterComponent
   },
   {
     path: '',

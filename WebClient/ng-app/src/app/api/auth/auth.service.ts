@@ -3,7 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, tap, throwError } from 'rxjs';
 
 import { AuthTokenStorageService } from '../../services/auth-token-storage.service';
-import { AuthSession, LoginRequest, LoginResult, RefreshTokenRequest } from './auth.models';
+import { AuthSession, LoginRequest, LoginResult, RefreshTokenRequest, RegisterRequest } from './auth.models';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -45,6 +45,12 @@ export class AuthService {
 
   login(request: LoginRequest): Observable<AuthSession> {
     return this.http.post<LoginResult>('api/auth/login', request).pipe(
+      tap((session) => this.setSession(session))
+    );
+  }
+
+  register(request: RegisterRequest): Observable<AuthSession> {
+    return this.http.post<LoginResult>('api/auth/register', request).pipe(
       tap((session) => this.setSession(session))
     );
   }
