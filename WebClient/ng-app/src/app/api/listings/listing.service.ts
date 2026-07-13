@@ -1,0 +1,26 @@
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+
+import { ListingDetails, SearchListingsRequest, SearchListingsResult } from './listing.models';
+
+@Injectable({ providedIn: 'root' })
+export class ListingService {
+  private readonly http = inject(HttpClient);
+
+  search(request: SearchListingsRequest): Observable<SearchListingsResult> {
+    let params = new HttpParams()
+      .set('page', request.page)
+      .set('pageSize', request.pageSize);
+
+    if (request.onlyActive !== undefined) {
+      params = params.set('onlyActive', request.onlyActive);
+    }
+
+    return this.http.get<SearchListingsResult>('api/listing/search', { params });
+  }
+
+  getById(id: number): Observable<ListingDetails> {
+    return this.http.get<ListingDetails>(`api/listing/${id}`);
+  }
+}

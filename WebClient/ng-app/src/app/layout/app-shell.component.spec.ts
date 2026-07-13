@@ -46,4 +46,12 @@ describe('AppShellComponent', () => {
     expect(authService.logout).toHaveBeenCalled();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/login');
   });
+
+  it('shows neutral ParkShare branding and renter navigation', () => {
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.textContent).toContain('ParkShare');
+    expect(element.textContent).toContain('Browse parking');
+    expect(element.textContent).not.toContain('Owner workspace');
+  });
 });

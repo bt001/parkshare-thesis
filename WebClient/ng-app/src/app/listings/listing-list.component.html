@@ -1,0 +1,53 @@
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">Find a space</p>
+    <h1>Available parking</h1>
+    <p>Browse active ParkShare listings and request the time that works for you.</p>
+  </div>
+  @if (totalCount > 0) {
+    <span class="result-count">{{ totalCount }} {{ totalCount === 1 ? 'space' : 'spaces' }}</span>
+  }
+</section>
+
+@if (errorMessages.length > 0) {
+  <div class="message error" role="alert">
+    @for (message of errorMessages; track message) {
+      <p>{{ message }}</p>
+    }
+    <button type="button" (click)="loadPage(page)">Try again</button>
+  </div>
+} @else if (isLoading) {
+  <div class="message" aria-live="polite">Loading available parking…</div>
+} @else if (listings.length === 0) {
+  <div class="message">
+    <h2>No active listings yet</h2>
+    <p>Check back when an owner has published a parking space.</p>
+  </div>
+} @else {
+  <div class="listing-grid">
+    @for (listing of listings; track listing.id) {
+      <article class="listing-card">
+        <div class="card-map-placeholder" aria-hidden="true">
+          <span>{{ listing.latitude.toFixed(3) }}, {{ listing.longitude.toFixed(3) }}</span>
+        </div>
+        <div class="card-body">
+          <div class="card-topline">
+            <span class="availability-badge">
+              {{ listing.isAlwaysAvailable ? 'Always available' : 'Scheduled availability' }}
+            </span>
+            <strong>{{ listing.pricePerHour | currency:'RON':'symbol-narrow':'1.0-2' }}/h</strong>
+          </div>
+          <h2>{{ listing.title }}</h2>
+          <p>{{ listing.address || 'Address available in listing details' }}</p>
+          <a [routerLink]="['/listings', listing.id]">View space</a>
+        </div>
+      </article>
+    }
+  </div>
+
+  <nav class="pagination" aria-label="Listings pages">
+    <button type="button" [disabled]="!canGoBack" (click)="loadPage(page - 1)">Previous</button>
+    <span>Page {{ page }}</span>
+    <button type="button" [disabled]="!canGoForward" (click)="loadPage(page + 1)">Next</button>
+  </nav>
+}

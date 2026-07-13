@@ -1,0 +1,128 @@
+<a class="back-link" routerLink="/listings">← Back to listings</a>
+
+@if (errorMessages.length > 0) {
+  <div class="message error" role="alert">
+    @for (message of errorMessages; track message) {
+      <p>{{ message }}</p>
+    }
+  </div>
+} @else if (isLoading) {
+  <div class="message" aria-live="polite">Loading listing details…</div>
+} @else if (listing) {
+  <section class="listing-hero">
+    <div>
+      <p class="eyebrow">Parking space</p>
+      <h1>{{ listing.title }}</h1>
+      <p class="address">{{ listing.address || 'Address not provided' }}</p>
+    </div>
+    <div class="price">
+      <strong>{{ listing.pricePerHour | currency:'RON':'symbol-narrow':'1.0-2' }}</strong>
+      <span>per hour</span>
+    </div>
+  </section>
+
+  <div class="detail-grid">
+    <div class="detail-column">
+      <section class="panel description-panel">
+        <h2>About this space</h2>
+        <p>{{ listing.description }}</p>
+        <dl>
+          @if (listing.size) {
+            <div><dt>Space size</dt><dd>{{ listing.size }}</dd></div>
+          }
+          <div><dt>Coordinates</dt><dd>{{ listing.latitude }}, {{ listing.longitude }}</dd></div>
+          <div><dt>Availability</dt><dd>{{ listing.isAlwaysAvailable ? 'Always available' : 'Scheduled windows' }}</dd></div>
+        </dl>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Plan your visit</p>
+            <h2>Availability</h2>
+          </div>
+          <span>{{ availabilityWindows.length }} future {{ availabilityWindows.length === 1 ? 'window' : 'windows' }}</span>
+        </div>
+
+        @if (listing.isAlwaysAvailable) {
+          <p class="availability-note">This space is generally available at any time, except during the blocked periods shown below.</p>
+        } @else if (openWindows.length === 0) {
+          <p class="availability-note">The owner has not published any future open windows.</p>
+        }
+
+        @if (openWindows.length > 0) {
+          <h3>Open windows</h3>
+          <div class="window-list">
+            @for (window of openWindows; track window.availabilityWindowId) {
+              <button
+                type="button"
+                class="window-card selectable"
+                [class.selected]="selectedWindowId === window.availabilityWindowId"
+                (click)="selectWindow(window)">
+                <span>{{ window.startDateTime | date:'medium' }}</span>
+                <span>to {{ window.endDateTime | date:'medium' }}</span>
+                <strong>Select this window</strong>
+              </button>
+            }
+          </div>
+        }
+
+        @if (blockedWindows.length > 0) {
+          <h3>Blocked periods</h3>
+          <div class="window-list">
+            @for (window of blockedWindows; track window.availabilityWindowId) {
+              <div class="window-card blocked">
+                <span>{{ window.startDateTime | date:'medium' }}</span>
+                <span>to {{ window.endDateTime | date:'medium' }}</span>
+                @if (window.note) { <small>{{ window.note }}</small> }
+              </div>
+            }
+          </div>
+        }
+      </section>
+    </div>
+
+    <aside class="panel booking-panel">
+      <p class="eyebrow">Request parking</p>
+      <h2>Choose your time</h2>
+
+      @if (isOwnListing) {
+        <div class="message compact">You own this listing, so you cannot request a booking for it.</div>
+      } @else {
+        <form [formGroup]="bookingForm" (ngSubmit)="submitBooking()">
+          <label for="booking-start">Start</label>
+          <input id="booking-start" type="datetime-local" formControlName="startDateTime" [min]="minimumDateTime" />
+          @if (bookingForm.controls.startDateTime.touched && bookingForm.controls.startDateTime.hasError('required')) {
+            <p class="field-error">Choose a start time.</p>
+          }
+
+          <label for="booking-end">End</label>
+          <input id="booking-end" type="datetime-local" formControlName="endDateTime" [min]="minimumDateTime" />
+          @if (bookingForm.controls.endDateTime.touched && bookingForm.controls.endDateTime.hasError('required')) {
+            <p class="field-error">Choose an end time.</p>
+          }
+          @if (hasInvalidRange) {
+            <p class="field-error">End time must be after start time.</p>
+          }
+
+          <button type="submit" [disabled]="isSubmitting">
+            {{ isSubmitting ? 'Sending request…' : 'Request booking' }}
+          </button>
+        </form>
+
+        @if (bookingErrorMessages.length > 0) {
+          <div class="message error compact" role="alert">
+            @for (message of bookingErrorMessages; track message) { <p>{{ message }}</p> }
+          </div>
+        }
+
+        @if (bookingResult) {
+          <div class="message success compact" role="status">
+            <strong>Request #{{ bookingResult.bookingId }} sent</strong>
+            <p>Status: {{ bookingResult.statusText }}</p>
+          </div>
+        }
+      }
+    </aside>
+  </div>
+}
