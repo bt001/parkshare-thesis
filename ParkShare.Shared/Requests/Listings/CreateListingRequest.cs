@@ -17,7 +17,15 @@ namespace ParkShare.Shared.Requests.Listings
         public double Longitude { get; set; }
         public string? Address { get; set; }                // ≤200
 
-        // Domain has Size, IsAlwaysAvailable with defaults; we omit from request for now.
+        /// <summary>
+        /// Optional parking-space size or type.
+        /// </summary>
+        public string? Size { get; set; }
+
+        /// <summary>
+        /// Whether the listing is available except for blocked windows.
+        /// </summary>
+        public bool IsAlwaysAvailable { get; set; } = true;
     }
 
 }

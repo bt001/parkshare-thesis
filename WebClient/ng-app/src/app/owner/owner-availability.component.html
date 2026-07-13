@@ -1,0 +1,28 @@
+<a class="back-link" routerLink="/owner/listings">← Back to owner listings</a>
+@if (errorMessages.length) { <div class="message error" role="alert">@for (message of errorMessages; track message) { <p>{{ message }}</p> }</div> }
+@if (isLoading) { <div class="message">Loading availability…</div> } @else if (listing) {
+  <section class="page-heading"><div><p class="eyebrow">Availability</p><h1>{{ listing.title }}</h1><p>{{ listing.isAlwaysAvailable ? 'Add blocked periods when the space cannot be booked.' : 'Publish open windows and optional blocked periods.' }}</p></div></section>
+  <div class="two-column">
+    <section class="form-panel compact-panel">
+      <h2>{{ editingId ? 'Edit window' : 'Add availability window' }}</h2>
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <label for="window-start">Start</label><input id="window-start" type="datetime-local" formControlName="startDateTime" />
+        <label for="window-end">End</label><input id="window-end" type="datetime-local" formControlName="endDateTime" />
+        @if (invalidRange) { <p class="field-error">End time must be after start time.</p> }
+        <label class="check-row"><input type="checkbox" formControlName="isBlocked" /> Block bookings during this period</label>
+        @if (listing.isAlwaysAvailable) { <p class="hint">Always-available listings can only add blocked periods.</p> }
+        <label for="window-note">Note</label><textarea id="window-note" rows="3" formControlName="note"></textarea>
+        <div class="actions"><button class="primary-button" type="submit" [disabled]="isSubmitting">{{ editingId ? 'Save window' : 'Add window' }}</button>@if (editingId) { <button type="button" (click)="cancelEdit()">Cancel</button> }</div>
+      </form>
+    </section>
+    <section class="list-panel">
+      <h2>Published windows</h2>
+      @if (!windows.length) { <div class="message">No availability windows for this listing.</div> }
+      @for (window of windows; track window.availabilityWindowId) {
+        <article class="window-card"><span class="badge" [class.inactive]="window.isBlocked">{{ window.isBlocked ? 'Blocked' : 'Open' }}</span><strong>{{ window.startDateTime | date:'medium' }}</strong><span>to {{ window.endDateTime | date:'medium' }}</span>@if (window.note) { <p>{{ window.note }}</p> }
+          <div class="actions"><button type="button" (click)="edit(window)">Edit</button>@if (confirmingDeleteId === window.availabilityWindowId) { <button class="danger" type="button" (click)="delete(window.availabilityWindowId)">Confirm delete</button><button type="button" (click)="cancelDelete()">Cancel</button> } @else { <button type="button" (click)="requestDelete(window.availabilityWindowId)">Delete</button> }</div>
+        </article>
+      }
+    </section>
+  </div>
+}

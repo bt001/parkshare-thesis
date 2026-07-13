@@ -14,6 +14,14 @@ namespace ParkShare.Application.Commands
         public double Latitude { get; init; }
         public double Longitude { get; init; }
         public string? Address { get; init; }
+        /// <summary>
+        /// Optional parking-space size or type.
+        /// </summary>
+        public string? Size { get; init; }
+        /// <summary>
+        /// Whether the listing is available except for blocked windows.
+        /// </summary>
+        public bool IsAlwaysAvailable { get; init; } = true;
     }
 
 
@@ -34,6 +42,8 @@ namespace ParkShare.Application.Commands
                 request.Latitude,
                 request.Longitude,
                 request.Address,
+                request.Size,
+                request.IsAlwaysAvailable,
                 cancellationToken);
 
             if (!response.IsSuccessful)

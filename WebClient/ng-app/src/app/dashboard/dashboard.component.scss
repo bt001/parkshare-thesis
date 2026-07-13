@@ -81,3 +81,13 @@ button {
 .response.error {
   color: #b03539;
 }
+
+.dashboard-link {
+  display: inline-block;
+  padding: .75rem 1rem;
+  border-radius: 999px;
+  background: #16324f;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}

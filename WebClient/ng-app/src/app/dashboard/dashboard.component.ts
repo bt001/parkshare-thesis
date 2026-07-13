@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../api/auth/auth.service';
 import { UserService } from '../services/user.service';
@@ -7,7 +8,7 @@ import { TestService } from '../api/test/test.service';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [],
+  imports: [RouterLink],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })

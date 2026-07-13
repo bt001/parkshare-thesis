@@ -1,0 +1,23 @@
+<a class="back-link" routerLink="/owner/listings">← Back to owner listings</a>
+<section class="form-panel">
+  <p class="eyebrow">Owner workspace</p><h1>{{ isEditing ? 'Edit parking space' : 'Create a parking space' }}</h1>
+  @if (errorMessages.length) { <div class="message error" role="alert">@for (message of errorMessages; track message) { <p>{{ message }}</p> }</div> }
+  @if (isLoading) { <div class="message">Loading listing…</div> } @else {
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <label for="title">Title</label><input id="title" formControlName="title" />
+      @if (form.controls.title.touched && form.controls.title.invalid) { <p class="field-error">Enter a title up to 120 characters.</p> }
+      <label for="description">Description</label><textarea id="description" rows="5" formControlName="description"></textarea>
+      @if (form.controls.description.touched && form.controls.description.invalid) { <p class="field-error">Enter a description up to 2,000 characters.</p> }
+      <label for="address">Address</label><input id="address" formControlName="address" />
+      <div class="form-grid">
+        <div><label for="latitude">Latitude</label><input id="latitude" type="number" step="any" formControlName="latitude" /></div>
+        <div><label for="longitude">Longitude</label><input id="longitude" type="number" step="any" formControlName="longitude" /></div>
+        <div><label for="price">Price per hour (RON)</label><input id="price" type="number" min="0.01" step="0.01" formControlName="pricePerHour" /></div>
+        <div><label for="size">Space size or type</label><input id="size" formControlName="size" /></div>
+      </div>
+      <label class="check-row"><input type="checkbox" formControlName="isAlwaysAvailable" /> Always available except for blocked periods</label>
+      <p class="hint">Turn this off to publish explicit open availability windows.</p>
+      <button class="primary-button" type="submit" [disabled]="isSubmitting">{{ isSubmitting ? 'Saving…' : (isEditing ? 'Save changes' : 'Create listing') }}</button>
+    </form>
+  }
+</section>

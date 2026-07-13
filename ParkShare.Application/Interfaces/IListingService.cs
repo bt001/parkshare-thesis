@@ -6,7 +6,7 @@ namespace ParkShare.Application.Interfaces
     public interface IListingService
     {
         Task<ServiceResult<CreateListingResponse>> CreateAsync(long ownerId, string title, string description, decimal pricePerHour,
-            double latitude, double longitude, string? address, CancellationToken ct);
+            double latitude, double longitude, string? address, string? size, bool isAlwaysAvailable, CancellationToken ct);
         Task<ServiceResult<GetListingByIdResponse>> GetByIdAsync(long id, CancellationToken ct);
 
         Task<ServiceResult<GetOwnerListingsResponse>> GetByOwnerAsync(long ownerId, CancellationToken ct);
