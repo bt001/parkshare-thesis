@@ -6,6 +6,14 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client
   },
   {
+    path: 'owner/listings/:id/edit',
+    renderMode: RenderMode.Client
+  },
+  {
+    path: 'owner/listings/:id/availability',
+    renderMode: RenderMode.Client
+  },
+  {
     path: '**',
     renderMode: RenderMode.Prerender
   }

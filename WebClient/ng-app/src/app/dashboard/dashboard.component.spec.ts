@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 
 import { AuthService } from '../api/auth/auth.service';
@@ -9,7 +10,7 @@ import { UserService } from '../services/user.service';
 describe('DashboardComponent', () => {
   let component: DashboardComponent;
   let fixture: ComponentFixture<DashboardComponent>;
-  const authService = jasmine.createSpyObj<AuthService>('AuthService', [], {
+  const authService = jasmine.createSpyObj<AuthService>('AuthService', ['hasRole'], {
     session: {
       name: 'Owner User',
       userName: 'owner1',
@@ -27,11 +28,13 @@ describe('DashboardComponent', () => {
   const testService = jasmine.createSpyObj<TestService>('TestService', ['ping']);
 
   beforeEach(async () => {
+    authService.hasRole.and.returnValue(true);
     testService.ping.and.returnValue(of('pong'));
 
     await TestBed.configureTestingModule({
       imports: [DashboardComponent],
       providers: [
+        provideRouter([]),
         UserService,
         { provide: AuthService, useValue: authService },
         { provide: TestService, useValue: testService }

@@ -9,6 +9,11 @@
 
   <div class="details-grid">
     <article class="detail-card">
+      <h2>{{ auth.hasRole('Owner') ? 'Manage your spaces' : 'Become an owner' }}</h2>
+      <p>{{ auth.hasRole('Owner') ? 'Update listings, publish availability, and review booking requests.' : 'Publish your first parking space and ParkShare will add the owner role to your account.' }}</p>
+      <a class="dashboard-link" routerLink="/owner/listings">{{ auth.hasRole('Owner') ? 'Open owner workspace' : 'List your space' }}</a>
+    </article>
+    <article class="detail-card">
       <h2>Session snapshot</h2>
       <dl>
         <div>

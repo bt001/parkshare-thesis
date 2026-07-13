@@ -37,4 +37,18 @@ describe('ListingService', () => {
     expect(request.request.method).toBe('GET');
     request.flush({});
   });
+
+  it('supports owner listing reads and mutations', () => {
+    const payload = { title: 'Space', description: 'Secure', pricePerHour: 10, latitude: 44, longitude: 26, address: null, size: 'Medium', isAlwaysAvailable: false };
+    service.getOwnerListings().subscribe();
+    expect(http.expectOne('api/listing/owner').request.method).toBe('GET');
+    service.create(payload).subscribe();
+    const create = http.expectOne('api/listing'); expect(create.request.method).toBe('POST'); expect(create.request.body).toEqual(payload);
+    service.update(9, payload).subscribe();
+    expect(http.expectOne('api/listing/9').request.method).toBe('PUT');
+    service.activate(9).subscribe();
+    const activate = http.expectOne('api/listing/activate'); expect(activate.request.method).toBe('PATCH'); expect(activate.request.body).toEqual({ id: 9 });
+    service.deactivate(9).subscribe();
+    expect(http.expectOne('api/listing/deactivate').request.method).toBe('PATCH');
+  });
 });

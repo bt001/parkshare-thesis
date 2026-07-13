@@ -33,4 +33,16 @@ describe('BookingService', () => {
     expect(request.request.body.renterId).toBeUndefined();
     request.flush({});
   });
+
+  it('supports filtered owner review and decisions', () => {
+    service.getForOwner({ listingId: 5, statuses: [0, 2], page: 2, pageSize: 20 }).subscribe();
+    const owner = http.expectOne((candidate) => candidate.url === 'api/booking/owner');
+    expect(owner.request.params.get('listingId')).toBe('5');
+    expect(owner.request.params.getAll('statuses')).toEqual(['0', '2']);
+    expect(owner.request.params.get('page')).toBe('2');
+    service.approve(12).subscribe();
+    const approve = http.expectOne('api/booking/approvebooking'); expect(approve.request.method).toBe('PATCH'); expect(approve.request.body).toEqual({ bookingId: 12 });
+    service.reject(13).subscribe();
+    const reject = http.expectOne('api/booking/rejectbooking'); expect(reject.request.method).toBe('PATCH'); expect(reject.request.body).toEqual({ bookingId: 13 });
+  });
 });

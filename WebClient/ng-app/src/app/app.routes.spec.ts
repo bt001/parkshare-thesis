@@ -3,6 +3,10 @@ import { RenderMode } from '@angular/ssr';
 import { AppShellComponent } from './layout/app-shell.component';
 import { ListingDetailComponent } from './listings/listing-detail.component';
 import { ListingListComponent } from './listings/listing-list.component';
+import { OwnerAvailabilityComponent } from './owner/owner-availability.component';
+import { OwnerBookingsComponent } from './owner/owner-bookings.component';
+import { OwnerListingFormComponent } from './owner/owner-listing-form.component';
+import { OwnerListingsComponent } from './owner/owner-listings.component';
 import { routes } from './app.routes';
 import { serverRoutes } from './app.routes.server';
 
@@ -21,10 +25,23 @@ describe('application routes', () => {
     }));
   });
 
+  it('keeps the complete owner workspace inside the authenticated shell', () => {
+    const children = routes.find((route) => route.component === AppShellComponent)?.children;
+    expect(children).toContain(jasmine.objectContaining({ path: 'owner/listings', component: OwnerListingsComponent }));
+    expect(children).toContain(jasmine.objectContaining({ path: 'owner/listings/new', component: OwnerListingFormComponent }));
+    expect(children).toContain(jasmine.objectContaining({ path: 'owner/listings/:id/availability', component: OwnerAvailabilityComponent }));
+    expect(children).toContain(jasmine.objectContaining({ path: 'owner/bookings', component: OwnerBookingsComponent }));
+  });
+
   it('uses client rendering for the authenticated parameterized detail route', () => {
     expect(serverRoutes).toContain(jasmine.objectContaining({
       path: 'listings/:id',
       renderMode: RenderMode.Client
     }));
+  });
+
+  it('uses client rendering for parameterized owner routes', () => {
+    expect(serverRoutes).toContain(jasmine.objectContaining({ path: 'owner/listings/:id/edit', renderMode: RenderMode.Client }));
+    expect(serverRoutes).toContain(jasmine.objectContaining({ path: 'owner/listings/:id/availability', renderMode: RenderMode.Client }));
   });
 });

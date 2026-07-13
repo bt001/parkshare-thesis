@@ -8,7 +8,7 @@ describe('AppShellComponent', () => {
   let component: AppShellComponent;
   let fixture: ComponentFixture<AppShellComponent>;
   let router: Router;
-  const authService = jasmine.createSpyObj<AuthService>('AuthService', ['logout'], {
+  const authService = jasmine.createSpyObj<AuthService>('AuthService', ['logout', 'hasRole'], {
     session: {
       userId: 1,
       userName: 'owner1',
@@ -24,6 +24,7 @@ describe('AppShellComponent', () => {
   });
 
   beforeEach(async () => {
+    authService.hasRole.and.returnValue(true);
     await TestBed.configureTestingModule({
       imports: [AppShellComponent],
       providers: [
@@ -47,11 +48,11 @@ describe('AppShellComponent', () => {
     expect(router.navigateByUrl).toHaveBeenCalledWith('/login');
   });
 
-  it('shows neutral ParkShare branding and renter navigation', () => {
+  it('shows owner-aware navigation', () => {
     const element = fixture.nativeElement as HTMLElement;
 
     expect(element.textContent).toContain('ParkShare');
     expect(element.textContent).toContain('Browse parking');
-    expect(element.textContent).not.toContain('Owner workspace');
+    expect(element.textContent).toContain('Owner workspace');
   });
 });

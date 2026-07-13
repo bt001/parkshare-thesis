@@ -32,7 +32,7 @@ namespace ParkShare.Application.Services
         }
 
         /// <inheritdoc/>
-        public async Task<ServiceResult<CreateListingResponse>> CreateAsync(long ownerId, string title, string description, decimal pricePerHour, double latitude, double longitude, string? address, CancellationToken ct)
+        public async Task<ServiceResult<CreateListingResponse>> CreateAsync(long ownerId, string title, string description, decimal pricePerHour, double latitude, double longitude, string? address, string? size, bool isAlwaysAvailable, CancellationToken ct)
         {
             if (!await _userRepository.ExistsByIdAsync(ownerId, ct))
                 return ServiceResult<CreateListingResponse>.WithError("Owner not found.");
@@ -57,9 +57,11 @@ namespace ParkShare.Application.Services
                     Title = title,
                     Description = description,
                     Address = address,
+                    Size = size,
                     Latitude = (decimal)latitude,
                     Longitude = (decimal)longitude,
                     PricePerHour = pricePerHour,
+                    IsAlwaysAvailable = isAlwaysAvailable,
                     IsActive = true
                 };
 
