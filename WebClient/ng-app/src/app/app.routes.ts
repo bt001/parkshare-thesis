@@ -6,6 +6,8 @@ import { LoginComponent } from './auth/login/login.component';
 import { RegisterComponent } from './auth/register/register.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { AppShellComponent } from './layout/app-shell.component';
+import { ListingDetailComponent } from './listings/listing-detail.component';
+import { ListingListComponent } from './listings/listing-list.component';
 
 export const routes: Routes = [
   {
@@ -27,7 +29,9 @@ export const routes: Routes = [
     component: AppShellComponent,
     canActivate: [authGuard],
     children: [
-      { path: 'dashboard', component: DashboardComponent }
+      { path: 'dashboard', component: DashboardComponent },
+      { path: 'listings', component: ListingListComponent },
+      { path: 'listings/:id', component: ListingDetailComponent }
     ]
   },
   {

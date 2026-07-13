@@ -2,11 +2,12 @@
   <header class="shell-header">
     <div>
       <p class="brand-kicker">ParkShare MVP</p>
-      <a routerLink="/dashboard" class="brand-link">Owner workspace</a>
+      <a routerLink="/dashboard" class="brand-link">ParkShare</a>
     </div>
 
     <nav class="shell-nav" aria-label="Primary navigation">
       <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Dashboard</a>
+      <a routerLink="/listings" routerLinkActive="active">Browse parking</a>
       <button type="button" (click)="logout()">Log out</button>
     </nav>
   </header>

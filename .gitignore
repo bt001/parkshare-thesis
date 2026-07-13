@@ -427,3 +427,5 @@ FodyWeavers.xsd
 /ParkShare.Domain/.tmpobj
 /ParkShare.Infrastructure/.tmpobj
 /ParkShare.Shared/.tmpobj
+/WebClient/ng-app/e2e
+WebClient/ng-app/playwright.config.ts
