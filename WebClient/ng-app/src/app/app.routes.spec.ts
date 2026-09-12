@@ -1,3 +1,4 @@
+import { RenterBookingsComponent } from './bookings/renter-bookings.component';
 import { authGuard } from './auth/auth.guards';
 import { RenderMode } from '@angular/ssr';
 import { AppShellComponent } from './layout/app-shell.component';
@@ -43,5 +44,11 @@ describe('application routes', () => {
   it('uses client rendering for parameterized owner routes', () => {
     expect(serverRoutes).toContain(jasmine.objectContaining({ path: 'owner/listings/:id/edit', renderMode: RenderMode.Client }));
     expect(serverRoutes).toContain(jasmine.objectContaining({ path: 'owner/listings/:id/availability', renderMode: RenderMode.Client }));
+  });
+  it('protects renter history and renders it on the client', () => {
+    const shell = routes.find(route => route.component === AppShellComponent);
+    expect(shell?.canActivate).toContain(authGuard);
+    expect(shell?.children).toContain(jasmine.objectContaining({ path: 'bookings', component: RenterBookingsComponent }));
+    expect(serverRoutes).toContain(jasmine.objectContaining({ path: 'bookings', renderMode: RenderMode.Client }));
   });
 });

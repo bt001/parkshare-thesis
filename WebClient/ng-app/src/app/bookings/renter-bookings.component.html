@@ -1,0 +1,51 @@
+<section class="page-heading">
+  <div><p class="eyebrow">Renter workspace</p><h1>My bookings</h1><p>Revisit your requests and check the latest owner decisions.</p></div>
+  <button type="button" class="primary-button" [disabled]="isLoading" (click)="refresh()">Refresh</button>
+</section>
+<form class="filter-bar" [formGroup]="filters" (ngSubmit)="applyFilters()">
+  <label for="renter-booking-status">Status</label>
+  <select id="renter-booking-status" [formControl]="status">
+    <option value="">All statuses</option>
+    <option [value]="BookingStatus.Pending">Pending</option>
+    <option [value]="BookingStatus.Confirmed">Confirmed</option>
+    <option [value]="BookingStatus.Rejected">Rejected</option>
+    <option [value]="BookingStatus.Completed">Completed</option>
+  </select>
+  <button class="primary-button" type="submit">Apply filters</button>
+</form>
+@if (isLoading) {
+  <div class="message" role="status">Loading your bookings…</div>
+} @else if (errorMessages.length) {
+  <div class="message error" role="alert">
+    @for (message of errorMessages; track message) { <p>{{ message }}</p> }
+    <button type="button" class="primary-button" (click)="refresh()">Retry</button>
+  </div>
+} @else {
+  @if (!bookings.length) {
+    <div class="message">
+      <h2>{{ hasFilter ? 'No matching bookings' : (page > 1 ? 'No bookings on this page' : 'No bookings yet') }}</h2>
+      <p>{{ hasFilter ? 'Choose another status or All statuses to see more requests.' : 'Browse parking to find your next space.' }}</p>
+      <a routerLink="/listings">Browse parking</a>
+    </div>
+  } @else {
+    <div class="card-grid">
+      @for (booking of bookings; track booking.bookingId) {
+        <article class="workspace-card booking-card">
+          <div class="card-heading"><span class="badge status-{{ booking.statusText.toLowerCase() }}">{{ booking.statusText }}</span><small>Request #{{ booking.bookingId }}</small></div>
+          <h2>{{ booking.listingTitle }}</h2>
+          <p>{{ booking.listingAddress }}</p>
+          <strong>{{ booking.startDateTime | date:'medium' }}</strong>
+          <span>to {{ booking.endDateTime | date:'medium' }}</span>
+          <small>Requested {{ booking.createdAt | date:'medium' }}</small>
+        </article>
+      }
+    </div>
+  }
+  @if (totalCount > 0 || page > 1) {
+    <nav class="pagination" aria-label="My booking pages">
+      <button type="button" [disabled]="!canGoBack" (click)="loadPage(page - 1)">Previous</button>
+      <span>Page {{ page }} · {{ totalCount }} bookings</span>
+      <button type="button" [disabled]="!canGoForward" (click)="loadPage(page + 1)">Next</button>
+    </nav>
+  }
+}

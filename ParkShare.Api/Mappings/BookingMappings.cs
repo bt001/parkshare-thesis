@@ -24,6 +24,10 @@ namespace ParkShare.Api.Mappings
             cfg.CreateMap<GetBookingByIdRequest, GetBookingByIdQuery>();
             cfg.CreateMap<GetBookingByIdResponse, BookingResult>();
 
+            cfg.CreateMap<GetRenterBookingsRequest, GetRenterBookingsQuery>();
+            cfg.CreateMap<GetRenterBookingsResponse, GetRenterBookingsResult>();
+            cfg.CreateMap<RenterBookingItem, RenterBookingItemResult>();
+
             cfg.CreateMap<GetOwnerBookingsRequest, GetOwnerBookingsQuery>();
             cfg.CreateMap<GetOwnerBookingsResponse, GetOwnerBookingsResult>();
             cfg.CreateMap<OwnerBookingItem, OwnerBookingItemResult>();

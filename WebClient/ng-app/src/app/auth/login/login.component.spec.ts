@@ -1,9 +1,10 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { AuthService } from '../../api/auth/auth.service';
+import { AuthSession } from '../../api/auth/auth.models';
 import { LoginComponent } from './login.component';
 
 describe('LoginComponent', () => {
@@ -76,4 +77,13 @@ describe('LoginComponent', () => {
     expect(component.errorMessages).toEqual(['Invalid credentials.']);
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Invalid credentials.');
   });
+  for (const destination of ['/bookings', '//example.test', '/login', '/register?returnUrl=/bookings', 'https://example.test']) {
+    it(`uses a safe return destination after login: ${destination}`, () => {
+      spyOnProperty(TestBed.inject(ActivatedRoute).snapshot, 'queryParamMap', 'get').and.returnValue(convertToParamMap({ returnUrl: destination }));
+      authService.login.and.returnValue(of({} as AuthSession));
+      component.form.setValue({ email: 'renter@example.test', password: 'password123' });
+      component.submit();
+      expect(router.navigateByUrl).toHaveBeenCalledWith(destination === '/bookings' ? destination : '/dashboard');
+    });
+  }
 });

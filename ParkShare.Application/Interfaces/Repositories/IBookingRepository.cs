@@ -9,6 +9,9 @@ namespace ParkShare.Application.Interfaces.Repositories
     /// </summary>
     public interface IBookingRepository
     {
+        /// <summary>Returns renter bookings filtered by status, including inactive listings.</summary>
+        Task<PagedResult<Booking>> GetRenterByStatusesAsync(long renterId, List<BookingStatus>? statuses, int page, int pageSize, CancellationToken cancellationToken);
+
         /// <summary>
         /// Checks whether a confirmed booking overlaps the requested time range.
         /// </summary>

@@ -110,6 +110,25 @@ namespace ParkShare.Infrastructure.Repositories
         }
 
         /// <inheritdoc/>
+        public async Task<PagedResult<Booking>> GetRenterByStatusesAsync(long renterId, List<BookingStatus>? statuses, int page, int pageSize, CancellationToken cancellationToken)
+        {
+            var query = _db.Bookings.AsNoTracking().Include(booking => booking.Listing)
+                .Where(booking => booking.RenterId == renterId);
+            if (statuses != null && statuses.Count > 0)
+                query = query.Where(booking => statuses.Contains(booking.Status));
+
+            var total = await query.CountAsync(cancellationToken);
+            var offset = ((long)page - 1) * pageSize;
+            if (offset >= total)
+                return new PagedResult<Booking>(new List<Booking>(), total);
+
+            var items = await query.OrderByDescending(booking => booking.CreatedAt)
+                .ThenByDescending(booking => booking.Id)
+                .Skip((int)offset).Take(pageSize).ToListAsync(cancellationToken);
+            return new PagedResult<Booking>(items, total);
+        }
+
+        /// <inheritdoc/>
         public async Task<PagedResult<Booking>> GetOwnerByStatusesAsync(long ownerId, long? listingId, List<BookingStatus>? statuses, int page, int pageSize, CancellationToken cancellationToken)
         {
             var query = _db.Bookings
