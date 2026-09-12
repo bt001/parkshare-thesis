@@ -1,0 +1,8 @@
+<div class="map-frame" role="region" aria-label="Active parking listings map">
+  <div #mapContainer class="map-container"></div>
+  @if (isTileUnavailable) {
+    <p class="tile-warning" role="status">
+      Map tiles are temporarily unavailable. Listing markers may still be selected.
+    </p>
+  }
+</div>

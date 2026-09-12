@@ -9,45 +9,85 @@
   }
 </section>
 
-@if (errorMessages.length > 0) {
-  <div class="message error" role="alert">
-    @for (message of errorMessages; track message) {
-      <p>{{ message }}</p>
-    }
-    <button type="button" (click)="loadPage(page)">Try again</button>
-  </div>
-} @else if (isLoading) {
-  <div class="message" aria-live="polite">Loading available parking…</div>
-} @else if (listings.length === 0) {
-  <div class="message">
-    <h2>No active listings yet</h2>
-    <p>Check back when an owner has published a parking space.</p>
-  </div>
-} @else {
-  <div class="listing-grid">
-    @for (listing of listings; track listing.id) {
-      <article class="listing-card">
-        <div class="card-map-placeholder" aria-hidden="true">
-          <span>{{ listing.latitude.toFixed(3) }}, {{ listing.longitude.toFixed(3) }}</span>
-        </div>
-        <div class="card-body">
-          <div class="card-topline">
-            <span class="availability-badge">
-              {{ listing.isAlwaysAvailable ? 'Always available' : 'Scheduled availability' }}
-            </span>
-            <strong>{{ listing.pricePerHour | currency:'RON':'symbol-narrow':'1.0-2' }}/h</strong>
+<div class="view-switch" role="group" aria-label="Listings view">
+  <button type="button" [attr.aria-pressed]="viewMode === 'list'" (click)="setViewMode('list')">List</button>
+  <button type="button" [attr.aria-pressed]="viewMode === 'map'" (click)="setViewMode('map')">Map</button>
+</div>
+
+@if (viewMode === 'list') {
+  @if (errorMessages.length > 0) {
+    <div class="message error" role="alert">
+      @for (message of errorMessages; track message) {
+        <p>{{ message }}</p>
+      }
+      <button type="button" (click)="loadPage(page)">Try again</button>
+    </div>
+  } @else if (isLoading) {
+    <div class="message" aria-live="polite">Loading available parking&hellip;</div>
+  } @else if (listings.length === 0) {
+    <div class="message">
+      <h2>No active listings yet</h2>
+      <p>Check back when an owner has published a parking space.</p>
+    </div>
+  } @else {
+    <div class="listing-grid">
+      @for (listing of listings; track listing.id) {
+        <article class="listing-card">
+          <div class="card-map-placeholder" aria-hidden="true">
+            <span>{{ listing.latitude.toFixed(3) }}, {{ listing.longitude.toFixed(3) }}</span>
           </div>
+          <div class="card-body">
+            <div class="card-topline">
+              <span class="availability-badge">
+                {{ listing.isAlwaysAvailable ? 'Always available' : 'Scheduled availability' }}
+              </span>
+              <strong>{{ listing.pricePerHour | currency:'RON':'symbol-narrow':'1.0-2' }}/h</strong>
+            </div>
+            <h2>{{ listing.title }}</h2>
+            <p>{{ listing.address || 'Address available in listing details' }}</p>
+            <a [routerLink]="['/listings', listing.id]">View space</a>
+          </div>
+        </article>
+      }
+    </div>
+
+    <nav class="pagination" aria-label="Listings pages">
+      <button type="button" [disabled]="!canGoBack" (click)="loadPage(page - 1)">Previous</button>
+      <span>Page {{ page }}</span>
+      <button type="button" [disabled]="!canGoForward" (click)="loadPage(page + 1)">Next</button>
+    </nav>
+  }
+} @else {
+  @if (mapErrorMessages.length > 0) {
+    <div class="message error" role="alert">
+      @for (message of mapErrorMessages; track message) {
+        <p>{{ message }}</p>
+      }
+      <button type="button" (click)="retryMap()">Try map again</button>
+    </div>
+  } @else if (isMapLoading) {
+    <div class="message" aria-live="polite">Loading all parking locations&hellip;</div>
+  } @else if (isMapLoaded && mapListings.length === 0) {
+    <div class="message">
+      <h2>No parking locations to map</h2>
+      <p>Check back when an owner has published a parking space.</p>
+    </div>
+  } @else if (isMapLoaded) {
+    <div class="map-stage">
+      <app-listing-map [listings]="mapListings" (listingSelected)="selectMapListing($event)" />
+
+      @if (selectedMapListing; as listing) {
+        <article class="map-preview" aria-live="polite">
+          <button class="preview-close" type="button" aria-label="Close listing preview" (click)="closeMapPreview()">&times;</button>
+          <span class="availability-badge">
+            {{ listing.isAlwaysAvailable ? 'Always available' : 'Scheduled availability' }}
+          </span>
           <h2>{{ listing.title }}</h2>
           <p>{{ listing.address || 'Address available in listing details' }}</p>
+          <strong>{{ listing.pricePerHour | currency:'RON':'symbol-narrow':'1.0-2' }}/hour</strong>
           <a [routerLink]="['/listings', listing.id]">View space</a>
-        </div>
-      </article>
-    }
-  </div>
-
-  <nav class="pagination" aria-label="Listings pages">
-    <button type="button" [disabled]="!canGoBack" (click)="loadPage(page - 1)">Previous</button>
-    <span>Page {{ page }}</span>
-    <button type="button" [disabled]="!canGoForward" (click)="loadPage(page + 1)">Next</button>
-  </nav>
+        </article>
+      }
+    </div>
+  }
 }

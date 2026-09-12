@@ -46,6 +46,33 @@ h1 {
   font-weight: 700;
 }
 
+.view-switch {
+  display: flex;
+  width: fit-content;
+  margin: 0 0 1.25rem auto;
+  padding: 0.25rem;
+  border: 1px solid rgba(95, 124, 163, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.view-switch button {
+  min-width: 5rem;
+  padding: 0.55rem 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #526b80;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.view-switch button[aria-pressed="true"] {
+  background: #16324f;
+  color: #fff;
+}
+
 .listing-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
@@ -142,9 +169,93 @@ h1 {
   cursor: not-allowed;
 }
 
+.map-stage {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(95, 124, 163, 0.16);
+  border-radius: 1.25rem;
+  box-shadow: 0 1rem 2rem rgba(20, 38, 67, 0.1);
+}
+
+.map-preview {
+  position: absolute;
+  z-index: 600;
+  top: 1rem;
+  right: 1rem;
+  width: min(22rem, calc(100% - 2rem));
+  padding: 1.25rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 1rem 2.5rem rgba(20, 38, 67, 0.24);
+}
+
+.map-preview h2 {
+  margin: 1rem 2rem 0.45rem 0;
+  font-size: 1.35rem;
+}
+
+.map-preview p {
+  margin-bottom: 0.8rem;
+  color: #607589;
+}
+
+.map-preview strong {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.map-preview a {
+  display: inline-block;
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  background: #16324f;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.preview-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 50%;
+  background: #e7eef3;
+  color: #16324f;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
 @media (max-width: 640px) {
   .page-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .view-switch {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .view-switch button {
+    flex: 1;
+  }
+
+  .map-stage {
+    overflow: visible;
+    box-shadow: none;
+  }
+
+  .map-preview {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 100%;
+    margin-top: 0.75rem;
+    border: 1px solid rgba(95, 124, 163, 0.16);
+    box-shadow: 0 1rem 2rem rgba(20, 38, 67, 0.1);
   }
 }

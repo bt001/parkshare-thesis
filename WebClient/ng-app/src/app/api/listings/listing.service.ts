@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
 
 import {
   CreateListingRequest,
@@ -8,6 +8,7 @@ import {
   ListingDetails,
   ListingMutationResult,
   SearchListingsRequest,
+  SearchListingItem,
   SearchListingsResult,
   UpdateListingRequest
 } from './listing.models';
@@ -26,6 +27,31 @@ export class ListingService {
     }
 
     return this.http.get<SearchListingsResult>('api/listing/search', { params });
+  }
+
+  searchAll(request: Omit<SearchListingsRequest, 'page' | 'pageSize'>): Observable<SearchListingItem[]> {
+    const pageSize = 100;
+
+    return this.search({ ...request, page: 1, pageSize }).pipe(
+      switchMap((firstPage) => {
+        const pageCount = Math.ceil(firstPage.totalCount / pageSize);
+        if (pageCount <= 1) {
+          return of(this.deduplicate(firstPage.items));
+        }
+
+        const remainingPages = Array.from(
+          { length: pageCount - 1 },
+          (_, index) => this.search({ ...request, page: index + 2, pageSize })
+        );
+
+        return forkJoin(remainingPages).pipe(
+          map((results) => this.deduplicate([
+            ...firstPage.items,
+            ...results.flatMap((result) => result.items)
+          ]))
+        );
+      })
+    );
   }
 
   getById(id: number): Observable<ListingDetails> {
@@ -50,5 +76,9 @@ export class ListingService {
 
   deactivate(id: number): Observable<ListingMutationResult> {
     return this.http.patch<ListingMutationResult>('api/listing/deactivate', { id });
+  }
+
+  private deduplicate(listings: SearchListingItem[]): SearchListingItem[] {
+    return [...new Map(listings.map((listing) => [listing.id, listing])).values()];
   }
 }

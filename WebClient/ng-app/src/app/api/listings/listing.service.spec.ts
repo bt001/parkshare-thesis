@@ -30,6 +30,30 @@ describe('ListingService', () => {
     request.flush({ page: 2, pageSize: 12, totalCount: 0, items: [] });
   });
 
+  it('loads and deduplicates every search page in batches of 100', () => {
+    let resultIds: number[] = [];
+    service.searchAll({ onlyActive: true }).subscribe((listings) => {
+      resultIds = listings.map((listing) => listing.id);
+    });
+
+    const firstRequest = http.expectOne((candidate) => candidate.url === 'api/listing/search' && candidate.params.get('page') === '1');
+    expect(firstRequest.request.params.get('pageSize')).toBe('100');
+    firstRequest.flush({
+      page: 1,
+      pageSize: 100,
+      totalCount: 201,
+      items: [{ id: 1 }, { id: 2 }]
+    });
+
+    const remainingRequests = http.match((candidate) => candidate.url === 'api/listing/search');
+    expect(remainingRequests.length).toBe(2);
+    expect(remainingRequests.map((request) => request.request.params.get('page'))).toEqual(['2', '3']);
+    remainingRequests[0].flush({ page: 2, pageSize: 100, totalCount: 201, items: [{ id: 2 }, { id: 3 }] });
+    remainingRequests[1].flush({ page: 3, pageSize: 100, totalCount: 201, items: [{ id: 4 }] });
+
+    expect(resultIds).toEqual([1, 2, 3, 4]);
+  });
+
   it('loads a listing by id', () => {
     service.getById(42).subscribe();
 
