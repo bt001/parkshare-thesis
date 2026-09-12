@@ -26,6 +26,13 @@ export class ListingService {
       params = params.set('onlyActive', request.onlyActive);
     }
 
+    for (const key of ['titleContains', 'addressContains', 'minPrice', 'maxPrice', 'onlyAlwaysAvailable'] as const) {
+      const value = request[key];
+      if (value !== undefined) {
+        params = params.set(key, value);
+      }
+    }
+
     return this.http.get<SearchListingsResult>('api/listing/search', { params });
   }
 

@@ -4,10 +4,55 @@
     <h1>Available parking</h1>
     <p>Browse active ParkShare listings and request the time that works for you.</p>
   </div>
-  @if (totalCount > 0) {
+  @if (!isLoading && errorMessages.length === 0) {
     <span class="result-count">{{ totalCount }} {{ totalCount === 1 ? 'space' : 'spaces' }}</span>
   }
 </section>
+
+<form class="search-filters" [formGroup]="filterForm" (ngSubmit)="applyFilters()" aria-label="Search parking">
+  <div class="filter-fields">
+    <div>
+      <label for="filter-title">Title</label>
+      <input id="filter-title" type="text" formControlName="titleContains" aria-describedby="title-error" />
+      @if (filterForm.controls.titleContains.touched && filterForm.controls.titleContains.invalid) {
+        <p id="title-error" class="field-error">Title must be at most 120 characters.</p>
+      }
+    </div>
+    <div>
+      <label for="filter-address">Address</label>
+      <input id="filter-address" type="text" formControlName="addressContains" aria-describedby="address-error" />
+      @if (filterForm.controls.addressContains.touched && filterForm.controls.addressContains.invalid) {
+        <p id="address-error" class="field-error">Address must be at most 200 characters.</p>
+      }
+    </div>
+    <div>
+      <label for="filter-min">Minimum price (RON/hour)</label>
+      <input id="filter-min" type="number" min="0" step="any" formControlName="minPrice" aria-describedby="min-error price-range-error" />
+      @if (filterForm.controls.minPrice.touched && filterForm.controls.minPrice.invalid) {
+        <p id="min-error" class="field-error">Minimum price must be zero or greater.</p>
+      }
+    </div>
+    <div>
+      <label for="filter-max">Maximum price (RON/hour)</label>
+      <input id="filter-max" type="number" min="0" step="any" formControlName="maxPrice" aria-describedby="max-error price-range-error" />
+      @if (filterForm.controls.maxPrice.touched && filterForm.controls.maxPrice.invalid) {
+        <p id="max-error" class="field-error">Maximum price must be zero or greater.</p>
+      }
+    </div>
+  </div>
+  @if (filterForm.touched && filterForm.hasError('priceRange')) {
+    <p id="price-range-error" class="field-error" role="alert">Minimum price cannot exceed maximum price.</p>
+  }
+  <label class="availability-filter">
+    <input type="checkbox" formControlName="onlyAlwaysAvailable" aria-describedby="availability-help" />
+    Always available only
+  </label>
+  <p id="availability-help">Always available describes the listing schedule. Existing bookings may still limit available times.</p>
+  <div class="filter-actions">
+    <button type="submit">Search</button>
+    <button type="button" (click)="resetFilters()">Reset</button>
+  </div>
+</form>
 
 <div class="view-switch" role="group" aria-label="Listings view">
   <button type="button" [attr.aria-pressed]="viewMode === 'list'" (click)="setViewMode('list')">List</button>
@@ -26,8 +71,14 @@
     <div class="message" aria-live="polite">Loading available parking&hellip;</div>
   } @else if (listings.length === 0) {
     <div class="message">
-      <h2>No active listings yet</h2>
-      <p>Check back when an owner has published a parking space.</p>
+      @if (hasFilters) {
+        <h2>No spaces match your filters</h2>
+        <p>Try a broader search or reset your filters.</p>
+        <button type="button" (click)="resetFilters()">Reset filters</button>
+      } @else {
+        <h2>No active listings yet</h2>
+        <p>Check back when an owner has published a parking space.</p>
+      }
     </div>
   } @else {
     <div class="listing-grid">
@@ -69,8 +120,14 @@
     <div class="message" aria-live="polite">Loading all parking locations&hellip;</div>
   } @else if (isMapLoaded && mapListings.length === 0) {
     <div class="message">
-      <h2>No parking locations to map</h2>
-      <p>Check back when an owner has published a parking space.</p>
+      @if (hasFilters) {
+        <h2>No spaces match your filters</h2>
+        <p>Try a broader search or reset your filters.</p>
+        <button type="button" (click)="resetFilters()">Reset filters</button>
+      } @else {
+        <h2>No parking locations to map</h2>
+        <p>Check back when an owner has published a parking space.</p>
+      }
     </div>
   } @else if (isMapLoaded) {
     <div class="map-stage">

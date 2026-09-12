@@ -2,6 +2,16 @@ export interface SearchListingsRequest {
   page: number;
   pageSize: number;
   onlyActive?: boolean;
+  /** Matches listing titles containing this text. */
+  titleContains?: string;
+  /** Matches addresses containing this text. */
+  addressContains?: string;
+  /** Inclusive minimum hourly price in RON. */
+  minPrice?: number;
+  /** Inclusive maximum hourly price in RON. */
+  maxPrice?: number;
+  /** Restricts results to listings with an always-available schedule. */
+  onlyAlwaysAvailable?: boolean;
 }
 
 export interface SearchListingItem {

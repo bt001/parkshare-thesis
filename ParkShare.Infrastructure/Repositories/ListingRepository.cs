@@ -95,6 +95,7 @@ namespace ParkShare.Infrastructure.Repositories
             var total = await query.CountAsync(cancellationToken);
             var items = await query
                 .OrderByDescending(listing => listing.CreatedAt)
+                .ThenByDescending(listing => listing.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync(cancellationToken);

@@ -2,8 +2,10 @@
 
 namespace ParkShare.Application.Queries.Validators
 {
+    /// <summary>Validates listing search filters and paging.</summary>
     public class SearchListingsQueryValidator : AbstractValidator<SearchListingsQuery>
     {
+        /// <summary>Defines valid search ranges and required radius coordinates.</summary>
         public SearchListingsQueryValidator()
         {
             RuleFor(x => x.Page).GreaterThanOrEqualTo(1);
@@ -12,9 +14,12 @@ namespace ParkShare.Application.Queries.Validators
             When(x => x.RadiusKm.HasValue, () =>
             {
                 RuleFor(x => x.RadiusKm!.Value).GreaterThan(0);
-                RuleFor(x => x.Lat!.Value).InclusiveBetween(-90, 90);
-                RuleFor(x => x.Lng!.Value).InclusiveBetween(-180, 180);
+                RuleFor(x => x.Lat).NotNull().InclusiveBetween(-90, 90);
+                RuleFor(x => x.Lng).NotNull().InclusiveBetween(-180, 180);
             });
+
+            RuleFor(x => x.MinPrice).GreaterThanOrEqualTo(0);
+            RuleFor(x => x.MaxPrice).GreaterThanOrEqualTo(0);
 
             When(x => x.MinPrice.HasValue && x.MaxPrice.HasValue, () =>
             {
