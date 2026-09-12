@@ -45,4 +45,20 @@ describe('BookingService', () => {
     service.reject(13).subscribe();
     const reject = http.expectOne('api/booking/rejectbooking'); expect(reject.request.method).toBe('PATCH'); expect(reject.request.body).toEqual({ bookingId: 13 });
   });
+  it('requests renter history without caller identity and preserves Pending zero', () => {
+    service.getForRenter({ statuses: [0, 2], page: 2, pageSize: 20 }).subscribe();
+    const request = http.expectOne(candidate => candidate.url === 'api/booking/renter');
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.keys().sort()).toEqual(['page', 'pageSize', 'statuses']);
+    expect(request.request.params.getAll('statuses')).toEqual(['0', '2']);
+    expect(request.request.params.get('page')).toBe('2');
+    expect(request.request.params.get('pageSize')).toBe('20');
+    request.flush({ page: 2, pageSize: 20, totalCount: 0, items: [] });
+  });
+
+  it('omits status parameters for unfiltered renter history', () => {
+    service.getForRenter({ page: 1, pageSize: 20 }).subscribe();
+    const request = http.expectOne(candidate => candidate.url === 'api/booking/renter');
+    expect(request.request.params.has('statuses')).toBeFalse(); request.flush({});
+  });
 });

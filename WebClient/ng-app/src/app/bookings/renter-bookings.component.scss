@@ -1,0 +1,7 @@
+@use '../owner/owner-workspace';
+
+.filter-bar { grid-template-columns: auto minmax(10rem, 1fr) auto; }
+.card-grid { grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr)); }
+.workspace-card { min-width: 0; overflow-wrap: anywhere; }
+.pagination { flex-wrap: wrap; }
+@media (max-width: 760px) { .filter-bar { grid-template-columns: 1fr; } }

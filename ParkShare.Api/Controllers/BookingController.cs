@@ -77,6 +77,15 @@ namespace ParkShare.Api.Controllers
                 _currentUser,
                 (request, userId) => request.RequesterId = userId);
 
+        /// <summary>Returns booking history for the authenticated renter.</summary>
+        [HttpGet("renter")]
+        [ProducesResponseType(typeof(GetRenterBookingsResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public Task<IActionResult> GetRenterBookings([FromQuery] GetRenterBookingsRequest query)
+            => ProcessAuthenticatedQueryAsync<GetRenterBookingsRequest, GetRenterBookingsResult, GetRenterBookingsQuery, GetRenterBookingsResponse>(
+                query, _currentUser, (request, userId) => request.RenterId = userId);
+
         [HttpGet("owner")]
         [ProducesResponseType(typeof(GetOwnerBookingsResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

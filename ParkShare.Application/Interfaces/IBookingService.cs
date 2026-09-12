@@ -7,6 +7,9 @@ namespace ParkShare.Application.Interfaces
 {
     public interface IBookingService
     {
+        /// <summary>Returns renter bookings filtered by status, including inactive listings.</summary>
+        Task<ServiceResult<GetRenterBookingsResponse>> GetRenterByStatusesAsync(long renterId, List<BookingStatus>? statuses, int page, int pageSize, CancellationToken cancellationToken);
+
         Task<ServiceResult<bool>> HasConfirmedOverlapAsync(long listingId, DateTime StartDateTime, DateTime EndDateTime, CancellationToken ct);
 
         Task<ServiceResult<CreateBookingResponse>> CreateAsync(CreateBookingCommand cmd, CancellationToken ct);

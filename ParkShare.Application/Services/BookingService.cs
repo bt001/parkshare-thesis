@@ -150,6 +150,40 @@ namespace ParkShare.Application.Services
             });
         }
 
+        /// <inheritdoc/>
+        public async Task<ServiceResult<GetRenterBookingsResponse>> GetRenterByStatusesAsync(long renterId, List<BookingStatus>? statuses, int page, int pageSize, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var results = await _bookingRepository.GetRenterByStatusesAsync(renterId, statuses, page, pageSize, cancellationToken);
+                return ServiceResult<GetRenterBookingsResponse>.Success(new GetRenterBookingsResponse
+                {
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalCount = results.TotalCount,
+                    Items = results.Items.Select(booking => new RenterBookingItem
+                    {
+                        BookingId = booking.Id,
+                        ListingId = booking.ListingId,
+                        ListingTitle = booking.Listing.Title,
+                        ListingAddress = booking.Listing.Address ?? string.Empty,
+                        StartDateTime = booking.StartDateTime,
+                        EndDateTime = booking.EndDateTime,
+                        Status = booking.Status,
+                        CreatedAt = booking.CreatedAt
+                    }).ToList()
+                });
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                return ServiceResult<GetRenterBookingsResponse>.WithError("Booking history could not be loaded. Please try again.");
+            }
+        }
+
         /// <summary>
         /// Maps a booking entity into the requested booking response type.
         /// </summary>

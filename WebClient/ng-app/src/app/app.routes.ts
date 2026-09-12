@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { RenterBookingsComponent } from './bookings/renter-bookings.component';
 
 import { authGuard, authLandingGuard } from './auth/auth.guards';
 import { AuthRedirectComponent } from './auth/auth-redirect.component';
@@ -33,6 +34,7 @@ export const routes: Routes = [
     component: AppShellComponent,
     canActivate: [authGuard],
     children: [
+      { path: 'bookings', component: RenterBookingsComponent },
       { path: 'dashboard', component: DashboardComponent },
       { path: 'listings', component: ListingListComponent },
       { path: 'listings/:id', component: ListingDetailComponent },

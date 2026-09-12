@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 
 import { AuthService } from '../../api/auth/auth.service';
@@ -21,6 +21,15 @@ interface LoginForm {
 export class LoginComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  /** Route containing the destination supplied by the authentication guard. */
+  private readonly route = inject(ActivatedRoute);
+
+  /** Accepts local application paths only, falling back to the dashboard. */
+  private get returnUrl(): string {
+    const value = this.route.snapshot.queryParamMap.get('returnUrl');
+    return value?.startsWith('/') && !value.startsWith('//') && !value.includes('\\')
+      && !/^\/(login|register)(?:[/?#;]|$)/i.test(value) ? value : '/dashboard';
+  }
 
   readonly form = new FormGroup<LoginForm>({
     email: new FormControl('', {
@@ -38,7 +47,7 @@ export class LoginComponent {
 
   constructor() {
     if (this.authService.hasAuthenticatedSession()) {
-      void this.router.navigateByUrl('/dashboard');
+      void this.router.navigateByUrl(this.returnUrl);
     }
   }
 
@@ -55,7 +64,7 @@ export class LoginComponent {
       .pipe(finalize(() => (this.isSubmitting = false)))
       .subscribe({
         next: () => {
-          void this.router.navigateByUrl('/dashboard');
+          void this.router.navigateByUrl(this.returnUrl);
         },
         error: (error) => {
           this.errorMessages = this.getErrorMessages(error);

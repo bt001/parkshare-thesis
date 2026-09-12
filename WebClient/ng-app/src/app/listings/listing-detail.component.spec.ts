@@ -129,6 +129,7 @@ describe('ListingDetailComponent', () => {
     });
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Request #99 sent');
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Status: Pending');
+    expect(fixture.nativeElement.querySelector('[role="status"] a[href="/bookings"]')?.textContent).toContain('My bookings');
   });
 
   it('does not submit an invalid time range', () => {

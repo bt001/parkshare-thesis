@@ -53,6 +53,7 @@ describe('AppShellComponent', () => {
 
     expect(element.textContent).toContain('ParkShare');
     expect(element.textContent).toContain('Browse parking');
+    expect(element.querySelector('a[href="/bookings"]')?.textContent).toContain('My bookings');
     expect(element.textContent).toContain('Owner workspace');
   });
 });
