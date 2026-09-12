@@ -1,7 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
+import { SearchListingItem, SearchListingsResult } from '../api/listings/listing.models';
 
 import { ListingService } from '../api/listings/listing.service';
 import { ListingListComponent } from './listing-list.component';
@@ -135,5 +136,105 @@ describe('ListingListComponent', () => {
 
     expect(component.errorMessages).toEqual(['Search is temporarily unavailable.']);
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Search is temporarily unavailable.');
+  });
+
+  it('applies trimmed combined filters, preserves zero, and keeps them through pagination', () => {
+    component.filterForm.patchValue({ titleContains: ' Central ', addressContains: ' Street ', minPrice: 0, maxPrice: 20, onlyAlwaysAvailable: true });
+    expect(listingService.search).toHaveBeenCalledTimes(1);
+    component.applyFilters();
+    const filters = { onlyActive: true, titleContains: 'Central', addressContains: 'Street', minPrice: 0, maxPrice: 20, onlyAlwaysAvailable: true };
+    expect(listingService.search).toHaveBeenCalledWith({ ...filters, page: 1, pageSize: 12 });
+    component.loadPage(2);
+    expect(listingService.search).toHaveBeenCalledWith({ ...filters, page: 2, pageSize: 12 });
+    component.setViewMode('map');
+    expect(listingService.searchAll).toHaveBeenCalledWith(filters);
+  });
+
+  it('omits blank text and preserves a zero maximum price', () => {
+    component.filterForm.patchValue({ titleContains: '  ', addressContains: ' ', maxPrice: 0 });
+    component.applyFilters();
+    expect(listingService.search).toHaveBeenCalledWith({ onlyActive: true, maxPrice: 0, page: 1, pageSize: 12 });
+  });
+
+  it('rejects invalid filters without replacing results', () => {
+    for (const values of [
+      { minPrice: -1 }, { maxPrice: -1 }, { minPrice: 20, maxPrice: 10 },
+      { titleContains: 'x'.repeat(121) }, { addressContains: 'x'.repeat(201) }
+    ]) {
+      component.filterForm.reset();
+      component.filterForm.patchValue(values);
+      component.applyFilters();
+      expect(component.filterForm.invalid).toBeTrue();
+      expect(component.listings.length).toBe(1);
+    }
+    expect(listingService.search).toHaveBeenCalledTimes(1);
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Address must be at most 200 characters.');
+  });
+
+  it('invalidates map results and preview on Search and Reset while preserving the view', () => {
+    component.setViewMode('map');
+    component.selectMapListing(component.mapListings[0]);
+    component.filterForm.patchValue({ titleContains: 'Central' });
+    component.applyFilters();
+    expect(component.selectedMapListing).toBeNull();
+    expect(listingService.searchAll).toHaveBeenCalledWith({ onlyActive: true, titleContains: 'Central' });
+    component.resetFilters();
+    expect(component.viewMode).toBe('map');
+    expect(component.hasFilters).toBeFalse();
+    expect(component.filterForm.controls.minPrice.value).toBeNull();
+    expect(listingService.searchAll).toHaveBeenCalledTimes(3);
+    expect(listingService.searchAll.calls.mostRecent().args).toEqual([{ onlyActive: true }]);
+    expect(listingService.search.calls.mostRecent().args).toEqual([{ onlyActive: true, page: 1, pageSize: 12 }]);
+  });
+
+  it('invalidates a hidden map without eagerly reloading it', () => {
+    component.setViewMode('map');
+    component.setViewMode('list');
+    component.applyFilters();
+    expect(component.isMapLoaded).toBeFalse();
+    expect(listingService.searchAll).toHaveBeenCalledTimes(1);
+    component.setViewMode('map');
+    expect(listingService.searchAll).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows a filtered empty state in both views and retries with applied filters', () => {
+    listingService.search.and.returnValue(of({ page: 1, pageSize: 12, totalCount: 0, items: [] }));
+    listingService.searchAll.and.returnValues(throwError(() => new Error()), of([]));
+    component.filterForm.patchValue({ titleContains: 'Missing' });
+    component.applyFilters();
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('No spaces match your filters');
+    component.setViewMode('map');
+    component.filterForm.patchValue({ titleContains: 'Unsubmitted' });
+    component.retryMap();
+    expect(listingService.searchAll.calls.mostRecent().args).toEqual([{ onlyActive: true, titleContains: 'Missing' }]);
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('No spaces match your filters');
+  });
+
+  it('cancels superseded list and map requests and cleans up on destruction', () => {
+    const oldList = new Subject<SearchListingsResult>();
+    const newList = new Subject<SearchListingsResult>();
+    const oldMap = new Subject<SearchListingItem[]>();
+    const newMap = new Subject<SearchListingItem[]>();
+    listingService.search.and.returnValues(oldList, newList);
+    listingService.searchAll.and.returnValues(oldMap, newMap);
+    component.loadPage(2);
+    component.setViewMode('map');
+    component.filterForm.patchValue({ titleContains: 'New' });
+    component.applyFilters();
+    expect(oldList.observed).toBeFalse();
+    expect(oldMap.observed).toBeFalse();
+    oldList.next({ page: 2, pageSize: 12, totalCount: 999, items: [] });
+    oldMap.next([]);
+    expect(component.totalCount).toBe(0);
+    expect(component.page).toBe(1);
+    expect(component.isLoading).toBeTrue();
+    expect(component.isMapLoading).toBeTrue();
+    expect(component.isMapLoaded).toBeFalse();
+    fixture.destroy();
+    expect(newList.observed).toBeFalse();
+    expect(newMap.observed).toBeFalse();
   });
 });
