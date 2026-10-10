@@ -28,7 +28,7 @@ namespace ParkShare.Application.Commands
         {
             var response = await _listingService.UpdateAsync(request.Id, request.OwnerId, request.Title, request.Description, request.PricePerHour, request.Latitude, request.Longitude, request.Address, request.Size, request.IsAlwaysAvailable, cancellationToken);
             if (!response.IsSuccessful)
-                return ServiceResult<UpdateListingResponse>.WithErrors(response.Errors);
+                return ServiceResult<UpdateListingResponse>.WithErrors(response);
 
             return ServiceResult<UpdateListingResponse>.Success(response.Payload);
         }

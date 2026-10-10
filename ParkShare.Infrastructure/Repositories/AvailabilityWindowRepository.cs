@@ -18,6 +18,11 @@ namespace ParkShare.Infrastructure.Repositories
             => _db = db ?? throw new ArgumentNullException(nameof(db));
 
         /// <inheritdoc/>
+        public Task<long?> GetListingIdAsync(long availabilityWindowId, CancellationToken cancellationToken)
+            => _db.AvailabilityWindows.AsNoTracking().Where(w => w.Id == availabilityWindowId)
+                .Select(w => (long?)w.ListingId).FirstOrDefaultAsync(cancellationToken);
+
+        /// <inheritdoc/>
         public async Task AddAsync(AvailabilityWindow availabilityWindow, CancellationToken cancellationToken)
         {
             await _db.AvailabilityWindows.AddAsync(availabilityWindow, cancellationToken);

@@ -19,6 +19,16 @@ namespace ParkShare.Infrastructure.Repositories
             => _db = db ?? throw new ArgumentNullException(nameof(db));
 
         /// <inheritdoc/>
+        public async Task LockAsync(long listingId, CancellationToken cancellationToken)
+        {
+            if (_db.Database.CurrentTransaction is null)
+                throw new InvalidOperationException("A listing lock requires an active transaction.");
+
+            await _db.Listings.FromSqlInterpolated($"SELECT * FROM [Listings] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {listingId}")
+                .AsNoTracking().ToListAsync(cancellationToken);
+        }
+
+        /// <inheritdoc/>
         public async Task AddAsync(Listing listing, CancellationToken cancellationToken)
         {
             await _db.Listings.AddAsync(listing, cancellationToken);

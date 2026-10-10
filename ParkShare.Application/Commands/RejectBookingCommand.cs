@@ -12,27 +12,22 @@ namespace ParkShare.Application.Commands
         public string? Reason { get; init; }
     }
 
+    /// <summary>Delegates booking validation and mutation to the transaction-owning service.</summary>
     public class RejectBookingHandler : IRequestHandler<RejectBookingCommand, ServiceResult<RejectBookingResponse>>
     {
         private readonly IBookingService _bookingService;
 
+        /// <summary>Creates the booking handler.</summary>
         public RejectBookingHandler(IBookingService bookingService)
-          => _bookingService = bookingService ?? throw new ArgumentNullException(nameof(bookingService));
+            => _bookingService = bookingService ?? throw new ArgumentNullException(nameof(bookingService));
 
+        /// <inheritdoc/>
         public async Task<ServiceResult<RejectBookingResponse>> Handle(RejectBookingCommand request, CancellationToken cancellationToken)
         {
-            var ownerRes = await _bookingService.GetOwnerForBookingAsync(request.BookingId, cancellationToken);
-            if (!ownerRes.IsSuccessful)
-                return ServiceResult<RejectBookingResponse>.WithErrors(ownerRes.Errors);
-            if (ownerRes.Payload != request.OwnerId)
-                return ServiceResult<RejectBookingResponse>.WithError("Not authorized to reject this booking.");
-
-            var reject = await _bookingService.RejectAsync(request.BookingId, request.Reason, cancellationToken);
-            if (!reject.IsSuccessful)
-                return ServiceResult<RejectBookingResponse>.WithErrors(reject.Errors);
-
-            return ServiceResult<RejectBookingResponse>.Success(reject.Payload);
+            var result = await _bookingService.RejectAsync(request.BookingId, request.OwnerId, request.Reason, cancellationToken);
+            if (!result.IsSuccessful)
+                return ServiceResult<RejectBookingResponse>.WithErrors(result);
+            return ServiceResult<RejectBookingResponse>.Success(result.Payload);
         }
     }
-
 }

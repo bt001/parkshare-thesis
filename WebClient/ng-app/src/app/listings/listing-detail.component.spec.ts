@@ -159,6 +159,22 @@ describe('ListingDetailComponent', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('You own this listing');
   });
 
+  it('clips an ongoing window to the next future Romanian minute', () => {
+    jasmine.clock().install(); jasmine.clock().mockDate(new Date('2026-09-12T12:00:30Z'));
+    try {
+      component.selectWindow({ ...openWindow, startDateTime: '2026-09-12T14:00:00', endDateTime: '2026-09-12T16:00:00' });
+      expect(component.bookingForm.controls.startDateTime.value).toBe('2026-09-12T15:01');
+      expect(component.canSelectWindow({ ...openWindow, endDateTime: '2026-09-12T15:00:50' })).toBeFalse();
+    } finally { jasmine.clock().uninstall(); }
+  });
+
+  it('revalidates a period that expired while the form was open', () => {
+    component.bookingForm.setValue({ startDateTime: '2020-01-01T10:00', endDateTime: '2020-01-01T11:00' });
+    component.submitBooking();
+    expect(bookingService.create).not.toHaveBeenCalled();
+    expect(component.bookingErrorMessages[0]).toContain('future');
+  });
+
   it('surfaces booking API validation errors', () => {
     bookingService.create.and.returnValue(throwError(() => new HttpErrorResponse({
       status: 400,

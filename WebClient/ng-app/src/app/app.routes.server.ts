@@ -1,21 +1,8 @@
 import { RenderMode, ServerRoute } from '@angular/ssr';
 
+/** Browser-local authentication is restored only after client bootstrap. */
 export const serverRoutes: ServerRoute[] = [
-  { path: 'bookings', renderMode: RenderMode.Client },
-  {
-    path: 'listings/:id',
-    renderMode: RenderMode.Client
-  },
-  {
-    path: 'owner/listings/:id/edit',
-    renderMode: RenderMode.Client
-  },
-  {
-    path: 'owner/listings/:id/availability',
-    renderMode: RenderMode.Client
-  },
-  {
-    path: '**',
-    renderMode: RenderMode.Prerender
-  }
+  { path: 'login', renderMode: RenderMode.Prerender },
+  { path: 'register', renderMode: RenderMode.Prerender },
+  { path: '**', renderMode: RenderMode.Client }
 ];

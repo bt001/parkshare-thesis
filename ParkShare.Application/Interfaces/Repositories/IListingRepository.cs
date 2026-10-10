@@ -8,6 +8,9 @@ namespace ParkShare.Application.Interfaces.Repositories
     /// </summary>
     public interface IListingRepository
     {
+        /// <summary>Locks a listing until the current transaction ends. Call before reading mutable booking state.</summary>
+        Task LockAsync(long listingId, CancellationToken cancellationToken);
+
         /// <summary>
         /// Creates a listing row.
         /// </summary>

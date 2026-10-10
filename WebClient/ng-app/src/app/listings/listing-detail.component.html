@@ -58,6 +58,7 @@
                 type="button"
                 class="window-card selectable"
                 [class.selected]="selectedWindowId === window.availabilityWindowId"
+                [disabled]="!canSelectWindow(window)"
                 (click)="selectWindow(window)">
                 <span>{{ window.startDateTime | date:'medium' }}</span>
                 <span>to {{ window.endDateTime | date:'medium' }}</span>
@@ -85,6 +86,7 @@
     <aside class="panel booking-panel">
       <p class="eyebrow">Request parking</p>
       <h2>Choose your time</h2>
+      <p>All booking times are Romanian local time.</p>
 
       @if (isOwnListing) {
         <div class="message compact">You own this listing, so you cannot request a booking for it.</div>

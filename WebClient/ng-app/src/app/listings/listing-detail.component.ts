@@ -13,6 +13,8 @@ import { BookingService } from '../api/bookings/booking.service';
 import { ListingDetails } from '../api/listings/listing.models';
 import { ListingService } from '../api/listings/listing.service';
 
+import { bookingTimeError, nextRomanianMinute } from '../services/booking-time';
+
 interface BookingForm {
   startDateTime: FormControl<string>;
   endDateTime: FormControl<string>;
@@ -32,7 +34,8 @@ export class ListingDetailComponent implements OnInit {
   private readonly bookingService = inject(BookingService);
   readonly authService = inject(AuthService);
 
-  readonly minimumDateTime = this.toLocalDateTimeValue(new Date());
+  /** Earliest selectable Romanian minute, refreshed on selection and submission. */
+  minimumDateTime = nextRomanianMinute();
   readonly bookingForm = new FormGroup<BookingForm>({
     startDateTime: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     endDateTime: new FormControl('', { nonNullable: true, validators: [Validators.required] })
@@ -76,16 +79,17 @@ export class ListingDetailComponent implements OnInit {
   }
 
   selectWindow(window: AvailabilityWindow): void {
-    if (window.isBlocked) {
+    if (!this.canSelectWindow(window)) {
       return;
     }
 
+    this.minimumDateTime = nextRomanianMinute();
     this.selectedWindowId = window.availabilityWindowId;
     this.bookingResult = undefined;
     this.bookingErrorMessages = [];
     this.bookingForm.setValue({
-      startDateTime: this.toLocalDateTimeValue(window.startDateTime),
-      endDateTime: this.toLocalDateTimeValue(window.endDateTime)
+      startDateTime: this.windowStart(window),
+      endDateTime: window.endDateTime.slice(0, 16)
     });
   }
 
@@ -99,6 +103,13 @@ export class ListingDetailComponent implements OnInit {
       return;
     }
 
+    this.minimumDateTime = nextRomanianMinute();
+    const period = this.bookingForm.getRawValue();
+    const timeError = bookingTimeError(period.startDateTime, period.endDateTime);
+    if (timeError) {
+      this.bookingErrorMessages = [timeError];
+      return;
+    }
     this.isSubmitting = true;
     this.bookingResult = undefined;
     this.bookingErrorMessages = [];
@@ -138,18 +149,16 @@ export class ListingDetailComponent implements OnInit {
       });
   }
 
-  private toLocalDateTimeValue(value: Date | string): string {
-    if (typeof value === 'string' && !/(?:Z|[+-]\d{2}:\d{2})$/i.test(value)) {
-      return value.slice(0, 16);
-    }
+  /** Whether an open window has a valid future minute available for booking. */
+  canSelectWindow(window: AvailabilityWindow): boolean {
+    return !window.isBlocked && bookingTimeError(this.windowStart(window), window.endDateTime.slice(0, 16)) === null;
+  }
 
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return typeof value === 'string' ? value.slice(0, 16) : '';
-    }
-
-    const localTime = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-    return localTime.toISOString().slice(0, 16);
+  /** Clips an ongoing window to the next Romanian minute. */
+  private windowStart(window: AvailabilityWindow): string {
+    const minimum = nextRomanianMinute();
+    const start = window.startDateTime.slice(0, 16);
+    return start > minimum ? start : minimum;
   }
 
   private getErrorMessages(error: unknown, fallback: string): string[] {

@@ -45,7 +45,7 @@ namespace ParkShare.Api.Controllers
             where TAppResponse : class
         {
             var appRequest = _mapper.Map<TAppRequest>(apiRequest);
-            var appResult = await _mediator.Send(appRequest);
+            var appResult = await _mediator.Send(appRequest, HttpContext.RequestAborted);
             return HandleQueryResult<TAppResponse, TApiResult>(appResult);
         }
 
@@ -57,7 +57,7 @@ namespace ParkShare.Api.Controllers
             where TAppResponse : class
         {
             var appRequest = _mapper.Map<TAppRequest>(apiRequest);
-            var appResult = await _mediator.Send(appRequest);
+            var appResult = await _mediator.Send(appRequest, HttpContext.RequestAborted);
             return HandleCommandResult<TAppResponse, TApiResult>(appResult);
         }
 
@@ -118,6 +118,8 @@ namespace ParkShare.Api.Controllers
 
             if (!result.IsSuccessful)
             {
+                if (result.IsConflict)
+                    return Conflict(result.Errors);
                 if (result.Errors.Any(e => e.Contains("not found", StringComparison.OrdinalIgnoreCase)))
                     return NotFound(result.Errors);
 
@@ -140,6 +142,8 @@ namespace ParkShare.Api.Controllers
 
             if (!result.IsSuccessful)
             {
+                if (result.IsConflict)
+                    return Conflict(result.Errors);
                 if (result.Errors.Any(e => e.Contains("not found", StringComparison.OrdinalIgnoreCase)))
                     return NotFound(result.Errors);
 
