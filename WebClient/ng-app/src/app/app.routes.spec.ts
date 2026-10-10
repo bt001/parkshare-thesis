@@ -34,21 +34,19 @@ describe('application routes', () => {
     expect(children).toContain(jasmine.objectContaining({ path: 'owner/bookings', component: OwnerBookingsComponent }));
   });
 
-  it('uses client rendering for the authenticated parameterized detail route', () => {
-    expect(serverRoutes).toContain(jasmine.objectContaining({
-      path: 'listings/:id',
-      renderMode: RenderMode.Client
-    }));
+  it('uses client rendering for every protected route and the landing route', () => {
+    const children = routes.find(route => route.component === AppShellComponent)!.children!;
+    for (const path of ['', ...children.map(route => route.path!)]) {
+      const renderRoute = serverRoutes.find(route => route.path === path || route.path === '**');
+      expect(renderRoute?.renderMode).withContext(path).toBe(RenderMode.Client);
+    }
+    expect(serverRoutes.filter(route => route.renderMode === RenderMode.Prerender).map(route => route.path))
+      .toEqual(['login', 'register']);
   });
 
-  it('uses client rendering for parameterized owner routes', () => {
-    expect(serverRoutes).toContain(jasmine.objectContaining({ path: 'owner/listings/:id/edit', renderMode: RenderMode.Client }));
-    expect(serverRoutes).toContain(jasmine.objectContaining({ path: 'owner/listings/:id/availability', renderMode: RenderMode.Client }));
-  });
-  it('protects renter history and renders it on the client', () => {
+  it('keeps renter history inside the protected shell', () => {
     const shell = routes.find(route => route.component === AppShellComponent);
     expect(shell?.canActivate).toContain(authGuard);
     expect(shell?.children).toContain(jasmine.objectContaining({ path: 'bookings', component: RenterBookingsComponent }));
-    expect(serverRoutes).toContain(jasmine.objectContaining({ path: 'bookings', renderMode: RenderMode.Client }));
   });
 });

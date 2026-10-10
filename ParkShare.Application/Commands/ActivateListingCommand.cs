@@ -20,7 +20,7 @@ namespace ParkShare.Application.Commands
         {
             var response = await _listingService.ActivateAsync(request.Id, request.OwnerId, cancellationToken);
             if (!response.IsSuccessful)
-                return ServiceResult<ActivateListingResponse>.WithErrors(response.Errors);
+                return ServiceResult<ActivateListingResponse>.WithErrors(response);
 
             return ServiceResult<ActivateListingResponse>.Success(response.Payload);
         }

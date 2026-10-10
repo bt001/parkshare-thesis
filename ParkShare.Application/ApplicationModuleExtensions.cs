@@ -29,6 +29,8 @@ namespace ParkShare.Application
             services.AddScoped<IListingReadService, ListingReadService>();
             services.AddScoped<IAvailabilityService, AvailabilityService>();
             services.AddScoped<IBookingService, BookingService>();
+            services.AddSingleton(TimeProvider.System);
+            services.AddSingleton<BookingTimePolicy>();
 
             return services;
         }

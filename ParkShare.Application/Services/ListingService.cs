@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using ParkShare.Application.Dto;
 using ParkShare.Application.Dto.Application;
 using ParkShare.Application.Interfaces;
@@ -11,6 +12,7 @@ namespace ParkShare.Application.Services
     /// <inheritdoc/>
     public class ListingService : IListingService
     {
+        private readonly ILogger<ListingService> _logger;
         private readonly IUserRepository _userRepository;
         private readonly IUserRoleRepository _userRoleRepository;
         private readonly IListingRepository _listingRepository;
@@ -23,8 +25,9 @@ namespace ParkShare.Application.Services
             IUserRepository userRepository,
             IUserRoleRepository userRoleRepository,
             IListingRepository listingRepository,
-            IRepositoryTransactionCoordinator transactionCoordinator)
+            IRepositoryTransactionCoordinator transactionCoordinator, ILogger<ListingService> logger)
         {
+            _logger = logger;
             _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
             _userRoleRepository = userRoleRepository ?? throw new ArgumentNullException(nameof(userRoleRepository));
             _listingRepository = listingRepository ?? throw new ArgumentNullException(nameof(listingRepository));
@@ -133,102 +136,117 @@ namespace ParkShare.Application.Services
         /// <inheritdoc/>
         public async Task<ServiceResult<UpdateListingResponse>> UpdateAsync(long id, long ownerId, string title, string description, decimal pricePerHour, double latitude, double longitude, string? address, string? size, bool isAlwaysAvailable, CancellationToken ct)
         {
-            var listing = await _listingRepository.GetByIdAsync(id, ct);
-            if (listing is null)
-                return ServiceResult<UpdateListingResponse>.WithError("Listing not found.");
-
-            if (listing.OwnerId != ownerId)
-                return ServiceResult<UpdateListingResponse>.WithError("Not authorized to update this listing.");
-
-            listing.Title = title;
-            listing.Description = description;
-            listing.PricePerHour = pricePerHour;
-            listing.Latitude = (decimal)latitude;
-            listing.Longitude = (decimal)longitude;
-            listing.Address = address;
-            listing.Size = size;
-            listing.IsAlwaysAvailable = isAlwaysAvailable;
-
             try
             {
+                await using var transaction = await _transactionCoordinator.BeginTransactionAsync(ct);
+                await _listingRepository.LockAsync(id, ct);
+                var listing = await _listingRepository.GetByIdAsync(id, ct);
+                if (listing is null)
+                    return ServiceResult<UpdateListingResponse>.WithError("Listing not found.");
+
+                if (listing.OwnerId != ownerId)
+                    return ServiceResult<UpdateListingResponse>.WithError("Not authorized to update this listing.");
+
+                listing.Title = title;
+                listing.Description = description;
+                listing.PricePerHour = pricePerHour;
+                listing.Latitude = (decimal)latitude;
+                listing.Longitude = (decimal)longitude;
+                listing.Address = address;
+                listing.Size = size;
+                listing.IsAlwaysAvailable = isAlwaysAvailable;
+
                 await _listingRepository.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
                 return ServiceResult<UpdateListingResponse>.Success(new UpdateListingResponse
                 {
                     ListingId = listing.Id,
                     IsActive = listing.IsActive
                 });
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex)
             {
-                return ServiceResult<UpdateListingResponse>.WithError(ex.Message);
+                _logger.LogError(ex, "Listing mutation failed for listing {ListingId}.", id);
+                return ServiceResult<UpdateListingResponse>.WithError("The listing could not be saved. Please try again.");
             }
         }
 
         /// <inheritdoc/>
         public async Task<ServiceResult<DeactivateListingResponse>> DeactivateAsync(long id, long ownerId, CancellationToken ct)
         {
-            var listing = await _listingRepository.GetByIdAsync(id, ct);
-            if (listing is null)
-                return ServiceResult<DeactivateListingResponse>.WithError("Listing not found.");
-
-            if (listing.OwnerId != ownerId)
-                return ServiceResult<DeactivateListingResponse>.WithError("Not authorized to deactivate this listing.");
-
-            if (!listing.IsActive)
-                return ServiceResult<DeactivateListingResponse>.Success(new DeactivateListingResponse
-                {
-                    ListingId = listing.Id,
-                    IsActive = listing.IsActive
-                });
-
-            listing.IsActive = false;
-
             try
             {
+                await using var transaction = await _transactionCoordinator.BeginTransactionAsync(ct);
+                await _listingRepository.LockAsync(id, ct);
+                var listing = await _listingRepository.GetByIdAsync(id, ct);
+                if (listing is null)
+                    return ServiceResult<DeactivateListingResponse>.WithError("Listing not found.");
+
+                if (listing.OwnerId != ownerId)
+                    return ServiceResult<DeactivateListingResponse>.WithError("Not authorized to deactivate this listing.");
+
+                if (!listing.IsActive)
+                    return ServiceResult<DeactivateListingResponse>.Success(new DeactivateListingResponse
+                    {
+                        ListingId = listing.Id,
+                        IsActive = listing.IsActive
+                    });
+
+                listing.IsActive = false;
+
                 await _listingRepository.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
                 return ServiceResult<DeactivateListingResponse>.Success(new DeactivateListingResponse
                 {
                     ListingId = listing.Id,
                     IsActive = listing.IsActive
                 });
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex)
             {
-                return ServiceResult<DeactivateListingResponse>.WithError(ex.Message);
+                _logger.LogError(ex, "Listing mutation failed for listing {ListingId}.", id);
+                return ServiceResult<DeactivateListingResponse>.WithError("The listing could not be saved. Please try again.");
             }
         }
 
         /// <inheritdoc/>
         public async Task<ServiceResult<ActivateListingResponse>> ActivateAsync(long id, long ownerId, CancellationToken ct)
         {
-            var listing = await _listingRepository.GetByIdAsync(id, ct);
-            if (listing is null)
-                return ServiceResult<ActivateListingResponse>.WithError("Listing not found.");
-
-            if (listing.OwnerId != ownerId)
-                return ServiceResult<ActivateListingResponse>.WithError("Not authorized to activate this listing.");
-
-            if (listing.IsActive)
-                return ServiceResult<ActivateListingResponse>.Success(new ActivateListingResponse
-                {
-                    ListingId = listing.Id,
-                    IsActive = listing.IsActive
-                });
-
-            listing.IsActive = true;
-
             try
             {
+                await using var transaction = await _transactionCoordinator.BeginTransactionAsync(ct);
+                await _listingRepository.LockAsync(id, ct);
+                var listing = await _listingRepository.GetByIdAsync(id, ct);
+                if (listing is null)
+                    return ServiceResult<ActivateListingResponse>.WithError("Listing not found.");
+
+                if (listing.OwnerId != ownerId)
+                    return ServiceResult<ActivateListingResponse>.WithError("Not authorized to activate this listing.");
+
+                if (listing.IsActive)
+                    return ServiceResult<ActivateListingResponse>.Success(new ActivateListingResponse
+                    {
+                        ListingId = listing.Id,
+                        IsActive = listing.IsActive
+                    });
+
+                listing.IsActive = true;
+
                 await _listingRepository.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
                 return ServiceResult<ActivateListingResponse>.Success(new ActivateListingResponse
                 {
                     ListingId = listing.Id,
                     IsActive = listing.IsActive
                 });
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex)
             {
-                return ServiceResult<ActivateListingResponse>.WithError(ex.Message);
+                _logger.LogError(ex, "Listing mutation failed for listing {ListingId}.", id);
+                return ServiceResult<ActivateListingResponse>.WithError("The listing could not be saved. Please try again.");
             }
         }
 

@@ -44,6 +44,7 @@ namespace ParkShare.Api.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(string[]), StatusCodes.Status409Conflict)]
         public Task<IActionResult> Create([FromBody] CreateAvailabilityWindowRequest request)
             => ProcessAuthenticatedCommandAsync<CreateAvailabilityWindowRequest, AvailabilityWindowMutationResult, CreateAvailabilityWindowCommand, CreateAvailabilityWindowResponse>(
                 request,
@@ -58,6 +59,7 @@ namespace ParkShare.Api.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(string[]), StatusCodes.Status409Conflict)]
         public Task<IActionResult> Update([FromRoute] long id, [FromBody] UpdateAvailabilityWindowRequest body)
             => ProcessAuthenticatedCommandAsync<UpdateAvailabilityWindowRequest, AvailabilityWindowMutationResult, UpdateAvailabilityWindowCommand, UpdateAvailabilityWindowResponse>(
                 new UpdateAvailabilityWindowRequest

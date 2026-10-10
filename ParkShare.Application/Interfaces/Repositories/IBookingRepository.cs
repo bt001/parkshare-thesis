@@ -27,18 +27,21 @@ namespace ParkShare.Application.Interfaces.Repositories
         /// </summary>
         Task<Booking?> GetByIdWithListingAsync(long bookingId, CancellationToken cancellationToken);
 
+        /// <summary>Returns only the immutable listing identity before acquiring its lock.</summary>
+        Task<long?> GetListingIdAsync(long bookingId, CancellationToken cancellationToken);
+
         /// <summary>
         /// Returns the owner ID for a booking.
         /// </summary>
         Task<long?> GetOwnerIdAsync(long bookingId, CancellationToken cancellationToken);
 
         /// <summary>
-        /// Confirms a booking and rejects overlapping pending bookings atomically.
+        /// Confirms a validated Pending booking and rejects overlaps within the caller-owned transaction and listing lock.
         /// </summary>
         Task<Booking?> ApproveAndRejectOverlappingPendingAsync(long bookingId, CancellationToken cancellationToken);
 
         /// <summary>
-        /// Rejects a booking.
+        /// Rejects a validated Pending booking within the caller-owned transaction and listing lock.
         /// </summary>
         Task<Booking?> RejectAsync(long bookingId, CancellationToken cancellationToken);
 

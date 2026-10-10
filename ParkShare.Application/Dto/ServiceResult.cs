@@ -18,7 +18,7 @@
         /// <param name="payload"></param>
         /// <param name="successful"></param>
         /// <param name="messages"></param>
-        private ServiceResult(T payload, bool successful, List<string>? messages) : base(successful, messages)
+        private ServiceResult(T payload, bool successful, List<string>? messages, bool isConflict = false) : base(successful, messages, isConflict)
             => Payload = payload;
 
         /// <summary>
@@ -34,6 +34,12 @@
         /// <param name="messages"></param>
         /// <returns><see cref="ServiceResult"/></returns>
         public static new ServiceResult<T> WithErrors(List<string> messages) => new ServiceResult<T>(default!, false, messages);
+
+        /// <summary>Preserves error classification when forwarding a failed service result.</summary>
+        public static ServiceResult<T> WithErrors(ServiceResult result) => new(default!, false, result.Errors, result.IsConflict);
+
+        /// <summary>Returns a conflict with the current resource state.</summary>
+        public static ServiceResult<T> Conflict(string message) => new(default!, false, new List<string> { message }, true);
 
         /// <summary>
         /// Returns the successful JobResult
@@ -67,8 +73,9 @@
         /// </summary>
         /// <param name="successful"></param>
         /// <param name="errors"></param>
-        protected ServiceResult(bool successful, List<string>? errors)
+        protected ServiceResult(bool successful, List<string>? errors, bool isConflict = false)
         {
+            IsConflict = isConflict;
             IsSuccessful = successful;
             if (errors != null && errors.Any())
                 Errors.AddRange(errors);
@@ -78,6 +85,9 @@
         /// Boolean parameter to determine if a result is successful
         /// </summary>
         public bool IsSuccessful { get; }
+
+        /// <summary>Whether the operation conflicts with the current resource state.</summary>
+        public bool IsConflict { get; }
 
         /// <summary>
         /// List of errors

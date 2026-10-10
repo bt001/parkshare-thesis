@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -50,6 +50,7 @@ namespace ParkShare.Api.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(string[]), StatusCodes.Status409Conflict)]
         public Task<IActionResult> ApproveBooking([FromBody] ApproveBookingRequest body)
             => ProcessAuthenticatedCommandAsync<ApproveBookingRequest, BookingResult, ApproveBookingCommand, ApproveBookingResponse>(
                 body,
@@ -61,6 +62,7 @@ namespace ParkShare.Api.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(string[]), StatusCodes.Status409Conflict)]
         public Task<IActionResult> RejectBooking([FromBody] RejectBookingRequest body)
             => ProcessAuthenticatedCommandAsync<RejectBookingRequest, BookingResult, RejectBookingCommand, RejectBookingResponse>(
                 body,

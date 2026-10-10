@@ -43,6 +43,11 @@ namespace ParkShare.Infrastructure.Repositories
                 .FirstOrDefaultAsync(booking => booking.Id == bookingId, cancellationToken);
 
         /// <inheritdoc/>
+        public Task<long?> GetListingIdAsync(long bookingId, CancellationToken cancellationToken)
+            => _db.Bookings.AsNoTracking().Where(b => b.Id == bookingId)
+                .Select(b => (long?)b.ListingId).FirstOrDefaultAsync(cancellationToken);
+
+        /// <inheritdoc/>
         public async Task<long?> GetOwnerIdAsync(long bookingId, CancellationToken cancellationToken)
             => await _db.Bookings
                 .AsNoTracking()
@@ -53,59 +58,40 @@ namespace ParkShare.Infrastructure.Repositories
         /// <inheritdoc/>
         public async Task<Booking?> ApproveAndRejectOverlappingPendingAsync(long bookingId, CancellationToken cancellationToken)
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+            if (_db.Database.CurrentTransaction is null)
+                throw new InvalidOperationException("Approval requires the application transaction and listing lock.");
+            var booking = await _db.Bookings.Include(b => b.Listing)
+                .FirstOrDefaultAsync(b => b.Id == bookingId, cancellationToken);
+            if (booking is null) return null;
+            if (booking.Status != BookingStatus.Pending)
+                throw new InvalidOperationException("Only pending bookings can be approved.");
 
-            try
-            {
-                var booking = await _db.Bookings
-                    .Include(currentBooking => currentBooking.Listing)
-                    .FirstOrDefaultAsync(currentBooking => currentBooking.Id == bookingId, cancellationToken);
-
-                if (booking is null)
-                    return null;
-
-                if (booking.Status != BookingStatus.Confirmed)
-                {
-                    booking.Status = BookingStatus.Confirmed;
-                    booking.OwnerResponseAt = DateTime.UtcNow;
-                    await _db.SaveChangesAsync(cancellationToken);
-
-                    await _db.Bookings
-                        .Where(currentBooking => currentBooking.ListingId == booking.ListingId
-                            && currentBooking.Id != booking.Id
-                            && currentBooking.Status == BookingStatus.Pending
-                            && currentBooking.EndDateTime > booking.StartDateTime
-                            && currentBooking.StartDateTime < booking.EndDateTime)
-                        .ExecuteUpdateAsync(update => update.SetProperty(currentBooking => currentBooking.Status, BookingStatus.Rejected), cancellationToken);
-                }
-
-                await transaction.CommitAsync(cancellationToken);
-                return booking;
-            }
-            catch
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                throw;
-            }
+            var respondedAt = DateTime.UtcNow;
+            booking.Status = BookingStatus.Confirmed;
+            booking.OwnerResponseAt = respondedAt;
+            await _db.SaveChangesAsync(cancellationToken);
+            await _db.Bookings.Where(b => b.ListingId == booking.ListingId && b.Id != booking.Id
+                    && b.Status == BookingStatus.Pending && b.EndDateTime > booking.StartDateTime
+                    && b.StartDateTime < booking.EndDateTime)
+                .ExecuteUpdateAsync(update => update
+                    .SetProperty(b => b.Status, BookingStatus.Rejected)
+                    .SetProperty(b => b.OwnerResponseAt, respondedAt), cancellationToken);
+            return booking;
         }
 
         /// <inheritdoc/>
         public async Task<Booking?> RejectAsync(long bookingId, CancellationToken cancellationToken)
         {
-            var booking = await _db.Bookings
-                .Include(currentBooking => currentBooking.Listing)
-                .FirstOrDefaultAsync(currentBooking => currentBooking.Id == bookingId, cancellationToken);
-
-            if (booking is null)
-                return null;
-
-            if (booking.Status != BookingStatus.Rejected)
-            {
-                booking.Status = BookingStatus.Rejected;
-                booking.OwnerResponseAt = DateTime.UtcNow;
-                await _db.SaveChangesAsync(cancellationToken);
-            }
-
+            if (_db.Database.CurrentTransaction is null)
+                throw new InvalidOperationException("Rejection requires the application transaction and listing lock.");
+            var booking = await _db.Bookings.Include(b => b.Listing)
+                .FirstOrDefaultAsync(b => b.Id == bookingId, cancellationToken);
+            if (booking is null) return null;
+            if (booking.Status != BookingStatus.Pending)
+                throw new InvalidOperationException("Only pending bookings can be rejected.");
+            booking.Status = BookingStatus.Rejected;
+            booking.OwnerResponseAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(cancellationToken);
             return booking;
         }
 

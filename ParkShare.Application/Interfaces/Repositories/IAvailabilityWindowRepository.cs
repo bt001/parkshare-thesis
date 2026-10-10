@@ -7,6 +7,9 @@ namespace ParkShare.Application.Interfaces.Repositories
     /// </summary>
     public interface IAvailabilityWindowRepository
     {
+        /// <summary>Returns the immutable listing identity before acquiring its lock.</summary>
+        Task<long?> GetListingIdAsync(long availabilityWindowId, CancellationToken cancellationToken);
+
         /// <summary>
         /// Creates an availability window row.
         /// </summary>

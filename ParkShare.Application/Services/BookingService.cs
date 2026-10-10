@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using ParkShare.Application.Commands;
 using ParkShare.Application.Dto;
 using ParkShare.Application.Dto.Application;
@@ -13,12 +14,26 @@ namespace ParkShare.Application.Services
     {
         private readonly IBookingRepository _bookingRepository;
         private readonly IListingRepository _listingRepository;
+        private readonly IAvailabilityService _availabilityService;
+        private readonly IRepositoryTransactionCoordinator _transactions;
+        private readonly BookingTimePolicy _timePolicy;
+        private readonly ILogger<BookingService> _logger;
 
         /// <summary>
         /// Creates the booking application service.
         /// </summary>
-        public BookingService(IBookingRepository bookingRepository, IListingRepository listingRepository)
+        public BookingService(
+            IBookingRepository bookingRepository,
+            IListingRepository listingRepository,
+            IAvailabilityService availabilityService,
+            IRepositoryTransactionCoordinator transactions,
+            BookingTimePolicy timePolicy,
+            ILogger<BookingService> logger)
         {
+            _availabilityService = availabilityService;
+            _transactions = transactions;
+            _timePolicy = timePolicy;
+            _logger = logger;
             _bookingRepository = bookingRepository ?? throw new ArgumentNullException(nameof(bookingRepository));
             _listingRepository = listingRepository ?? throw new ArgumentNullException(nameof(listingRepository));
         }
@@ -30,36 +45,38 @@ namespace ParkShare.Application.Services
         /// <inheritdoc/>
         public async Task<ServiceResult<CreateBookingResponse>> CreateAsync(CreateBookingCommand cmd, CancellationToken ct)
         {
-            var entity = new Booking
-            {
-                ListingId = cmd.ListingId,
-                RenterId = cmd.RenterId,
-                StartDateTime = cmd.StartDateTime,
-                EndDateTime = cmd.EndDateTime,
-                Status = BookingStatus.Pending,
-                CreatedAt = DateTime.UtcNow
-            };
-
             try
             {
+                await using var transaction = await _transactions.BeginTransactionAsync(ct);
+                await _listingRepository.LockAsync(cmd.ListingId, ct);
+                var listing = await _listingRepository.GetByIdAsNoTrackingAsync(cmd.ListingId, ct);
+                if (listing is null)
+                    return ServiceResult<CreateBookingResponse>.WithError("Listing not found.");
+                if (listing.OwnerId == cmd.RenterId)
+                    return ServiceResult<CreateBookingResponse>.WithError("Owner cannot book own listing.");
+                var error = await ValidatePeriodAsync(listing, cmd.StartDateTime, cmd.EndDateTime, ct);
+                if (error is not null)
+                    return ServiceResult<CreateBookingResponse>.WithError(error);
+                var entity = new Booking
+                {
+                    ListingId = cmd.ListingId, RenterId = cmd.RenterId,
+                    StartDateTime = cmd.StartDateTime, EndDateTime = cmd.EndDateTime,
+                    Status = BookingStatus.Pending, CreatedAt = DateTime.UtcNow
+                };
                 await _bookingRepository.AddAsync(entity, ct);
-                var listing = await _listingRepository.GetByIdAsNoTrackingAsync(entity.ListingId, ct);
-
+                await transaction.CommitAsync(ct);
                 return ServiceResult<CreateBookingResponse>.Success(new CreateBookingResponse
                 {
-                    BookingId = entity.Id,
-                    ListingId = entity.ListingId,
-                    RenterId = entity.RenterId,
-                    OwnerId = listing?.OwnerId ?? 0,
-                    StartDateTime = entity.StartDateTime,
-                    EndDateTime = entity.EndDateTime,
-                    Status = entity.Status,
-                    CreatedAt = entity.CreatedAt
+                    BookingId = entity.Id, ListingId = entity.ListingId, RenterId = entity.RenterId,
+                    OwnerId = listing.OwnerId, StartDateTime = entity.StartDateTime,
+                    EndDateTime = entity.EndDateTime, Status = entity.Status, CreatedAt = entity.CreatedAt
                 });
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex)
             {
-                return ServiceResult<CreateBookingResponse>.WithError(ex.Message);
+                _logger.LogError(ex, "Booking creation failed for listing {ListingId}.", cmd.ListingId);
+                return ServiceResult<CreateBookingResponse>.WithError("The booking could not be created. Please try again.");
             }
         }
 
@@ -93,37 +110,69 @@ namespace ParkShare.Application.Services
         }
 
         /// <inheritdoc/>
-        public async Task<ServiceResult<ApproveBookingResponse>> ApproveAndRejectOverlappingPendingAsync(long bookingId, CancellationToken ct)
+        public Task<ServiceResult<ApproveBookingResponse>> ApproveAndRejectOverlappingPendingAsync(long bookingId, long ownerId, CancellationToken ct)
+            => DecideAsync<ApproveBookingResponse>(bookingId, ownerId, true, ct);
+
+        /// <inheritdoc/>
+        public Task<ServiceResult<RejectBookingResponse>> RejectAsync(long bookingId, long ownerId, string? reason, CancellationToken ct)
+            => DecideAsync<RejectBookingResponse>(bookingId, ownerId, false, ct);
+
+        /// <summary>Serializes owner decisions and validates fresh state before changing a booking.</summary>
+        private async Task<ServiceResult<T>> DecideAsync<T>(long bookingId, long ownerId, bool approve, CancellationToken ct)
+            where T : BookingResponse, new()
         {
             try
             {
-                var booking = await _bookingRepository.ApproveAndRejectOverlappingPendingAsync(bookingId, ct);
-                if (booking is null)
-                    return ServiceResult<ApproveBookingResponse>.WithError("Booking not found.");
-
-                return ServiceResult<ApproveBookingResponse>.Success(MapBooking<ApproveBookingResponse>(booking));
+                var listingId = await _bookingRepository.GetListingIdAsync(bookingId, ct);
+                if (!listingId.HasValue) return ServiceResult<T>.WithError("Booking not found.");
+                await using var transaction = await _transactions.BeginTransactionAsync(ct);
+                await _listingRepository.LockAsync(listingId.Value, ct);
+                var booking = await _bookingRepository.GetByIdWithListingAsync(bookingId, ct);
+                if (booking is null) return ServiceResult<T>.WithError("Booking not found.");
+                if (booking.Listing.OwnerId != ownerId)
+                    return ServiceResult<T>.WithError("Not authorized to decide this booking.");
+                var target = approve ? BookingStatus.Confirmed : BookingStatus.Rejected;
+                if (booking.Status == target)
+                    return ServiceResult<T>.Success(MapBooking<T>(booking));
+                if (booking.Status != BookingStatus.Pending)
+                    return ServiceResult<T>.Conflict("Only pending bookings can be approved or rejected.");
+                if (approve)
+                {
+                    var error = await ValidatePeriodAsync(booking.Listing, booking.StartDateTime, booking.EndDateTime, ct);
+                    if (error is not null) return ServiceResult<T>.Conflict(error);
+                }
+                var changed = approve
+                    ? await _bookingRepository.ApproveAndRejectOverlappingPendingAsync(bookingId, ct)
+                    : await _bookingRepository.RejectAsync(bookingId, ct);
+                await transaction.CommitAsync(ct);
+                return ServiceResult<T>.Success(MapBooking<T>(changed!));
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex)
             {
-                return ServiceResult<ApproveBookingResponse>.WithError(ex.Message);
+                _logger.LogError(ex, "Booking decision failed for booking {BookingId}.", bookingId);
+                return ServiceResult<T>.WithError("The booking decision could not be saved. Please try again.");
             }
         }
 
-        /// <inheritdoc/>
-        public async Task<ServiceResult<RejectBookingResponse>> RejectAsync(long bookingId, string? reason, CancellationToken ct)
+        /// <summary>Checks booking time and availability while the caller holds the listing lock.</summary>
+        private async Task<string?> ValidatePeriodAsync(Listing listing, DateTime start, DateTime end, CancellationToken ct)
         {
-            try
+            var timeError = _timePolicy.Validate(start, end);
+            if (timeError is not null) return timeError;
+            if (!listing.IsActive) return "Listing is not active.";
+            if (!listing.IsAlwaysAvailable)
             {
-                var booking = await _bookingRepository.RejectAsync(bookingId, ct);
-                if (booking is null)
-                    return ServiceResult<RejectBookingResponse>.WithError("Booking not found.");
-
-                return ServiceResult<RejectBookingResponse>.Success(MapBooking<RejectBookingResponse>(booking));
+                var coverage = await _availabilityService.HasWindowCoverageAsync(listing.Id, start, end, ct);
+                if (!coverage.IsSuccessful) return coverage.ErrorsSummary;
+                if (!coverage.Payload) return "Requested time is outside available windows.";
             }
-            catch (Exception ex)
-            {
-                return ServiceResult<RejectBookingResponse>.WithError(ex.Message);
-            }
+            var blocked = await _availabilityService.HasBlockedOverlapAsync(listing.Id, start, end, ct);
+            if (!blocked.IsSuccessful) return blocked.ErrorsSummary;
+            if (blocked.Payload) return "Requested time overlaps a blocked window.";
+            if (await _bookingRepository.HasConfirmedOverlapAsync(listing.Id, start, end, ct))
+                return "Requested time overlaps a confirmed booking.";
+            return null;
         }
 
         /// <inheritdoc/>
