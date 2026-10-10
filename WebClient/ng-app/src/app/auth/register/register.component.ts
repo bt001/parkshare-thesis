@@ -1,10 +1,13 @@
+import { isPlatformBrowser } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject } from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
+import { safeReturnUrl, SessionNavigationService } from '../session-navigation.service';
 
-import { AuthService } from '../../api/auth/auth.service';
+import { AuthService, SessionChangedError } from '../../api/auth/auth.service';
 
 const profileFieldMaxLength = 100;
 
@@ -27,19 +30,34 @@ export class RegisterComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
+  /** Cancels callbacks after leaving this screen. */
+  private readonly destroyRef = inject(DestroyRef);
+  /** Blocks form submission while saved credentials are being recovered. */
+  isRecovering = false;
   readonly form = this.createForm();
 
   errorMessages: string[] = [];
   isSubmitting = false;
 
+  /** Recovers browser credentials before allowing another authentication action. */
   constructor() {
-    if (this.authService.hasAuthenticatedSession()) {
-      void this.router.navigateByUrl('/dashboard');
-    }
+    const navigation = inject(SessionNavigationService);
+    if (!isPlatformBrowser(inject(PLATFORM_ID))) return;
+    this.isRecovering = true;
+    this.authService.ensureSession().pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.isRecovering = false)
+    ).subscribe({
+      next: outcome => {
+        if (outcome === 'authenticated') void this.router.navigateByUrl('/dashboard');
+        else if (outcome === 'unavailable') void this.router.navigateByUrl(navigation.destination(outcome, '/dashboard'));
+      },
+      error: () => { /* A newer authentication action owns navigation. */ }
+    });
   }
 
   submit(): void {
-    if (this.form.invalid || this.isSubmitting) {
+    if (this.form.invalid || this.isSubmitting || this.isRecovering) {
       this.form.markAllAsTouched();
       return;
     }
@@ -48,13 +66,13 @@ export class RegisterComponent {
     this.isSubmitting = true;
 
     this.authService.register(this.form.getRawValue())
-      .pipe(finalize(() => (this.isSubmitting = false)))
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => (this.isSubmitting = false)))
       .subscribe({
         next: () => {
           void this.router.navigateByUrl('/dashboard');
         },
         error: (error) => {
-          this.errorMessages = this.getErrorMessages(error);
+          if (!(error instanceof SessionChangedError)) this.errorMessages = this.getErrorMessages(error);
         }
       });
   }

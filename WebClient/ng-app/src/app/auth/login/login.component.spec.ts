@@ -1,20 +1,21 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 
-import { AuthService } from '../../api/auth/auth.service';
+import { AuthService, SessionOutcome } from '../../api/auth/auth.service';
 import { AuthSession } from '../../api/auth/auth.models';
 import { LoginComponent } from './login.component';
 
 describe('LoginComponent', () => {
   let component: LoginComponent;
   let fixture: ComponentFixture<LoginComponent>;
-  const authService = jasmine.createSpyObj<AuthService>('AuthService', ['login', 'hasAuthenticatedSession']);
+  const authService = jasmine.createSpyObj<AuthService>('AuthService', ['login', 'hasAuthenticatedSession', 'ensureSession']);
   let router: Router;
 
   beforeEach(async () => {
     authService.hasAuthenticatedSession.and.returnValue(false);
+    authService.ensureSession.and.returnValue(of('signed-out'));
 
     await TestBed.configureTestingModule({
       imports: [LoginComponent],
@@ -86,4 +87,26 @@ describe('LoginComponent', () => {
       expect(router.navigateByUrl).toHaveBeenCalledWith(destination === '/bookings' ? destination : '/dashboard');
     });
   }
+
+  it('blocks submission while initial recovery is pending', () => {
+    const pending = new Subject<SessionOutcome>();
+    authService.ensureSession.and.returnValue(pending);
+    authService.login.calls.reset();
+    const recoveringFixture = TestBed.createComponent(LoginComponent);
+    const recovering = recoveringFixture.componentInstance;
+    recovering.form.setValue({ email: 'test@example.test', password: 'password123' });
+    recovering.submit();
+    expect(authService.login).not.toHaveBeenCalled();
+    expect(recovering.isRecovering).toBeTrue();
+    pending.next('signed-out'); pending.complete();
+    expect(recovering.isRecovering).toBeFalse();
+  });
+
+  it('opens recovery instead of submitting new credentials during an outage', () => {
+    authService.ensureSession.and.returnValue(of('unavailable'));
+    TestBed.createComponent(LoginComponent);
+    const destination = (router.navigateByUrl as jasmine.Spy).calls.mostRecent().args[0];
+    expect(router.serializeUrl(destination)).toBe('/session-recovery?returnUrl=%2Fdashboard');
+  });
+
 });

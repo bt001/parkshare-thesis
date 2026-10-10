@@ -2,9 +2,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, finalize, of, switchMap } from 'rxjs';
+import { catchError, finalize, of, switchMap, throwError } from 'rxjs';
 
-import { AuthService } from '../api/auth/auth.service';
+import { AuthService, SessionChangedError } from '../api/auth/auth.service';
 import { CreateListingRequest } from '../api/listings/listing.models';
 import { ListingService } from '../api/listings/listing.service';
 
@@ -72,7 +72,7 @@ export class OwnerListingFormComponent implements OnInit {
     this.errorMessages = [];
     const mutation = this.listingId ? this.listingService.update(this.listingId, request) : this.listingService.create(request);
     mutation.pipe(
-      switchMap(() => this.listingId ? of(null) : this.authService.refresh().pipe(catchError(() => of(null)))),
+      switchMap(() => this.listingId ? of(null) : this.authService.refresh().pipe(catchError(error => error instanceof SessionChangedError ? throwError(() => error) : of(null)))),
       finalize(() => (this.isSubmitting = false))
     ).subscribe({
       next: () => void this.router.navigateByUrl('/owner/listings'),

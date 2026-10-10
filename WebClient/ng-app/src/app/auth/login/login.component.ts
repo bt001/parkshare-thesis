@@ -1,10 +1,13 @@
+import { isPlatformBrowser } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject } from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
+import { safeReturnUrl, SessionNavigationService } from '../session-navigation.service';
 
-import { AuthService } from '../../api/auth/auth.service';
+import { AuthService, SessionChangedError } from '../../api/auth/auth.service';
 
 interface LoginForm {
   email: FormControl<string>;
@@ -25,12 +28,12 @@ export class LoginComponent {
   private readonly route = inject(ActivatedRoute);
 
   /** Accepts local application paths only, falling back to the dashboard. */
-  private get returnUrl(): string {
-    const value = this.route.snapshot.queryParamMap.get('returnUrl');
-    return value?.startsWith('/') && !value.startsWith('//') && !value.includes('\\')
-      && !/^\/(login|register)(?:[/?#;]|$)/i.test(value) ? value : '/dashboard';
-  }
+  private get returnUrl(): string { return safeReturnUrl(this.route.snapshot.queryParamMap.get('returnUrl')); }
 
+  /** Cancels callbacks after leaving this screen. */
+  private readonly destroyRef = inject(DestroyRef);
+  /** Blocks form submission while saved credentials are being recovered. */
+  isRecovering = false;
   readonly form = new FormGroup<LoginForm>({
     email: new FormControl('', {
       nonNullable: true,
@@ -45,14 +48,25 @@ export class LoginComponent {
   errorMessages: string[] = [];
   isSubmitting = false;
 
+  /** Recovers browser credentials before allowing another authentication action. */
   constructor() {
-    if (this.authService.hasAuthenticatedSession()) {
-      void this.router.navigateByUrl(this.returnUrl);
-    }
+    const navigation = inject(SessionNavigationService);
+    if (!isPlatformBrowser(inject(PLATFORM_ID))) return;
+    this.isRecovering = true;
+    this.authService.ensureSession().pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.isRecovering = false)
+    ).subscribe({
+      next: outcome => {
+        if (outcome === 'authenticated') void this.router.navigateByUrl(this.returnUrl);
+        else if (outcome === 'unavailable') void this.router.navigateByUrl(navigation.destination(outcome, this.returnUrl));
+      },
+      error: () => { /* A newer authentication action owns navigation. */ }
+    });
   }
 
   submit(): void {
-    if (this.form.invalid || this.isSubmitting) {
+    if (this.form.invalid || this.isSubmitting || this.isRecovering) {
       this.form.markAllAsTouched();
       return;
     }
@@ -61,13 +75,13 @@ export class LoginComponent {
     this.isSubmitting = true;
 
     this.authService.login(this.form.getRawValue())
-      .pipe(finalize(() => (this.isSubmitting = false)))
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => (this.isSubmitting = false)))
       .subscribe({
         next: () => {
           void this.router.navigateByUrl(this.returnUrl);
         },
         error: (error) => {
-          this.errorMessages = this.getErrorMessages(error);
+          if (!(error instanceof SessionChangedError)) this.errorMessages = this.getErrorMessages(error);
         }
       });
   }

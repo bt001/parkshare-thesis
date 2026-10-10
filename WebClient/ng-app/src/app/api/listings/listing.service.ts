@@ -1,4 +1,5 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
+import { ANONYMOUS_API } from '../api-request';
 import { inject, Injectable } from '@angular/core';
 import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
 
@@ -33,7 +34,7 @@ export class ListingService {
       }
     }
 
-    return this.http.get<SearchListingsResult>('api/listing/search', { params });
+    return this.http.get<SearchListingsResult>('api/listing/search', { params, context: new HttpContext().set(ANONYMOUS_API, true) });
   }
 
   searchAll(request: Omit<SearchListingsRequest, 'page' | 'pageSize'>): Observable<SearchListingItem[]> {
@@ -62,7 +63,7 @@ export class ListingService {
   }
 
   getById(id: number): Observable<ListingDetails> {
-    return this.http.get<ListingDetails>(`api/listing/${id}`);
+    return this.http.get<ListingDetails>(`api/listing/${id}`, { context: new HttpContext().set(ANONYMOUS_API, true) });
   }
 
   getOwnerListings(): Observable<GetOwnerListingsResult> {

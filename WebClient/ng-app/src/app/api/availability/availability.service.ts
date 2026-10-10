@@ -1,4 +1,5 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
+import { ANONYMOUS_API } from '../api-request';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
@@ -21,7 +22,7 @@ export class AvailabilityService {
       params = params.set('startDateTime', startDateTime);
     }
 
-    return this.http.get<GetAvailabilityWindowsResult>(`api/availability/listing/${listingId}`, { params });
+    return this.http.get<GetAvailabilityWindowsResult>(`api/availability/listing/${listingId}`, { params, context: new HttpContext().set(ANONYMOUS_API, true) });
   }
 
   getForOwner(request: GetOwnerAvailabilityRequest = {}): Observable<GetAvailabilityWindowsResult> {

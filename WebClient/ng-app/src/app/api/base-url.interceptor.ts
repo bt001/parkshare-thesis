@@ -1,13 +1,8 @@
 import { HttpInterceptorFn } from '@angular/common/http';
-import { environment } from '../../environments/environment';
+import { resolveApiUrl } from './api-request';
 
+/** Resolves relative API requests without rewriting external URLs or assets. */
 export const BaseUrlInterceptor: HttpInterceptorFn = (req, next) => {
-  // Only prepend baseUrl for relative API calls
-  if (!req.url.startsWith('https')) {
-    const apiReq = req.clone({
-      url: environment.apiUrl + req.url.replace(/^\/+/, '')
-    });
-    return next(apiReq);
-  }
-  return next(req);
+  const url = resolveApiUrl(req.url);
+  return next(url === req.url ? req : req.clone({ url }));
 };
