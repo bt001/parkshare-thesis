@@ -16,6 +16,7 @@ describe('application routes', () => {
     const shellRoute = routes.find((route) => route.component === AppShellComponent);
 
     expect(shellRoute?.canActivate).toContain(authGuard);
+    expect(shellRoute?.canActivateChild).toContain(authGuard);
     expect(shellRoute?.children).toContain(jasmine.objectContaining({
       path: 'listings',
       component: ListingListComponent
@@ -36,7 +37,7 @@ describe('application routes', () => {
 
   it('uses client rendering for every protected route and the landing route', () => {
     const children = routes.find(route => route.component === AppShellComponent)!.children!;
-    for (const path of ['', ...children.map(route => route.path!)]) {
+    for (const path of ['', 'session-recovery', ...children.map(route => route.path!)]) {
       const renderRoute = serverRoutes.find(route => route.path === path || route.path === '**');
       expect(renderRoute?.renderMode).withContext(path).toBe(RenderMode.Client);
     }

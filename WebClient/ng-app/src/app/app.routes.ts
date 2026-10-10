@@ -3,8 +3,9 @@ import { RenterBookingsComponent } from './bookings/renter-bookings.component';
 
 import { authGuard, authLandingGuard } from './auth/auth.guards';
 import { AuthRedirectComponent } from './auth/auth-redirect.component';
-import { LoginComponent } from './auth/login/login.component';
-import { RegisterComponent } from './auth/register/register.component';
+
+
+
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { AppShellComponent } from './layout/app-shell.component';
 import { ListingDetailComponent } from './listings/listing-detail.component';
@@ -15,6 +16,7 @@ import { OwnerListingFormComponent } from './owner/owner-listing-form.component'
 import { OwnerListingsComponent } from './owner/owner-listings.component';
 
 export const routes: Routes = [
+  { path: 'session-recovery', loadComponent: () => import('./auth/session-recovery.component').then(module => module.SessionRecoveryComponent) },
   {
     path: '',
     pathMatch: 'full',
@@ -23,16 +25,17 @@ export const routes: Routes = [
   },
   {
     path: 'login',
-    component: LoginComponent
+    loadComponent: () => import('./auth/login/login.component').then(module => module.LoginComponent)
   },
   {
     path: 'register',
-    component: RegisterComponent
+    loadComponent: () => import('./auth/register/register.component').then(module => module.RegisterComponent)
   },
   {
     path: '',
     component: AppShellComponent,
     canActivate: [authGuard],
+    canActivateChild: [authGuard],
     children: [
       { path: 'bookings', component: RenterBookingsComponent },
       { path: 'dashboard', component: DashboardComponent },
