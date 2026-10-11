@@ -8,6 +8,7 @@
     <nav class="shell-nav" aria-label="Primary navigation">
       <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Dashboard</a>
       <a routerLink="/listings" routerLinkActive="active">Browse parking</a>
+      <a routerLink="/notifications" routerLinkActive="active">Notifications @if (notifications.unavailable()) { <span title="Unread count unavailable; open inbox to refresh">(?)</span> } @else if (notifications.count() !== null) { <span>({{ notifications.count() }})</span> }</a>
       <a routerLink="/bookings" routerLinkActive="active">My bookings</a>
       <a routerLink="/owner/listings" routerLinkActive="active">{{ authService.hasRole('Owner') ? 'Owner workspace' : 'List your space' }}</a>
       <button type="button" (click)="logout()">Log out</button>

@@ -3,6 +3,7 @@ import { Router, provideRouter } from '@angular/router';
 
 import { AuthService } from '../api/auth/auth.service';
 import { AppShellComponent } from './app-shell.component';
+import { NotificationStateService } from '../notifications/notification-state.service';
 
 describe('AppShellComponent', () => {
   let component: AppShellComponent;
@@ -31,7 +32,10 @@ describe('AppShellComponent', () => {
         provideRouter([]),
         { provide: AuthService, useValue: authService }
       ]
-    }).compileComponents();
+    }).overrideComponent(AppShellComponent, { set: { providers: [{
+      provide: NotificationStateService,
+      useValue: { start: () => {}, count: () => 3, unavailable: () => false }
+    }] } }).compileComponents();
 
     router = TestBed.inject(Router);
     spyOn(router, 'navigateByUrl').and.resolveTo(true);
@@ -55,5 +59,6 @@ describe('AppShellComponent', () => {
     expect(element.textContent).toContain('Browse parking');
     expect(element.querySelector('a[href="/bookings"]')?.textContent).toContain('My bookings');
     expect(element.textContent).toContain('Owner workspace');
+    expect(element.querySelector('a[href="/notifications"]')?.textContent).toContain('Notifications (3)');
   });
 });

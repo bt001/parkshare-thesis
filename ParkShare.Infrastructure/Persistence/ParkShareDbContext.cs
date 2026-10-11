@@ -51,6 +51,17 @@ namespace ParkShare.Infrastructure.Persistence
                 relationship.DeleteBehavior = DeleteBehavior.NoAction;
             }
 
+            modelBuilder.Entity<Notification>(entity =>
+            {
+                entity.Property(n => n.Type).HasMaxLength(450);
+                entity.HasOne(n => n.Booking).WithMany().HasForeignKey(n => n.BookingId)
+                    .OnDelete(DeleteBehavior.NoAction);
+                entity.HasIndex(n => new { n.UserId, n.BookingId, n.Type }).IsUnique()
+                    .HasFilter("[BookingId] IS NOT NULL");
+                entity.HasIndex(n => new { n.UserId, n.CreatedAt, n.Id });
+                entity.HasIndex(n => new { n.UserId, n.IsRead });
+            });
+
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.UserName)
                 .IsUnique();

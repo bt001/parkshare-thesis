@@ -13,7 +13,7 @@ using ParkShare.Infrastructure.Repositories;
 using ParkShare.Infrastructure.Services;
 
 /// <summary>Executable regression suite using isolated SQL Server data and independent request contexts.</summary>
-internal static class Program
+internal static partial class Program
 {
     private static readonly CancellationToken Ct = CancellationToken.None;
     private static readonly DateTime Future = new(2030, 1, 15, 10, 0, 0);
@@ -43,7 +43,7 @@ internal static class Program
         {
             await using (var db = Context())
             {
-                await db.Database.EnsureCreatedAsync();
+                await VerifyNotificationMigration(db);
                 var owner = User("owner"); var renter = User("renter");
                 db.Users.AddRange(owner, renter); await db.SaveChangesAsync();
                 _owner = owner.Id; _renter = renter.Id;
@@ -56,6 +56,9 @@ internal static class Program
             await Test("approval versus blocked window serialize", ConcurrentBlock);
             await Test("failed overlap update rolls back all writes", Rollback);
             await Test("listing and availability mutations wait for listing lock", MutationLocks);
+            await Test("notification recipients, pagination and idempotency", Notifications);
+            await Test("notification write failure rolls back every booking mutation", NotificationRollback);
+            await Test("concurrent repeated decisions emit one event", NotificationConcurrency);
             Console.WriteLine($"PASS: {_passed} regression groups.");
         }
         finally
@@ -142,7 +145,7 @@ internal static class Program
         var signal = new LockSignal();
         await using var request = Context(signal);
         var service = new BookingService(new BookingRepository(request), new ListingRepository(request), Availability(request),
-            new RepositoryTransactionCoordinator(request), new BookingTimePolicy(clock), NullLogger<BookingService>.Instance);
+            new RepositoryTransactionCoordinator(request), new BookingTimePolicy(clock), NullLogger<BookingService>.Instance, new NotificationRepository(request));
         var start = new DateTime(2026, 9, 12, 15, 1, 0);
         var pending = service.CreateAsync(new() { ListingId = listing, RenterId = _renter, StartDateTime = start, EndDateTime = start.AddHours(1) }, Ct);
         await signal.Started.Task.WaitAsync(TimeSpan.FromSeconds(15));
@@ -177,6 +180,7 @@ internal static class Program
         Check(a!.IsSuccessful != b!.IsSuccessful && (a.IsConflict || b.IsConflict), "one approval and one conflict");
         await using var check = Context();
         Check(await check.Bookings.CountAsync(x => x.ListingId == listing && x.Status == BookingStatus.Confirmed) == 1, "single confirmed record");
+        Check(await check.Notifications.CountAsync(n => n.Booking!.ListingId == listing) == 2, "concurrent approvals emit only winning decision events");
     }
 
     /// <summary>Concurrent opposing decisions cannot overwrite a committed terminal state.</summary>
@@ -240,7 +244,7 @@ internal static class Program
 
     /// <summary>Creates the real booking service and SQL repositories.</summary>
     private static BookingService BookingService(ParkShareDbContext db)
-        => new(new BookingRepository(db), new ListingRepository(db), Availability(db), new RepositoryTransactionCoordinator(db), new BookingTimePolicy(Clock), NullLogger<BookingService>.Instance);
+        => new(new BookingRepository(db), new ListingRepository(db), Availability(db), new RepositoryTransactionCoordinator(db), new BookingTimePolicy(Clock), NullLogger<BookingService>.Instance, new NotificationRepository(db));
 
     /// <summary>Creates a test account.</summary>
     private static User User(string name) => new() { UserName = name, Email = name + "@test.invalid", FirstName = name, LastName = "Test", PasswordHash = "fixture", IsActive = true };

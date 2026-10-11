@@ -1,5 +1,4 @@
 import { Routes } from '@angular/router';
-import { RenterBookingsComponent } from './bookings/renter-bookings.component';
 
 import { authGuard, authLandingGuard } from './auth/auth.guards';
 import { AuthRedirectComponent } from './auth/auth-redirect.component';
@@ -37,7 +36,8 @@ export const routes: Routes = [
     canActivate: [authGuard],
     canActivateChild: [authGuard],
     children: [
-      { path: 'bookings', component: RenterBookingsComponent },
+      { path: 'notifications', loadComponent: () => import('./notifications/notifications.component').then(module => module.NotificationsComponent) },
+      { path: 'bookings', loadComponent: () => import('./bookings/renter-bookings.component').then(module => module.RenterBookingsComponent) },
       { path: 'dashboard', component: DashboardComponent },
       { path: 'listings', component: ListingListComponent },
       { path: 'listings/:id', component: ListingDetailComponent },

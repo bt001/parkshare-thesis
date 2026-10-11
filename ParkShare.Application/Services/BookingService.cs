@@ -5,6 +5,7 @@ using ParkShare.Application.Dto.Application;
 using ParkShare.Application.Interfaces;
 using ParkShare.Application.Interfaces.Repositories;
 using ParkShare.Common.Enums;
+using ParkShare.Common.Constants;
 using ParkShare.Domain.Entities;
 
 namespace ParkShare.Application.Services
@@ -13,6 +14,7 @@ namespace ParkShare.Application.Services
     public class BookingService : IBookingService
     {
         private readonly IBookingRepository _bookingRepository;
+        private readonly INotificationRepository _notificationRepository;
         private readonly IListingRepository _listingRepository;
         private readonly IAvailabilityService _availabilityService;
         private readonly IRepositoryTransactionCoordinator _transactions;
@@ -28,12 +30,14 @@ namespace ParkShare.Application.Services
             IAvailabilityService availabilityService,
             IRepositoryTransactionCoordinator transactions,
             BookingTimePolicy timePolicy,
-            ILogger<BookingService> logger)
+            ILogger<BookingService> logger,
+            INotificationRepository notificationRepository)
         {
             _availabilityService = availabilityService;
             _transactions = transactions;
             _timePolicy = timePolicy;
             _logger = logger;
+            _notificationRepository = notificationRepository;
             _bookingRepository = bookingRepository ?? throw new ArgumentNullException(nameof(bookingRepository));
             _listingRepository = listingRepository ?? throw new ArgumentNullException(nameof(listingRepository));
         }
@@ -64,6 +68,10 @@ namespace ParkShare.Application.Services
                     Status = BookingStatus.Pending, CreatedAt = DateTime.UtcNow
                 };
                 await _bookingRepository.AddAsync(entity, ct);
+                await _notificationRepository.AddRangeAsync(new[]
+                {
+                    CreateNotification(entity, listing.OwnerId, listing.Title, NotificationTypes.BookingRequested, "was requested")
+                }, ct);
                 await transaction.CommitAsync(ct);
                 return ServiceResult<CreateBookingResponse>.Success(new CreateBookingResponse
                 {
@@ -141,9 +149,27 @@ namespace ParkShare.Application.Services
                     var error = await ValidatePeriodAsync(booking.Listing, booking.StartDateTime, booking.EndDateTime, ct);
                     if (error is not null) return ServiceResult<T>.Conflict(error);
                 }
-                var changed = approve
-                    ? await _bookingRepository.ApproveAndRejectOverlappingPendingAsync(bookingId, ct)
-                    : await _bookingRepository.RejectAsync(bookingId, ct);
+                Booking changed;
+                var notifications = new List<Notification>();
+                if (approve)
+                {
+                    var result = await _bookingRepository.ApproveAndRejectOverlappingPendingAsync(bookingId, ct)
+                        ?? throw new InvalidOperationException("The locked booking disappeared.");
+                    changed = result.Booking;
+                    notifications.Add(CreateNotification(changed, changed.RenterId, booking.Listing.Title,
+                        NotificationTypes.BookingApproved, "was approved"));
+                    notifications.AddRange(result.RejectedBookings.Select(rejected => CreateNotification(
+                        rejected, rejected.RenterId, booking.Listing.Title, NotificationTypes.BookingOverlapRejected,
+                        "was rejected because an overlapping booking was approved")));
+                }
+                else
+                {
+                    changed = await _bookingRepository.RejectAsync(bookingId, ct)
+                        ?? throw new InvalidOperationException("The locked booking disappeared.");
+                    notifications.Add(CreateNotification(changed, changed.RenterId, booking.Listing.Title,
+                        NotificationTypes.BookingRejected, "was rejected"));
+                }
+                await _notificationRepository.AddRangeAsync(notifications, ct);
                 await transaction.CommitAsync(ct);
                 return ServiceResult<T>.Success(MapBooking<T>(changed!));
             }
@@ -154,6 +180,14 @@ namespace ParkShare.Application.Services
                 return ServiceResult<T>.WithError("The booking decision could not be saved. Please try again.");
             }
         }
+
+        /// <summary>Creates a server-owned event with useful booking context.</summary>
+        private static Notification CreateNotification(Booking booking, long recipient, string title, string type, string action)
+            => new()
+            {
+                UserId = recipient, BookingId = booking.Id, Type = type,
+                Message = $"Booking #{booking.Id} for {title} {action}.", CreatedAt = DateTime.UtcNow
+            };
 
         /// <summary>Checks booking time and availability while the caller holds the listing lock.</summary>
         private async Task<string?> ValidatePeriodAsync(Listing listing, DateTime start, DateTime end, CancellationToken ct)

@@ -56,7 +56,7 @@ namespace ParkShare.Infrastructure.Repositories
                 .FirstOrDefaultAsync(cancellationToken);
 
         /// <inheritdoc/>
-        public async Task<Booking?> ApproveAndRejectOverlappingPendingAsync(long bookingId, CancellationToken cancellationToken)
+        public async Task<BookingApprovalResult?> ApproveAndRejectOverlappingPendingAsync(long bookingId, CancellationToken cancellationToken)
         {
             if (_db.Database.CurrentTransaction is null)
                 throw new InvalidOperationException("Approval requires the application transaction and listing lock.");
@@ -66,6 +66,10 @@ namespace ParkShare.Infrastructure.Repositories
             if (booking.Status != BookingStatus.Pending)
                 throw new InvalidOperationException("Only pending bookings can be approved.");
 
+            var overlaps = await _db.Bookings.AsNoTracking()
+                .Where(b => b.ListingId == booking.ListingId && b.Id != booking.Id
+                    && b.Status == BookingStatus.Pending && b.EndDateTime > booking.StartDateTime
+                    && b.StartDateTime < booking.EndDateTime).ToListAsync(cancellationToken);
             var respondedAt = DateTime.UtcNow;
             booking.Status = BookingStatus.Confirmed;
             booking.OwnerResponseAt = respondedAt;
@@ -76,7 +80,7 @@ namespace ParkShare.Infrastructure.Repositories
                 .ExecuteUpdateAsync(update => update
                     .SetProperty(b => b.Status, BookingStatus.Rejected)
                     .SetProperty(b => b.OwnerResponseAt, respondedAt), cancellationToken);
-            return booking;
+            return new BookingApprovalResult { Booking = booking, RejectedBookings = overlaps };
         }
 
         /// <inheritdoc/>

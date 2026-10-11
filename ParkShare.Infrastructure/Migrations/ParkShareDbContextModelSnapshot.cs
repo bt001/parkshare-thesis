@@ -163,6 +163,21 @@ namespace ParkShare.Infrastructure.Migrations
                     b.ToTable("ListingAmenities");
                 });
 
+            modelBuilder.Entity("ParkShare.Domain.Entities.JoinModels.UserRole", b =>
+                {
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("RoleId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("UserId", "RoleId");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("UserRoles");
+                });
+
             modelBuilder.Entity("ParkShare.Domain.Entities.Listing", b =>
                 {
                     b.Property<long>("Id")
@@ -249,6 +264,9 @@ namespace ParkShare.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<long?>("BookingId")
+                        .HasColumnType("bigint");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -261,50 +279,25 @@ namespace ParkShare.Infrastructure.Migrations
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<long>("UserId")
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("BookingId");
+
+                    b.HasIndex("UserId", "IsRead");
+
+                    b.HasIndex("UserId", "BookingId", "Type")
+                        .IsUnique()
+                        .HasFilter("[BookingId] IS NOT NULL");
+
+                    b.HasIndex("UserId", "CreatedAt", "Id");
 
                     b.ToTable("Notifications");
-                });
-
-            modelBuilder.Entity("ParkShare.Domain.Entities.Role", b =>
-                {
-                    b.Property<long>("Id")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("Roles");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1L,
-                            Name = "Renter"
-                        },
-                        new
-                        {
-                            Id = 2L,
-                            Name = "Owner"
-                        },
-                        new
-                        {
-                            Id = 4L,
-                            Name = "Admin"
-                        });
                 });
 
             modelBuilder.Entity("ParkShare.Domain.Entities.Rating", b =>
@@ -346,19 +339,38 @@ namespace ParkShare.Infrastructure.Migrations
                     b.ToTable("Ratings");
                 });
 
-            modelBuilder.Entity("ParkShare.Domain.Entities.JoinModels.UserRole", b =>
+            modelBuilder.Entity("ParkShare.Domain.Entities.Role", b =>
                 {
-                    b.Property<long>("UserId")
+                    b.Property<long>("Id")
                         .HasColumnType("bigint");
 
-                    b.Property<long>("RoleId")
-                        .HasColumnType("bigint");
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
 
-                    b.HasKey("UserId", "RoleId");
+                    b.HasKey("Id");
 
-                    b.HasIndex("RoleId");
+                    b.HasIndex("Name")
+                        .IsUnique();
 
-                    b.ToTable("UserRoles");
+                    b.ToTable("Roles");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            Name = "Renter"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            Name = "Owner"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            Name = "Admin"
+                        });
                 });
 
             modelBuilder.Entity("ParkShare.Domain.Entities.User", b =>
@@ -517,11 +529,18 @@ namespace ParkShare.Infrastructure.Migrations
 
             modelBuilder.Entity("ParkShare.Domain.Entities.Notification", b =>
                 {
+                    b.HasOne("ParkShare.Domain.Entities.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("ParkShare.Domain.Entities.User", "User")
                         .WithMany("Notifications")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.Navigation("Booking");
 
                     b.Navigation("User");
                 });
@@ -565,11 +584,6 @@ namespace ParkShare.Infrastructure.Migrations
                     b.Navigation("Rating");
                 });
 
-            modelBuilder.Entity("ParkShare.Domain.Entities.Role", b =>
-                {
-                    b.Navigation("UserRoles");
-                });
-
             modelBuilder.Entity("ParkShare.Domain.Entities.Listing", b =>
                 {
                     b.Navigation("AvailabilityWindows");
@@ -581,6 +595,11 @@ namespace ParkShare.Infrastructure.Migrations
                     b.Navigation("Photos");
 
                     b.Navigation("Ratings");
+                });
+
+            modelBuilder.Entity("ParkShare.Domain.Entities.Role", b =>
+                {
+                    b.Navigation("UserRoles");
                 });
 
             modelBuilder.Entity("ParkShare.Domain.Entities.User", b =>
