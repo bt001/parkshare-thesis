@@ -30,6 +30,7 @@ namespace ParkShare.Application
             services.AddScoped<IAvailabilityService, AvailabilityService>();
             services.AddScoped<IBookingService, BookingService>();
             services.AddScoped<INotificationService, NotificationService>();
+            services.AddScoped<IChatService, ChatService>();
             services.AddSingleton(TimeProvider.System);
             services.AddSingleton<BookingTimePolicy>();
 

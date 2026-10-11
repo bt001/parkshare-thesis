@@ -37,7 +37,7 @@
           <strong>{{ booking.startDateTime | date:'medium' }}</strong>
           <span>to {{ booking.endDateTime | date:'medium' }}</span>
           <small>Requested {{ booking.createdAt | date:'medium' }}</small>
-        </article>
+        <a [routerLink]="['/bookings', booking.bookingId, 'chat']">Chat</a></article>
       }
     </div>
   }
