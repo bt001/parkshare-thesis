@@ -36,6 +36,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     canActivateChild: [authGuard],
     children: [
+      { path: 'bookings/:id/chat', loadComponent: () => import('./bookings/booking-chat.component').then(module => module.BookingChatComponent) },
       { path: 'notifications', loadComponent: () => import('./notifications/notifications.component').then(module => module.NotificationsComponent) },
       { path: 'bookings', loadComponent: () => import('./bookings/renter-bookings.component').then(module => module.RenterBookingsComponent) },
       { path: 'dashboard', component: DashboardComponent },

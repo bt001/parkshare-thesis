@@ -10,6 +10,8 @@ using ParkShare.Application.Interfaces;
 using ParkShare.Application.Queries;
 using ParkShare.Shared.Requests.Bookings;
 using ParkShare.Shared.Results.Bookings;
+using ParkShare.Shared.Requests.Chat;
+using ParkShare.Shared.Results.Chat;
 using System.Threading.Tasks;
 
 namespace ParkShare.Api.Controllers
@@ -68,6 +70,28 @@ namespace ParkShare.Api.Controllers
                 body,
                 _currentUser,
                 (request, userId) => request.OwnerId = userId);
+
+        /// <summary>Reads the authenticated participant's booking conversation.</summary>
+        [HttpGet("{id:long}/messages")]
+        [ProducesResponseType(typeof(GetBookingMessagesResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public Task<IActionResult> GetMessages([FromRoute] long id, [FromQuery] GetBookingMessagesRequest query)
+        {
+            query.BookingId = id;
+            return ProcessAuthenticatedQueryAsync<GetBookingMessagesRequest, GetBookingMessagesResult, GetBookingMessagesQuery, GetBookingMessagesResponse>(
+                query, _currentUser, (request, userId) => request.UserId = userId);
+        }
+
+        /// <summary>Sends plain text as the authenticated booking participant.</summary>
+        [HttpPost("{id:long}/messages")]
+        [ProducesResponseType(typeof(ChatMessageResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public Task<IActionResult> SendMessage([FromRoute] long id, [FromBody] SendBookingMessageRequest body)
+        {
+            body.BookingId = id;
+            return ProcessAuthenticatedCommandAsync<SendBookingMessageRequest, ChatMessageResult, SendBookingMessageCommand, ChatMessageResponse>(
+                body, _currentUser, (request, userId) => request.UserId = userId);
+        }
 
         [HttpGet("{id:long}")]
         [ProducesResponseType(typeof(BookingResult), StatusCodes.Status200OK)]

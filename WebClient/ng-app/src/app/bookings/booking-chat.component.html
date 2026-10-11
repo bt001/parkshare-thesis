@@ -1,0 +1,38 @@
+<section class="page-heading">
+  <div><p class="eyebrow">Booking #{{ bookingId }}</p><h1>Booking chat</h1></div>
+  <a [routerLink]="backLink">Back to bookings</a>
+</section>
+<button type="button" [disabled]="loading || sending" (click)="refresh()">Refresh / retry</button>
+@if (loading) {
+  <p role="status">Loading messages…</p>
+} @else if (error) {
+  <p class="message error" role="alert">{{ error }}</p>
+} @else if (!items.length) {
+  <p>No messages on this page. Start the conversation below.</p>
+} @else {
+  <section class="conversation" aria-label="Booking messages">
+    @for (message of items; track message.id) {
+      <article class="workspace-card">
+        <strong>{{ senderLabel(message) }}</strong>
+        <time>{{ message.sentAt | date:'medium' }}</time>
+        <p class="message-text">{{ message.messageText }}</p>
+      </article>
+    }
+  </section>
+}
+@if (totalCount > pageSize || page > 1) {
+  <nav class="pagination" aria-label="Message pages">
+    <button type="button" [disabled]="loading || sending || page * pageSize >= totalCount" (click)="load(page + 1)">Older</button>
+    <span>Page {{ page }} · {{ totalCount }} messages</span>
+    <button type="button" [disabled]="loading || sending || page <= 1" (click)="load(page - 1)">Newer</button>
+  </nav>
+}
+@if (accessible) {
+  <form (submit)="$event.preventDefault(); send()">
+    <label for="chat-message">Message</label>
+    <textarea id="chat-message" [formControl]="draft" maxlength="2000" rows="4" [readOnly]="sending" aria-describedby="message-limit"></textarea>
+    <small id="message-limit">{{ draft.value.length }} / 2000 characters</small>
+    @if (sendError) { <p class="message error" role="alert">{{ sendError }}</p> }
+    <button class="primary-button" type="submit" [disabled]="!canSend">{{ sending ? 'Sending…' : 'Send' }}</button>
+  </form>
+}
