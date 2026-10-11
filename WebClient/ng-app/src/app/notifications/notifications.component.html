@@ -1,0 +1,33 @@
+<section class="inbox" aria-labelledby="inbox-title">
+  <header>
+    <div><p class="eyebrow">Your updates</p><h1 id="inbox-title">Notifications</h1><p>Booking requests and decisions, all in one place.</p></div>
+    <button type="button" (click)="refresh()" [disabled]="loading">Refresh</button>
+  </header>
+  <div class="filters" aria-label="Notification filters">
+    <button type="button" [attr.aria-pressed]="!unreadOnly" (click)="filter(false)">All</button>
+    <button type="button" [attr.aria-pressed]="unreadOnly" (click)="filter(true)">Unread</button>
+  </div>
+  @if (readError) { <p role="alert">{{ readError }}</p> }
+  @if (loading) { <p role="status">Loading notifications…</p> }
+  @else if (error) { <div role="alert"><p>{{ error }}</p><button type="button" (click)="refresh()">Retry</button></div> }
+  @else {
+    @if (!items.length) { <p>{{ unreadOnly ? 'No unread notifications.' : 'No notifications yet.' }}</p> }
+    @for (item of items; track item.id) {
+      <article [class.unread]="!item.isRead">
+        <div class="event-meta"><strong>{{ item.isRead ? 'Read' : 'Unread' }}</strong><time [attr.datetime]="item.createdAt">{{ item.createdAt | date:'medium' }}</time></div>
+        <p>{{ item.message }}</p>
+        <div class="actions">
+          @if (bookingLink(item); as link) { <a [routerLink]="link">{{ link === '/owner/bookings' ? 'Open owner booking list' : 'Open my booking list' }}</a> }
+          @if (!item.isRead) { <button type="button" (click)="markRead(item)" [disabled]="readingId !== null">{{ readingId === item.id ? 'Saving…' : 'Mark read' }}</button> }
+        </div>
+      </article>
+    }
+    @if (totalCount > 0) {
+      <nav class="pagination" aria-label="Notification pages">
+        <button type="button" (click)="load(page - 1)" [disabled]="page <= 1">Previous</button>
+        <span>Page {{ page }} · {{ totalCount }} notifications</span>
+        <button type="button" (click)="load(page + 1)" [disabled]="page * 20 >= totalCount">Next</button>
+      </nav>
+    }
+  }
+</section>

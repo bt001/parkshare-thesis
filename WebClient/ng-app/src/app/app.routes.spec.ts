@@ -45,9 +45,12 @@ describe('application routes', () => {
       .toEqual(['login', 'register']);
   });
 
-  it('keeps renter history inside the protected shell', () => {
+  it('keeps renter history and notifications lazy inside the protected shell', async () => {
     const shell = routes.find(route => route.component === AppShellComponent);
     expect(shell?.canActivate).toContain(authGuard);
-    expect(shell?.children).toContain(jasmine.objectContaining({ path: 'bookings', component: RenterBookingsComponent }));
+    const history = shell?.children?.find(route => route.path === 'bookings');
+    expect(await history?.loadComponent?.()).toBe(RenterBookingsComponent);
+    const inbox = shell?.children?.find(route => route.path === 'notifications');
+    expect(inbox?.loadComponent).toBeDefined();
   });
 });

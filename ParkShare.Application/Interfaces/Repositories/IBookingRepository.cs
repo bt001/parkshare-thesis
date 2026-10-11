@@ -36,9 +36,9 @@ namespace ParkShare.Application.Interfaces.Repositories
         Task<long?> GetOwnerIdAsync(long bookingId, CancellationToken cancellationToken);
 
         /// <summary>
-        /// Confirms a validated Pending booking and rejects overlaps within the caller-owned transaction and listing lock.
+        /// Confirms a validated Pending booking and returns the overlapping requests rejected within the caller-owned transaction and listing lock.
         /// </summary>
-        Task<Booking?> ApproveAndRejectOverlappingPendingAsync(long bookingId, CancellationToken cancellationToken);
+        Task<BookingApprovalResult?> ApproveAndRejectOverlappingPendingAsync(long bookingId, CancellationToken cancellationToken);
 
         /// <summary>
         /// Rejects a validated Pending booking within the caller-owned transaction and listing lock.

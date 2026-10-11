@@ -1,4 +1,4 @@
-﻿namespace ParkShare.Domain.Entities
+namespace ParkShare.Domain.Entities
 {
     /// <summary>
     /// In-app notification.
@@ -10,6 +10,12 @@
         /// Primary key.
         /// </summary>
         public long Id { get; set; }
+
+        /// <summary>Related booking, absent for legacy or non-booking notifications.</summary>
+        public long? BookingId { get; set; }
+
+        /// <summary>Related booking navigation.</summary>
+        public Booking? Booking { get; set; }
 
         /// <summary>
         /// User ID.

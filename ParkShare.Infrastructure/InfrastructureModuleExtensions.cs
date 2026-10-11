@@ -41,6 +41,7 @@ namespace ParkShare.Infrastructure
             services.AddScoped<IListingRepository, ListingRepository>();
             services.AddScoped<IAvailabilityWindowRepository, AvailabilityWindowRepository>();
             services.AddScoped<IBookingRepository, BookingRepository>();
+            services.AddScoped<INotificationRepository, NotificationRepository>();
             services.AddScoped<IJwtTokenService, JwtTokenService>();
             services.AddScoped<IRepositoryTransactionCoordinator, RepositoryTransactionCoordinator>();
 
