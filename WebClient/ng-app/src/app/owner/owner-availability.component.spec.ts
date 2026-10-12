@@ -13,7 +13,7 @@ describe('OwnerAvailabilityComponent', () => {
   const availabilityService = jasmine.createSpyObj<AvailabilityService>('AvailabilityService', ['getForOwner', 'create', 'update', 'delete']);
 
   beforeEach(async () => {
-    listingService.getById.and.returnValue(of({ id: 3, ownerId: 1, title: 'Scheduled', description: 'Space', latitude: 44, longitude: 26, pricePerHour: 10, isActive: true, isAlwaysAvailable: false, createdAt: '2026-07-13' }));
+    listingService.getById.and.returnValue(of({ amenities: [], id: 3, ownerId: 1, title: 'Scheduled', description: 'Space', latitude: 44, longitude: 26, pricePerHour: 10, isActive: true, isAlwaysAvailable: false, createdAt: '2026-07-13' }));
     availabilityService.getForOwner.and.returnValue(of({ listingId: 3, totalCount: 0, items: [] }));
     const window = { availabilityWindowId: 4, listingId: 3, listingTitle: 'Scheduled', startDateTime: '2026-07-15T10:00', endDateTime: '2026-07-15T12:00', isBlocked: false, createdAt: '2026-07-13' };
     availabilityService.create.and.returnValue(of(window));

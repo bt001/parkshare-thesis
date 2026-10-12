@@ -1,7 +1,10 @@
-﻿namespace ParkShare.Shared.Results.Listings
+namespace ParkShare.Shared.Results.Listings
 {
     public class GetListingByIdResult : IApiResult
     {
+        /// <summary>Selected amenities ordered by name.</summary>
+        public List<ParkShare.Shared.Results.Amenities.AmenityResult> Amenities { get; set; } = new();
+
         public long Id { get; set; }
         public long OwnerId { get; set; }
         public string Title { get; set; } = string.Empty;

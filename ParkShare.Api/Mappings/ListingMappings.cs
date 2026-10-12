@@ -12,7 +12,8 @@ namespace ParkShare.Api.Mappings
     {
         public void CreateMappings(Profile cfg)
         {
-            cfg.CreateMap<CreateListingRequest, CreateListingCommand>();
+            cfg.CreateMap<CreateListingRequest, CreateListingCommand>()
+                .ForMember(destination => destination.AmenityIds, options => options.AllowNull());
             cfg.CreateMap<CreateListingResponse, CreateListingResult>();
 
             cfg.CreateMap<GetListingByIdRequest, GetListingByIdQuery>();
@@ -22,7 +23,8 @@ namespace ParkShare.Api.Mappings
             cfg.CreateMap<GetOwnerListingsResponse, GetOwnerListingsResult>();
             cfg.CreateMap<ListingSummaryDto, ListingSummaryResultItem>();
 
-            cfg.CreateMap<UpdateListingRequest, UpdateListingCommand>();
+            cfg.CreateMap<UpdateListingRequest, UpdateListingCommand>()
+                .ForMember(destination => destination.AmenityIds, options => options.AllowNull());
             cfg.CreateMap<UpdateListingResponse, UpdateListingResult>();
 
             cfg.CreateMap<DeactivateListingRequest, DeactivateListingCommand>();

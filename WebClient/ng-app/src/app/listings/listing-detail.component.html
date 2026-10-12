@@ -35,6 +35,13 @@
         </dl>
       </section>
 
+      <section class="panel" aria-labelledby="amenities-heading">
+        <h2 id="amenities-heading">Amenities</h2>
+        @if (listing.amenities.length) {
+          <ul>@for (amenity of listing.amenities; track amenity.id) { <li>{{ amenity.name }}</li> }</ul>
+        } @else { <p>No amenities listed.</p> }
+      </section>
+
       <section class="panel">
         <div class="panel-heading">
           <div>

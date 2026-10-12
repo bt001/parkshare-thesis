@@ -1,11 +1,12 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, finalize, of, switchMap, throwError } from 'rxjs';
 
 import { AuthService, SessionChangedError } from '../api/auth/auth.service';
-import { CreateListingRequest } from '../api/listings/listing.models';
+import { Amenity, CreateListingRequest } from '../api/listings/listing.models';
 import { ListingService } from '../api/listings/listing.service';
 
 interface ListingForm {
@@ -19,9 +20,10 @@ interface ListingForm {
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './owner-listing-form.component.html',
-  styleUrl: './owner-workspace.scss'
+  styleUrl: './owner-listing-form.component.scss'
 })
 export class OwnerListingFormComponent implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly listingService = inject(ListingService);
@@ -38,6 +40,34 @@ export class OwnerListingFormComponent implements OnInit {
     isAlwaysAvailable: new FormControl(true, { nonNullable: true })
   });
 
+  /** Catalog available for selection. */
+  amenities: Amenity[] = [];
+  /** Current draft selections, retained after failed saves. */
+  selectedAmenityIds: number[] = [];
+  /** Whether the catalog is loading. */
+  isCatalogLoading = false;
+  /** Whether catalog retrieval succeeded. */
+  isCatalogReady = false;
+  /** Catalog-specific retry message. */
+  catalogError = '';
+
+  /** Loads or retries the catalog without resetting the listing draft. */
+  loadAmenities(): void {
+    if (this.isCatalogLoading) return;
+    this.isCatalogLoading = true;
+    this.isCatalogReady = false;
+    this.catalogError = '';
+    this.listingService.getAmenities().pipe(takeUntilDestroyed(this.destroyRef), finalize(() => (this.isCatalogLoading = false))).subscribe({
+      next: result => { this.amenities = result.items; this.isCatalogReady = true; },
+      error: () => (this.catalogError = 'Amenities could not be loaded. Please retry before saving.')
+    });
+  }
+
+  /** Updates the selected amenity set from a checkbox. */
+  toggleAmenity(id: number, checked: boolean): void {
+    this.selectedAmenityIds = checked ? [...new Set([...this.selectedAmenityIds, id])] : this.selectedAmenityIds.filter(value => value !== id);
+  }
+
   listingId?: number;
   isLoading = false;
   isSubmitting = false;
@@ -46,32 +76,37 @@ export class OwnerListingFormComponent implements OnInit {
   get isEditing(): boolean { return this.listingId !== undefined; }
 
   ngOnInit(): void {
+    this.loadAmenities();
     const rawId = this.route.snapshot.paramMap.get('id');
     if (!rawId) return;
     const id = Number(rawId);
     if (!Number.isSafeInteger(id) || id <= 0) { this.errorMessages = ['This listing address is invalid.']; return; }
     this.listingId = id;
     this.isLoading = true;
-    this.listingService.getById(id).pipe(finalize(() => (this.isLoading = false))).subscribe({
-      next: (listing) => this.form.setValue({
+    this.listingService.getById(id).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => (this.isLoading = false))).subscribe({
+      next: (listing) => {
+        this.selectedAmenityIds = listing.amenities.map(amenity => amenity.id);
+        this.form.setValue({
         title: listing.title, description: listing.description, address: listing.address ?? '', latitude: listing.latitude,
         longitude: listing.longitude, pricePerHour: listing.pricePerHour, size: listing.size ?? '', isAlwaysAvailable: listing.isAlwaysAvailable
-      }),
+      });
+      },
       error: (error) => (this.errorMessages = this.getErrors(error, 'The listing could not be loaded.'))
     });
   }
 
   submit(): void {
-    if (this.form.invalid || this.isSubmitting) { this.form.markAllAsTouched(); return; }
+    if (this.form.invalid || this.isSubmitting || this.isLoading || !this.isCatalogReady) { this.form.markAllAsTouched(); return; }
     const value = this.form.getRawValue();
     const request: CreateListingRequest = {
-      ...value, latitude: value.latitude!, longitude: value.longitude!, pricePerHour: value.pricePerHour!,
+      ...value, amenityIds: [...this.selectedAmenityIds], latitude: value.latitude!, longitude: value.longitude!, pricePerHour: value.pricePerHour!,
       address: value.address.trim() || null, size: value.size.trim() || null
     };
     this.isSubmitting = true;
     this.errorMessages = [];
     const mutation = this.listingId ? this.listingService.update(this.listingId, request) : this.listingService.create(request);
     mutation.pipe(
+      takeUntilDestroyed(this.destroyRef),
       switchMap(() => this.listingId ? of(null) : this.authService.refresh().pipe(catchError(error => error instanceof SessionChangedError ? throwError(() => error) : of(null)))),
       finalize(() => (this.isSubmitting = false))
     ).subscribe({

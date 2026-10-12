@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
+import { ANONYMOUS_API } from '../api-request';
 import { ListingService } from './listing.service';
 
 describe('ListingService', () => {
@@ -17,6 +18,13 @@ describe('ListingService', () => {
   });
 
   afterEach(() => http.verify());
+
+  it('loads the catalog anonymously', () => {
+    service.getAmenities().subscribe(result => expect(result.items[0].name).toBe('Lighting'));
+    const req = http.expectOne('api/amenity');
+    expect(req.request.context.get(ANONYMOUS_API)).toBeTrue();
+    req.flush({ items: [{ id: 1, name: 'Lighting' }] });
+  });
 
   it('searches active listings with paging and omits unused filters', () => {
     service.search({ page: 2, pageSize: 12, onlyActive: true }).subscribe();

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +8,9 @@ namespace ParkShare.Application.Dto.Application
 {
     public class GetListingByIdResponse
     {
+        /// <summary>Selected amenities ordered by name.</summary>
+        public List<AmenityResponse> Amenities { get; set; } = new();
+
         public long Id { get; set; }
         public long OwnerId { get; set; }
         public string Title { get; set; } = string.Empty;

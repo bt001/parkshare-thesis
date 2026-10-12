@@ -27,10 +27,12 @@ describe('application routes', () => {
     }));
   });
 
-  it('keeps the complete owner workspace inside the authenticated shell', () => {
+  it('keeps the complete owner workspace inside the authenticated shell', async () => {
     const children = routes.find((route) => route.component === AppShellComponent)?.children;
     expect(children).toContain(jasmine.objectContaining({ path: 'owner/listings', component: OwnerListingsComponent }));
-    expect(children).toContain(jasmine.objectContaining({ path: 'owner/listings/new', component: OwnerListingFormComponent }));
+    for (const path of ['owner/listings/new', 'owner/listings/:id/edit']) {
+      expect(await children?.find(route => route.path === path)?.loadComponent?.()).toBe(OwnerListingFormComponent);
+    }
     expect(children).toContain(jasmine.objectContaining({ path: 'owner/listings/:id/availability', component: OwnerAvailabilityComponent }));
     expect(children).toContain(jasmine.objectContaining({ path: 'owner/bookings', component: OwnerBookingsComponent }));
   });

@@ -21,7 +21,17 @@ internal static partial class Program
         var legacyUser = User("legacy");
         db.Users.Add(legacyUser); await db.SaveChangesAsync();
         await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO Notifications (UserId, Type, Message, IsRead, CreatedAt) VALUES ({legacyUser.Id}, {"legacy-event"}, {"Keep this message"}, {true}, {new DateTime(2026, 1, 1)})");
+        var preservedAmenity = new Amenity { Name = "Lighting", Description = "Existing description" };
+        var preservedListing = new Listing { OwnerId = legacyUser.Id, Title = "Legacy amenity listing", Description = "Preserve", PricePerHour = 1 };
+        db.Amenities.Add(preservedAmenity); db.Listings.Add(preservedListing); await db.SaveChangesAsync();
+        db.ListingAmenities.Add(new() { ListingId = preservedListing.Id, AmenityId = preservedAmenity.Id }); await db.SaveChangesAsync();
         await db.Database.MigrateAsync();
+        Check(await db.Amenities.CountAsync(a => a.Name == "Lighting") == 1, "catalog migration does not duplicate existing names");
+        Check(await db.Amenities.CountAsync() == 5, "catalog inserts missing defaults");
+        Check((await db.Amenities.AsNoTracking().SingleAsync(a => a.Id == preservedAmenity.Id)).Description == "Existing description", "catalog preserves existing description and ID");
+        Check(await db.ListingAmenities.AnyAsync(a => a.ListingId == preservedListing.Id && a.AmenityId == preservedAmenity.Id), "catalog preserves legacy association");
+        await db.Database.MigrateAsync();
+        Check(await db.Amenities.CountAsync() == 5, "migration rerun remains idempotent");
         var legacy = await db.Notifications.SingleAsync();
         Check(legacy.BookingId == null && legacy.Type == "legacy-event" && legacy.Message == "Keep this message" && legacy.IsRead, "migration preserves legacy event");
         Check(!db.Database.HasPendingModelChanges(), "migration matches current model");

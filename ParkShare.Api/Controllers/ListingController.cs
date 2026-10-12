@@ -85,6 +85,7 @@ namespace ParkShare.Api.Controllers
                 Longitude = body.Longitude,
                 Address = body.Address,
                 Size = body.Size,
+                AmenityIds = body.AmenityIds,
                 IsAlwaysAvailable = body.IsAlwaysAvailable
             },
                 _currentUser,

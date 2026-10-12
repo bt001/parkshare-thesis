@@ -31,6 +31,7 @@ describe('ListingDetailComponent', () => {
   });
 
   const listing = {
+    amenities: [{ id: 1, name: 'Lighting' }],
     id: 10,
     ownerId: 2,
     title: 'Always-open city space',
@@ -102,6 +103,13 @@ describe('ListingDetailComponent', () => {
     fixture = TestBed.createComponent(ListingDetailComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  it('displays saved amenities and an empty state', () => {
+    expect(fixture.nativeElement.textContent).toContain('Lighting');
+    component.listing = { ...listing, amenities: [] };
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('No amenities listed.');
   });
 
   it('loads listing details and future availability together', () => {
