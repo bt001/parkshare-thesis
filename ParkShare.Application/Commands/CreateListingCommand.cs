@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using ParkShare.Application.Dto;
 using ParkShare.Application.Dto.Application;
 using ParkShare.Application.Interfaces;
@@ -8,6 +8,9 @@ namespace ParkShare.Application.Commands
     public class CreateListingCommand : IRequest<ServiceResult<CreateListingResponse>>
     {
         public long OwnerId { get; init; }
+        /// <summary>Selected amenity IDs; null selects none on creation.</summary>
+        public List<long>? AmenityIds { get; set; }
+
         public string Title { get; init; } = string.Empty;
         public string Description { get; init; } = string.Empty;
         public decimal PricePerHour { get; init; }
@@ -44,10 +47,10 @@ namespace ParkShare.Application.Commands
                 request.Address,
                 request.Size,
                 request.IsAlwaysAvailable,
-                cancellationToken);
+                cancellationToken, request.AmenityIds);
 
             if (!response.IsSuccessful)
-                return ServiceResult<CreateListingResponse>.WithErrors(response.Errors);
+                return ServiceResult<CreateListingResponse>.WithErrors(response);
 
             return ServiceResult<CreateListingResponse>.Success(response.Payload);
         }

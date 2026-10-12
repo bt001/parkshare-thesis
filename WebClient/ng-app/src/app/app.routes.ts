@@ -11,7 +11,6 @@ import { ListingDetailComponent } from './listings/listing-detail.component';
 import { ListingListComponent } from './listings/listing-list.component';
 import { OwnerAvailabilityComponent } from './owner/owner-availability.component';
 import { OwnerBookingsComponent } from './owner/owner-bookings.component';
-import { OwnerListingFormComponent } from './owner/owner-listing-form.component';
 import { OwnerListingsComponent } from './owner/owner-listings.component';
 
 export const routes: Routes = [
@@ -43,8 +42,8 @@ export const routes: Routes = [
       { path: 'listings', component: ListingListComponent },
       { path: 'listings/:id', component: ListingDetailComponent },
       { path: 'owner/listings', component: OwnerListingsComponent },
-      { path: 'owner/listings/new', component: OwnerListingFormComponent },
-      { path: 'owner/listings/:id/edit', component: OwnerListingFormComponent },
+      { path: 'owner/listings/new', loadComponent: () => import('./owner/owner-listing-form.component').then(module => module.OwnerListingFormComponent) },
+      { path: 'owner/listings/:id/edit', loadComponent: () => import('./owner/owner-listing-form.component').then(module => module.OwnerListingFormComponent) },
       { path: 'owner/listings/:id/availability', component: OwnerAvailabilityComponent },
       { path: 'owner/bookings', component: OwnerBookingsComponent }
     ]

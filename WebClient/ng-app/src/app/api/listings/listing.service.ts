@@ -4,6 +4,7 @@ import { inject, Injectable } from '@angular/core';
 import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
 
 import {
+  Amenity,
   CreateListingRequest,
   GetOwnerListingsResult,
   ListingDetails,
@@ -60,6 +61,11 @@ export class ListingService {
         );
       })
     );
+  }
+
+  /** Loads the public amenity catalog. */
+  getAmenities(): Observable<{ items: Amenity[] }> {
+    return this.http.get<{ items: Amenity[] }>('api/amenity', { context: new HttpContext().set(ANONYMOUS_API, true) });
   }
 
   getById(id: number): Observable<ListingDetails> {

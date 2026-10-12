@@ -33,7 +33,19 @@ export interface SearchListingsResult {
   items: SearchListingItem[];
 }
 
+/** A catalog amenity selected by a listing owner. */
+export interface Amenity {
+  /** Catalog identifier. */
+  id: number;
+  /** Display label. */
+  name: string;
+  /** Optional catalog explanation. */
+  description?: string | null;
+}
+
 export interface ListingDetails {
+  /** Saved amenities, ordered by name. */
+  amenities: Amenity[];
   id: number;
   ownerId: number;
   title: string;
@@ -64,6 +76,8 @@ export interface GetOwnerListingsResult {
 }
 
 export interface CreateListingRequest {
+  /** Null/omitted selects none on create and preserves selections on update; empty clears. */
+  amenityIds?: number[] | null;
   title: string;
   description: string;
   pricePerHour: number;

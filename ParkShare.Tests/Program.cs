@@ -63,6 +63,8 @@ internal static partial class Program
             await Test("completion time, ownership, concurrency and atomic notifications", Completion);
             await Test("editable ratings, isolation, concurrency, aggregates and paging", RatingWorkflow);
             await Test("completion and rating listing locks and fresh checks", CompletionRatingLocks);
+            await Test("amenity catalog, create/edit persistence, identity and validation", AmenityWorkflow);
+            await Test("amenity rollback, listing locks and concurrent replacement", AmenityTransactions);
             Console.WriteLine($"PASS: {_passed} regression groups.");
         }
         finally
@@ -222,7 +224,7 @@ internal static partial class Program
     {
         var (listing, _, _) = await Fixture();
         await Race(listing, async db => Check((await new ListingService(new UserRepository(db), new UserRoleRepository(db), new ListingRepository(db),
-                new RepositoryTransactionCoordinator(db), NullLogger<ListingService>.Instance).DeactivateAsync(listing, _owner, Ct)).IsSuccessful, "deactivate succeeds"),
+                new RepositoryTransactionCoordinator(db), NullLogger<ListingService>.Instance, new AmenityRepository(db), new ListingAmenityRepository(db)).DeactivateAsync(listing, _owner, Ct)).IsSuccessful, "deactivate succeeds"),
             async db => Check((await Availability(db).CreateAsync(listing, _owner, Future.AddDays(1), Future.AddDays(1).AddHours(1), true, null, Ct)).IsSuccessful, "window create succeeds"));
     }
 

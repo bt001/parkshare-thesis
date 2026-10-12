@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using ParkShare.Application.Dto;
 using ParkShare.Application.Dto.Application;
 using ParkShare.Application.Interfaces;
@@ -9,6 +9,9 @@ namespace ParkShare.Application.Commands
     {
         public long Id { get; init; }
         public long OwnerId { get; init; }
+        /// <summary>Selected amenity IDs; null preserves current selections; empty clears them.</summary>
+        public List<long>? AmenityIds { get; set; }
+
         public string Title { get; init; } = string.Empty;
         public string Description { get; init; } = string.Empty;
         public decimal PricePerHour { get; init; }
@@ -26,7 +29,7 @@ namespace ParkShare.Application.Commands
 
         public async Task<ServiceResult<UpdateListingResponse>> Handle(UpdateListingCommand request, CancellationToken cancellationToken)
         {
-            var response = await _listingService.UpdateAsync(request.Id, request.OwnerId, request.Title, request.Description, request.PricePerHour, request.Latitude, request.Longitude, request.Address, request.Size, request.IsAlwaysAvailable, cancellationToken);
+            var response = await _listingService.UpdateAsync(request.Id, request.OwnerId, request.Title, request.Description, request.PricePerHour, request.Latitude, request.Longitude, request.Address, request.Size, request.IsAlwaysAvailable, cancellationToken, request.AmenityIds);
             if (!response.IsSuccessful)
                 return ServiceResult<UpdateListingResponse>.WithErrors(response);
 

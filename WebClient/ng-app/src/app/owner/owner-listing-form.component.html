@@ -17,7 +17,23 @@
       </div>
       <label class="check-row"><input type="checkbox" formControlName="isAlwaysAvailable" /> Always available except for blocked periods</label>
       <p class="hint">Turn this off to publish explicit open availability windows.</p>
-      <button class="primary-button" type="submit" [disabled]="isSubmitting">{{ isSubmitting ? 'Saving…' : (isEditing ? 'Save changes' : 'Create listing') }}</button>
+      <fieldset class="amenity-options" [disabled]="isSubmitting || isCatalogLoading">
+        <legend>Amenities</legend>
+        @if (isCatalogLoading) { <p role="status">Loading amenities…</p> }
+        @if (catalogError) {
+          <p role="alert">{{ catalogError }}</p>
+          <button type="button" (click)="loadAmenities()">Retry amenities</button>
+        }
+        @for (amenity of amenities; track amenity.id) {
+          <label class="check-row">
+            <input type="checkbox" [checked]="selectedAmenityIds.includes(amenity.id)"
+              (change)="toggleAmenity(amenity.id, $any($event.target).checked)" />
+            {{ amenity.name }}
+          </label>
+        }
+        @if (isCatalogReady && !amenities.length) { <p>No amenities are available.</p> }
+      </fieldset>
+      <button class="primary-button" type="submit" [disabled]="isSubmitting || !isCatalogReady">{{ isSubmitting ? 'Saving…' : (isEditing ? 'Save changes' : 'Create listing') }}</button>
     </form>
   }
 </section>

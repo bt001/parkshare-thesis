@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 
 namespace ParkShare.Application.Commands.Validators
 {
@@ -6,6 +6,8 @@ namespace ParkShare.Application.Commands.Validators
     {
         public CreateListingCommandValidator()
         {
+            RuleFor(x => x.AmenityIds).Must(ids => ids is null || (ids.All(id => id > 0) && ids.Distinct().Count() == ids.Count))
+                .WithMessage("Amenity IDs must be positive and unique.");
             RuleFor(x => x.OwnerId).GreaterThan(0);
 
             RuleFor(x => x.Title)
