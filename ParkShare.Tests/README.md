@@ -1,4 +1,4 @@
-# Booking, notification and chat regression suite
+# Booking, notification, chat and rating regression suite
 
 Run `dotnet run --project ParkShare.Tests` from the repository root.
 The executable exits nonzero on failure and uses the real SQL Server repositories.
@@ -11,3 +11,5 @@ The small executable runner uses existing project dependencies; no test framewor
 The runner migrates the prior schema with a legacy notification before applying the additive notification migration. Notification cases cover recipient isolation, all booking events, repeated/concurrent decisions, read state, stable paging, uniqueness, and rollback when notification insertion fails.
 
 Chat cases cover owner/renter participation in every booking status and inactive listings, outsider isolation, text bounds and trimming, persistence across contexts, UTC timestamps, stable equal-time paging, large offsets and caller cancellation. Chat reuses the existing schema.
+
+Completion and rating cases cover Romanian end-time boundaries, owner/renter isolation, inactive listings, repeated/concurrent completion, atomic completion notifications and rollback, serialized editable reviews, bounds, persistence, history, aggregates, stable pagination and listing-lock freshness. These flows reuse the existing schema and deterministic test clocks.

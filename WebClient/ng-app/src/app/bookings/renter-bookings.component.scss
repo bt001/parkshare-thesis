@@ -5,3 +5,9 @@
 .workspace-card { min-width: 0; overflow-wrap: anywhere; }
 .pagination { flex-wrap: wrap; }
 @media (max-width: 760px) { .filter-bar { grid-template-columns: 1fr; } }
+
+.rating-form { display: grid; gap: .5rem; min-width: 0; }
+.rating-form textarea, .rating-form select { width: 100%; box-sizing: border-box; padding: .6rem; border: 1px solid #cbd5e1; border-radius: .5rem; font: inherit; }
+.rating-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.review-comment { white-space: pre-wrap; overflow-wrap: anywhere; }
+.saved-rating { font-weight: 600; }

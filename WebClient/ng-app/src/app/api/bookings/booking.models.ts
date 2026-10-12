@@ -1,3 +1,5 @@
+import { Rating } from '../ratings/rating.models';
+
 export interface CreateBookingRequest {
   listingId: number;
   startDateTime: string;
@@ -37,6 +39,8 @@ export interface OwnerBookingItem {
   renterId: number;
   startUtc: string;
   endUtc: string;
+  /** Server-validated completion eligibility. */
+  canComplete: boolean;
   status: BookingStatus;
   statusText: string;
   createdAt: string;
@@ -62,6 +66,8 @@ export interface RenterBookingItem {
   listingId: number;
   listingTitle: string;
   listingAddress: string;
+  /** Saved renter review, absent until first submission. */
+  rating?: Rating | null;
   startDateTime: string;
   endDateTime: string;
   status: BookingStatus;

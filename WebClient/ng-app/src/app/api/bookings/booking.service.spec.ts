@@ -18,6 +18,13 @@ describe('BookingService', () => {
 
   afterEach(() => http.verify());
 
+  it('submits completion without a caller-supplied owner', () => {
+    service.complete(7).subscribe();
+    const request = http.expectOne('api/booking/completebooking');
+    expect(request.request.method).toBe('PATCH'); expect(request.request.body).toEqual({ bookingId: 7 });
+    request.flush({});
+  });
+
   it('submits only the listing and requested time range', () => {
     const payload = {
       listingId: 5,

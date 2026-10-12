@@ -24,6 +24,8 @@ namespace ParkShare.Application.Dto.Application
         public long ListingId { get; set; }
         /// <summary>Current listing title.</summary>
         public string ListingTitle { get; set; } = string.Empty;
+        /// <summary>The renter's saved rating, when present.</summary>
+        public RatingResponse? Rating { get; set; }
         /// <summary>Current listing address.</summary>
         public string ListingAddress { get; set; } = string.Empty;
         /// <summary>Booked start time, preserving the existing booking time semantics.</summary>

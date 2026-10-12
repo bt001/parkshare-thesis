@@ -9,6 +9,11 @@ namespace ParkShare.Application.Services
         /// <summary>Creates the time policy with an injectable UTC clock.</summary>
         public BookingTimePolicy(TimeProvider clock) => _clock = clock;
 
+        /// <summary>Returns whether a valid Romanian booking end has been reached by the server clock.</summary>
+        public bool HasEnded(DateTime end)
+            => end.Kind == DateTimeKind.Unspecified && !Zone.IsInvalidTime(end) && !Zone.IsAmbiguousTime(end)
+                && TimeZoneInfo.ConvertTimeToUtc(end, Zone) <= _clock.GetUtcNow().UtcDateTime;
+
         /// <summary>Returns a validation message or null for a future, unambiguous booking period.</summary>
         public string? Validate(DateTime start, DateTime end)
         {

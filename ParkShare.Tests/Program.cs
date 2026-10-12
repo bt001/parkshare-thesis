@@ -60,6 +60,9 @@ internal static partial class Program
             await Test("notification write failure rolls back every booking mutation", NotificationRollback);
             await Test("concurrent repeated decisions emit one event", NotificationConcurrency);
             await Test("chat participation, persistence, statuses, validation and paging", ChatMessages);
+            await Test("completion time, ownership, concurrency and atomic notifications", Completion);
+            await Test("editable ratings, isolation, concurrency, aggregates and paging", RatingWorkflow);
+            await Test("completion and rating listing locks and fresh checks", CompletionRatingLocks);
             Console.WriteLine($"PASS: {_passed} regression groups.");
         }
         finally

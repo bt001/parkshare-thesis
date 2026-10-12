@@ -27,6 +27,9 @@ namespace ParkShare.Application.Interfaces.Repositories
         /// </summary>
         Task<Booking?> GetByIdWithListingAsync(long bookingId, CancellationToken cancellationToken);
 
+        /// <summary>Completes a validated confirmed booking inside the caller transaction and listing lock.</summary>
+        Task<Booking> CompleteAsync(long bookingId, CancellationToken cancellationToken);
+
         /// <summary>Returns only the immutable listing identity before acquiring its lock.</summary>
         Task<long?> GetListingIdAsync(long bookingId, CancellationToken cancellationToken);
 

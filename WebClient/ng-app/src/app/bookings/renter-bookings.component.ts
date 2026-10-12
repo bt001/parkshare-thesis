@@ -3,12 +3,14 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { finalize, Subscription } from 'rxjs';
+import { distinctUntilChanged, finalize, map, Subscription } from 'rxjs';
+import { AuthService } from '../api/auth/auth.service';
+import { RatingService } from '../api/ratings/rating.service';
 
 import { BookingStatus, RenterBookingItem } from '../api/bookings/booking.models';
 import { BookingService } from '../api/bookings/booking.service';
 
-/** Read-only booking history for the authenticated renter. */
+/** Booking history and editable reviews for the authenticated renter. */
 @Component({
   selector: 'app-renter-bookings', standalone: true,
   imports: [DatePipe, ReactiveFormsModule, RouterLink],
@@ -16,6 +18,24 @@ import { BookingService } from '../api/bookings/booking.service';
   styleUrl: './renter-bookings.component.scss'
 })
 export class RenterBookingsComponent implements OnInit, OnDestroy {
+  private readonly ratingService = inject(RatingService);
+  private readonly auth = inject(AuthService);
+  private session?: Subscription;
+  private mutation?: Subscription;
+  /** Booking whose review is currently being edited. */ editingId?: number;
+  /** Whether a review is being saved. */ saving = false;
+  /** Feedback scoped to the review form. */ ratingError = '';
+  /** Successful review feedback. */ ratingSuccess = '';
+  /** Review draft retained on failed submission. */
+  readonly review = new FormGroup({
+    stars: new FormControl(5, { nonNullable: true }),
+    comment: new FormControl('', { nonNullable: true })
+  });
+  /** Whether the draft is within API bounds. */
+  get canSaveRating(): boolean {
+    const { stars, comment } = this.review.getRawValue();
+    return !this.saving && Number.isInteger(stars) && stars >= 1 && stars <= 5 && comment.trim().length <= 1000;
+  }
   private readonly bookingService = inject(BookingService);
   /** Active request, cancelled before replacement or destruction. */
   private request?: Subscription;
@@ -50,12 +70,20 @@ export class RenterBookingsComponent implements OnInit, OnDestroy {
   get canGoForward(): boolean { return this.page * this.pageSize < this.totalCount && !this.isLoading; }
 
   /** Loads all statuses on entry. */
-  ngOnInit(): void { this.loadPage(1); }
+  ngOnInit(): void {
+    this.session = this.auth.session$.pipe(map(session => session?.userId ?? 0), distinctUntilChanged()).subscribe(userId => {
+      this.request?.unsubscribe(); this.mutation?.unsubscribe();
+      this.cancelRating(); this.bookings = []; this.totalCount = 0; this.page = 1;
+      this.ratingSuccess = ''; this.errorMessages = []; this.status.reset(); this.appliedStatus = undefined;
+      if (userId) this.loadPage(1);
+    });
+  }
   /** Cancels retrieval when leaving this page. */
-  ngOnDestroy(): void { this.request?.unsubscribe(); }
+  ngOnDestroy(): void { this.request?.unsubscribe(); this.mutation?.unsubscribe(); this.session?.unsubscribe(); this.cancelRating(); }
 
   /** Applies the draft status and starts from page one. */
   applyFilters(): void {
+    if (this.saving) return;
     this.appliedStatus = this.status.value === '' ? undefined : Number(this.status.value);
     this.loadPage(1);
   }
@@ -65,7 +93,8 @@ export class RenterBookingsComponent implements OnInit, OnDestroy {
 
   /** Loads one page without applying draft filter changes. */
   loadPage(page: number): void {
-    if (page < 1) return;
+    if (page < 1 || this.saving) return;
+    this.cancelRating();
     this.request?.unsubscribe();
     this.requestedPage = page;
     this.isLoading = true;
@@ -81,6 +110,27 @@ export class RenterBookingsComponent implements OnInit, OnDestroy {
         this.totalCount = result.totalCount;
       },
       error: (error) => { this.errorMessages = this.getErrors(error); }
+    });
+  }
+
+  /** Starts editing the saved review or a new five-star draft. */
+  editRating(booking: RenterBookingItem): void {
+    if (this.saving || booking.status !== BookingStatus.Completed) return;
+    this.editingId = booking.bookingId; this.ratingError = ''; this.ratingSuccess = '';
+    this.review.setValue({ stars: booking.rating?.stars ?? 5, comment: booking.rating?.comment ?? '' });
+  }
+  /** Discards draft changes; the saved review remains authoritative. */
+  cancelRating(): void {
+    this.editingId = undefined; this.ratingError = ''; this.review.reset();
+  }
+  /** Saves the draft without clearing it on failure. */
+  saveRating(booking: RenterBookingItem): void {
+    if (!this.canSaveRating || this.editingId !== booking.bookingId) return;
+    this.saving = true; this.ratingError = ''; this.ratingSuccess = '';
+    const { stars, comment } = this.review.getRawValue();
+    this.mutation = this.ratingService.save(booking.bookingId, stars, comment.trim()).pipe(finalize(() => this.saving = false)).subscribe({
+      next: rating => { booking.rating = rating; this.cancelRating(); this.ratingSuccess = 'Rating saved.'; },
+      error: () => { this.ratingError = 'Your rating could not be saved. Please retry.'; }
     });
   }
 

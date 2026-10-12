@@ -125,6 +125,39 @@ namespace ParkShare.Application.Services
         public Task<ServiceResult<RejectBookingResponse>> RejectAsync(long bookingId, long ownerId, string? reason, CancellationToken ct)
             => DecideAsync<RejectBookingResponse>(bookingId, ownerId, false, ct);
 
+        /// <inheritdoc/>
+        public async Task<ServiceResult<CompleteBookingResponse>> CompleteAsync(long bookingId, long ownerId, CancellationToken ct)
+        {
+            try
+            {
+                var listingId = await _bookingRepository.GetListingIdAsync(bookingId, ct);
+                if (!listingId.HasValue) return ServiceResult<CompleteBookingResponse>.WithError("Booking not found.");
+                await using var transaction = await _transactions.BeginTransactionAsync(ct);
+                await _listingRepository.LockAsync(listingId.Value, ct);
+                var booking = await _bookingRepository.GetByIdWithListingAsync(bookingId, ct);
+                if (booking is null || ownerId <= 0 || booking.Listing.OwnerId != ownerId)
+                    return ServiceResult<CompleteBookingResponse>.WithError("Booking not found.");
+                if (booking.Status == BookingStatus.Completed)
+                    return ServiceResult<CompleteBookingResponse>.Success(MapBooking<CompleteBookingResponse>(booking));
+                if (booking.Status != BookingStatus.Confirmed || !_timePolicy.HasEnded(booking.EndDateTime))
+                    return ServiceResult<CompleteBookingResponse>.Conflict("Only confirmed bookings with a valid, elapsed end time can be completed.");
+                var changed = await _bookingRepository.CompleteAsync(bookingId, ct);
+                await _notificationRepository.AddRangeAsync(new[]
+                {
+                    CreateNotification(changed, changed.RenterId, booking.Listing.Title,
+                        NotificationTypes.BookingCompleted, "was completed. You can now rate your parking experience")
+                }, ct);
+                await transaction.CommitAsync(ct);
+                return ServiceResult<CompleteBookingResponse>.Success(MapBooking<CompleteBookingResponse>(changed));
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Booking completion failed for booking {BookingId}.", bookingId);
+                return ServiceResult<CompleteBookingResponse>.WithError("The booking could not be completed. Please try again.");
+            }
+        }
+
         /// <summary>Serializes owner decisions and validates fresh state before changing a booking.</summary>
         private async Task<ServiceResult<T>> DecideAsync<T>(long bookingId, long ownerId, bool approve, CancellationToken ct)
             where T : BookingResponse, new()
@@ -227,6 +260,7 @@ namespace ParkShare.Application.Services
                     RenterId = booking.RenterId,
                     StartUtc = booking.StartDateTime,
                     EndUtc = booking.EndDateTime,
+                    CanComplete = booking.Status == BookingStatus.Confirmed && _timePolicy.HasEnded(booking.EndDateTime),
                     Status = booking.Status,
                     CreatedAt = booking.CreatedAt
                 }).ToList()
@@ -250,6 +284,7 @@ namespace ParkShare.Application.Services
                         ListingId = booking.ListingId,
                         ListingTitle = booking.Listing.Title,
                         ListingAddress = booking.Listing.Address ?? string.Empty,
+                        Rating = booking.Rating is null ? null : RatingService.ToResponse(booking.Rating),
                         StartDateTime = booking.StartDateTime,
                         EndDateTime = booking.EndDateTime,
                         Status = booking.Status,

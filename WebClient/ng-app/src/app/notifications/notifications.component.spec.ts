@@ -29,6 +29,7 @@ describe('NotificationsComponent', () => {
     fixture = TestBed.createComponent(NotificationsComponent); component = fixture.componentInstance;
   });
   it('renders events and booking-list navigation, filters and pages', () => {
+    expect(component.bookingLink({ ...result.items[0], type: 'booking-completed' })).toBe('/bookings');
     fixture.detectChanges(); expect(fixture.nativeElement.textContent).toContain(result.items[0].message);
     expect(fixture.nativeElement.querySelector('a').getAttribute('href')).toBe('/owner/bookings');
     const unread = Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(b => b.textContent === 'Unread')!;
