@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using ParkShare.Application.Commands;
 using ParkShare.Application.Dto.Application;
 using ParkShare.Application.Infrastructure.Automapper;
@@ -12,6 +12,9 @@ namespace ParkShare.Api.Mappings
     {
         public void CreateMappings(Profile cfg)
         {
+            cfg.CreateMap<CompleteBookingRequest, CompleteBookingCommand>();
+            cfg.CreateMap<CompleteBookingResponse, BookingResult>();
+
             cfg.CreateMap<CreateBookingRequest, CreateBookingCommand>();
             cfg.CreateMap<CreateBookingResponse, BookingResult>();
 

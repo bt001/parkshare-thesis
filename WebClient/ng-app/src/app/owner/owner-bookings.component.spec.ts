@@ -10,9 +10,9 @@ import { OwnerBookingsComponent } from './owner-bookings.component';
 describe('OwnerBookingsComponent', () => {
   let component: OwnerBookingsComponent;
   let fixture: ComponentFixture<OwnerBookingsComponent>;
-  const service = jasmine.createSpyObj<BookingService>('BookingService', ['getForOwner', 'approve', 'reject']);
+  const service = jasmine.createSpyObj<BookingService>('BookingService', ['getForOwner', 'approve', 'reject', 'complete']);
   const listings = jasmine.createSpyObj<ListingService>('ListingService', ['getOwnerListings']);
-  const pending = { bookingId: 8, listingId: 2, listingTitle: 'Space', renterId: 9, startUtc: '2030-07-15T10:00', endUtc: '2030-07-15T11:00', status: BookingStatus.Pending, statusText: 'Pending', createdAt: '2026-07-13' };
+  const pending = { canComplete: false, bookingId: 8, listingId: 2, listingTitle: 'Space', renterId: 9, startUtc: '2030-07-15T10:00', endUtc: '2030-07-15T11:00', status: BookingStatus.Pending, statusText: 'Pending', createdAt: '2026-07-13' };
   const page = (status = BookingStatus.Pending): GetOwnerBookingsResult => ({ page: 1, pageSize: 20, totalCount: 1, items: [{ ...pending, status }] });
   beforeEach(async () => {
     service.getForOwner.calls.reset(); service.approve.calls.reset();
@@ -21,6 +21,24 @@ describe('OwnerBookingsComponent', () => {
     service.approve.and.returnValue(of({ bookingId: 8, listingId: 2, renterId: 9, ownerId: 1, startDateTime: pending.startUtc, endDateTime: pending.endUtc, status: BookingStatus.Confirmed, statusText: 'Confirmed', createdAt: pending.createdAt }));
     await TestBed.configureTestingModule({ imports: [OwnerBookingsComponent], providers: [provideRouter([]), { provide: BookingService, useValue: service }, { provide: ListingService, useValue: listings }] }).compileComponents();
     fixture = TestBed.createComponent(OwnerBookingsComponent); component = fixture.componentInstance; fixture.detectChanges();
+  });
+
+  it('completes only eligible bookings and preserves successful completion through a reload failure', () => {
+    service.complete.calls.reset();
+    component.complete(pending); expect(service.complete).not.toHaveBeenCalled();
+    service.complete.and.returnValue(of({ bookingId: 8 } as any));
+    service.getForOwner.and.returnValue(throwError(() => new Error('offline')));
+    component.complete({ ...pending, status: BookingStatus.Confirmed, canComplete: true });
+    expect(service.complete).toHaveBeenCalledWith(8); expect(component.successMessage).toContain('completed');
+    expect(component.errorMessages.length).toBeGreaterThan(0);
+    component.refresh(); expect(service.complete).toHaveBeenCalledTimes(1);
+  });
+
+  it('prevents duplicate completion while the request is pending', () => {
+    service.complete.calls.reset(); const pendingSave = new Subject<any>(); service.complete.and.returnValue(pendingSave);
+    const eligible = { ...pending, status: BookingStatus.Confirmed, canComplete: true };
+    component.complete(eligible); component.complete(eligible);
+    expect(service.complete).toHaveBeenCalledTimes(1); fixture.destroy(); expect(pendingSave.observed).toBeFalse();
   });
 
   it('reloads all affected rows after approval', () => {

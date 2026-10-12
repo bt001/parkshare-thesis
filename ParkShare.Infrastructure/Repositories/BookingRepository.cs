@@ -43,6 +43,17 @@ namespace ParkShare.Infrastructure.Repositories
                 .FirstOrDefaultAsync(booking => booking.Id == bookingId, cancellationToken);
 
         /// <inheritdoc/>
+        public async Task<Booking> CompleteAsync(long bookingId, CancellationToken cancellationToken)
+        {
+            if (_db.Database.CurrentTransaction is null)
+                throw new InvalidOperationException("Completion requires the application transaction and listing lock.");
+            var changed = await _db.Bookings.Where(b => b.Id == bookingId && b.Status == BookingStatus.Confirmed)
+                .ExecuteUpdateAsync(update => update.SetProperty(b => b.Status, BookingStatus.Completed), cancellationToken);
+            if (changed != 1) throw new InvalidOperationException("The locked booking is no longer confirmed.");
+            return (await GetByIdWithListingAsync(bookingId, cancellationToken))!;
+        }
+
+        /// <inheritdoc/>
         public Task<long?> GetListingIdAsync(long bookingId, CancellationToken cancellationToken)
             => _db.Bookings.AsNoTracking().Where(b => b.Id == bookingId)
                 .Select(b => (long?)b.ListingId).FirstOrDefaultAsync(cancellationToken);
@@ -102,7 +113,7 @@ namespace ParkShare.Infrastructure.Repositories
         /// <inheritdoc/>
         public async Task<PagedResult<Booking>> GetRenterByStatusesAsync(long renterId, List<BookingStatus>? statuses, int page, int pageSize, CancellationToken cancellationToken)
         {
-            var query = _db.Bookings.AsNoTracking().Include(booking => booking.Listing)
+            var query = _db.Bookings.AsNoTracking().Include(booking => booking.Listing).Include(booking => booking.Rating)
                 .Where(booking => booking.RenterId == renterId);
             if (statuses != null && statuses.Count > 0)
                 query = query.Where(booking => statuses.Contains(booking.Status));

@@ -1,4 +1,4 @@
-﻿using ParkShare.Common.Enums;
+using ParkShare.Common.Enums;
 
 namespace ParkShare.Shared.Results.Bookings
 {
@@ -17,6 +17,8 @@ namespace ParkShare.Shared.Results.Bookings
         public string ListingTitle { get; set; } = string.Empty;
         public long RenterId { get; set; }
         public DateTime StartUtc { get; set; }
+        /// <summary>Whether the server currently permits owner completion.</summary>
+        public bool CanComplete { get; set; }
         public DateTime EndUtc { get; set; }
         public BookingStatus Status { get; set; }
         public string StatusText => Status.ToString();

@@ -1,4 +1,4 @@
-﻿using ParkShare.Application.Commands;
+using ParkShare.Application.Commands;
 using ParkShare.Application.Dto;
 using ParkShare.Application.Dto.Application;
 using ParkShare.Common.Enums;
@@ -28,6 +28,9 @@ namespace ParkShare.Application.Interfaces
 
         /// <summary>Validates owner identity and rejects a Pending request under the listing lock.</summary>
         Task<ServiceResult<RejectBookingResponse>> RejectAsync(long bookingId, long ownerId, string? reason, CancellationToken ct);
+
+        /// <summary>Completes an ended confirmed booking and notifies its renter atomically.</summary>
+        Task<ServiceResult<CompleteBookingResponse>> CompleteAsync(long bookingId, long ownerId, CancellationToken ct);
 
         /// <summary>Returns paged owner booking results.</summary>
         Task<ServiceResult<GetOwnerBookingsResponse>> GetOwnerByStatusesAsync(long ownerId, long? listingId, List<BookingStatus>? statuses, int page, int pageSize, CancellationToken ct);

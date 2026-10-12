@@ -28,6 +28,11 @@ export class BookingService {
     return this.http.get<GetRenterBookingsResult>('api/booking/renter', { params });
   }
 
+  /** Completes an ended booking as its owner. */
+  complete(bookingId: number): Observable<BookingResult> {
+    return this.http.patch<BookingResult>('api/booking/completebooking', { bookingId });
+  }
+
   approve(bookingId: number): Observable<BookingResult> {
     return this.http.patch<BookingResult>('api/booking/approvebooking', { bookingId });
   }

@@ -88,7 +88,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   bookingLink(item: NotificationItem): string | null {
     if (!item.bookingId) return null;
     if (item.type === 'booking-requested') return '/owner/bookings';
-    return ['booking-approved', 'booking-rejected', 'booking-overlap-rejected'].includes(item.type) ? '/bookings' : null;
+    return ['booking-approved', 'booking-rejected', 'booking-overlap-rejected', 'booking-completed'].includes(item.type) ? '/bookings' : null;
   }
   /** Cancels all outstanding account work on navigation. */
   ngOnDestroy(): void { this.request?.unsubscribe(); this.mutation?.unsubscribe(); this.session?.unsubscribe(); }

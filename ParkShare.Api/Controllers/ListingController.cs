@@ -1,4 +1,6 @@
-﻿using AutoMapper;
+using ParkShare.Shared.Requests.Ratings;
+using ParkShare.Shared.Results.Ratings;
+using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -46,6 +48,16 @@ namespace ParkShare.Api.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public Task<IActionResult> GetById([FromRoute] long id)
             => ProcessQueryAsync<GetListingByIdRequest, GetListingByIdResult, GetListingByIdQuery, GetListingByIdResponse>(new GetListingByIdRequest { Id = id });
+
+        /// <summary>Returns public reviews and the listing aggregate.</summary>
+        [HttpGet("{id:long}/ratings")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(GetListingRatingsResult), StatusCodes.Status200OK)]
+        public Task<IActionResult> GetRatings([FromRoute] long id, [FromQuery] GetListingRatingsRequest query)
+        {
+            query.ListingId = id;
+            return ProcessQueryAsync<GetListingRatingsRequest, GetListingRatingsResult, GetListingRatingsQuery, GetListingRatingsResponse>(query);
+        }
 
         [HttpGet("owner")]
         [ProducesResponseType(typeof(GetOwnerListingsResult), StatusCodes.Status200OK)]

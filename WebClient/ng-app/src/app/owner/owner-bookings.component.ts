@@ -107,6 +107,16 @@ export class OwnerBookingsComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** Completes an eligible booking and refreshes the applied page. */
+  complete(booking: OwnerBookingItem): void {
+    if (!booking.canComplete || this.changingId || this.isLoading) return;
+    this.changingId = booking.bookingId; this.errorMessages = []; this.successMessage = '';
+    this.decision = this.bookingService.complete(booking.bookingId).pipe(finalize(() => this.changingId = undefined)).subscribe({
+      next: () => { this.successMessage = `Booking #${booking.bookingId} completed.`; this.load(this.page); },
+      error: error => { this.errorMessages = this.getErrors(error, 'The booking could not be completed.'); }
+    });
+  }
+
   /** Extracts safe API messages while retaining a useful retry fallback. */
   private getErrors(error: unknown, fallback: string): string[] {
     if (error instanceof HttpErrorResponse) {

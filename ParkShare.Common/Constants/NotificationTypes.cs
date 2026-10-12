@@ -3,6 +3,8 @@ namespace ParkShare.Common.Constants
     /// <summary>Stable persisted booking notification types.</summary>
     public static class NotificationTypes
     {
+        /// <summary>The owner completed a booking and the renter can rate it.</summary>
+        public const string BookingCompleted = "booking-completed";
         /// <summary>A renter requested a booking.</summary>
         public const string BookingRequested = "booking-requested";
         /// <summary>The owner approved a booking.</summary>

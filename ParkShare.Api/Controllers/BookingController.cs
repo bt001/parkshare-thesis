@@ -1,3 +1,5 @@
+using ParkShare.Shared.Requests.Ratings;
+using ParkShare.Shared.Results.Ratings;
 using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -70,6 +72,25 @@ namespace ParkShare.Api.Controllers
                 body,
                 _currentUser,
                 (request, userId) => request.OwnerId = userId);
+
+        /// <summary>Completes the authenticated owner's ended booking.</summary>
+        [HttpPatch("[action]")]
+        [ProducesResponseType(typeof(BookingResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public Task<IActionResult> CompleteBooking([FromBody] CompleteBookingRequest body)
+            => ProcessAuthenticatedCommandAsync<CompleteBookingRequest, BookingResult, CompleteBookingCommand, CompleteBookingResponse>(
+                body, _currentUser, (request, userId) => request.OwnerId = userId);
+
+        /// <summary>Creates or edits the authenticated renter's review.</summary>
+        [HttpPut("{id:long}/rating")]
+        [ProducesResponseType(typeof(RatingResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public Task<IActionResult> SaveRating([FromRoute] long id, [FromBody] SaveBookingRatingRequest body)
+        {
+            body.BookingId = id;
+            return ProcessAuthenticatedCommandAsync<SaveBookingRatingRequest, RatingResult, SaveBookingRatingCommand, RatingResponse>(
+                body, _currentUser, (request, userId) => request.RenterId = userId);
+        }
 
         /// <summary>Reads the authenticated participant's booking conversation.</summary>
         [HttpGet("{id:long}/messages")]

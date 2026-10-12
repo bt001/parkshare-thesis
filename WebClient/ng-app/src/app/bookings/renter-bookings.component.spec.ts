@@ -1,7 +1,9 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of, Subject, throwError } from 'rxjs';
+import { AuthService } from '../api/auth/auth.service';
+import { RatingService } from '../api/ratings/rating.service';
+import { BehaviorSubject, of, Subject, throwError } from 'rxjs';
 
 import { BookingService } from '../api/bookings/booking.service';
 import { GetRenterBookingsResult } from '../api/bookings/booking.models';
@@ -11,6 +13,8 @@ import { RenterBookingsComponent } from './renter-bookings.component';
   let fixture: ComponentFixture<RenterBookingsComponent>;
   let component: RenterBookingsComponent;
   const service = jasmine.createSpyObj<BookingService>('BookingService', ['getForRenter']);
+  const ratings = jasmine.createSpyObj<RatingService>('RatingService', ['save']);
+  const session = new BehaviorSubject<{ userId: number } | null>({ userId: 1 });
   const result: GetRenterBookingsResult = {
     page: 1, pageSize: 20, totalCount: 21,
     items: [{ bookingId: 5, listingId: 3, listingTitle: 'Central parking', listingAddress: 'Test Street 1',
@@ -19,12 +23,49 @@ import { RenterBookingsComponent } from './renter-bookings.component';
   };
 
   beforeEach(async () => {
+    session.next({ userId: 1 }); ratings.save.calls.reset();
     service.getForRenter.calls.reset();
     service.getForRenter.and.returnValue(of(result));
     await TestBed.configureTestingModule({ imports: [RenterBookingsComponent],
-      providers: [provideRouter([]), { provide: BookingService, useValue: service }] }).compileComponents();
+      providers: [provideRouter([]), { provide: AuthService, useValue: { session$: session } }, { provide: RatingService, useValue: ratings }, { provide: BookingService, useValue: service }] }).compileComponents();
     fixture = TestBed.createComponent(RenterBookingsComponent);
     component = fixture.componentInstance;
+  });
+
+  it('retains failed review drafts, saves edits and cancels back to persisted content', () => {
+    fixture.detectChanges();
+    const booking = { ...component.bookings[0], status: 3, rating: { id: 9, stars: 3, comment: 'Original', createdAt: '2026-10-12T00:00:00Z' } };
+    component.bookings = [booking]; component.editRating(booking);
+    expect(component.review.getRawValue()).toEqual({ stars: 3, comment: 'Original' });
+    component.review.setValue({ stars: 5, comment: ' Edited ' });
+    ratings.save.and.returnValue(throwError(() => new Error('offline'))); component.saveRating(booking);
+    expect(component.ratingError).toContain('retry'); expect(component.review.controls.comment.value).toBe(' Edited ');
+    expect(booking.rating.comment).toBe('Original');
+    ratings.save.and.returnValue(of({ ...booking.rating, stars: 5, comment: 'Edited' })); component.saveRating(booking);
+    expect(ratings.save).toHaveBeenCalledWith(booking.bookingId, 5, 'Edited');
+    expect(booking.rating.stars).toBe(5); expect(component.editingId).toBeUndefined();
+    component.editRating(booking); component.review.controls.comment.setValue('Discard'); component.cancelRating(); component.editRating(booking);
+    expect(component.review.controls.comment.value).toBe('Edited');
+  });
+
+  it('cancels saves and clears private drafts on account changes', () => {
+    fixture.detectChanges();
+    const booking = { ...component.bookings[0], status: 3 };
+    component.editRating(booking); component.review.controls.comment.setValue('Private');
+    const pending = new Subject<any>(); ratings.save.and.returnValue(pending); component.saveRating(booking);
+    component.saveRating(booking); expect(ratings.save).toHaveBeenCalledTimes(1);
+    session.next(null);
+    expect(pending.observed).toBeFalse(); expect(component.review.controls.comment.value).toBe('');
+    expect(component.bookings).toEqual([]); expect(component.saving).toBeFalse();
+    expect(component.editingId).toBeUndefined();
+  });
+
+  it('rejects invalid stars and clears a draft when leaving the page', () => {
+    fixture.detectChanges(); component.editRating({ ...component.bookings[0], status: 3 });
+    component.review.controls.stars.setValue(1.5); expect(component.canSaveRating).toBeFalse();
+    component.review.controls.stars.setValue(5); component.review.controls.comment.setValue('x'.repeat(1001));
+    expect(component.canSaveRating).toBeFalse(); fixture.destroy();
+    expect(component.review.controls.comment.value).toBe('');
   });
 
   it('loads all statuses and renders stored booking details', () => {
