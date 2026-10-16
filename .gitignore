@@ -429,3 +429,6 @@ FodyWeavers.xsd
 /ParkShare.Shared/.tmpobj
 /WebClient/ng-app/e2e
 WebClient/ng-app/playwright.config.ts
+
+# Private uploaded listing images
+**/App_Data/listing-photos/

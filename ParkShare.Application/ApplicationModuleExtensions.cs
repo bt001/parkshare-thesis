@@ -26,6 +26,7 @@ namespace ParkShare.Application
             services.AddScoped<IAuthenticationService, AuthenticationService>();
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IListingService, ListingService>();
+            services.AddScoped<IListingPhotoService, ListingPhotoService>();
             services.AddScoped<IAmenityService, AmenityService>();
             services.AddScoped<IListingReadService, ListingReadService>();
             services.AddScoped<IAvailabilityService, AvailabilityService>();

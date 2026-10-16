@@ -113,6 +113,68 @@ namespace ParkShare.Api.Controllers
                 _currentUser,
                 (request, userId) => request.OwnerId = userId);
 
+        /// <summary>Uploads one bounded JPEG or PNG for the authenticated listing owner.</summary>
+        [HttpPost("{id:long}/photos")]
+        [Consumes("multipart/form-data")]
+        [RequestSizeLimit(ParkShare.Common.Constants.ListingPhotoLimits.MaxBytes + 65536)]
+        [RequestFormLimits(MultipartBodyLengthLimit = ParkShare.Common.Constants.ListingPhotoLimits.MaxBytes + 65536)]
+        [ProducesResponseType(typeof(ListingPhotoResult), StatusCodes.Status200OK)]
+        public async Task<IActionResult> UploadPhoto([FromRoute] long id, IFormFile file)
+        {
+            var unauthorized = RequireCurrentUserId(_currentUser, out var userId);
+            if (unauthorized is not null) return unauthorized;
+            if (file is null || file.Length <= 0 || file.Length > ParkShare.Common.Constants.ListingPhotoLimits.MaxBytes
+                || Request.Form.Files.Count != 1)
+                return BadRequest(new[] { "Select one JPEG or PNG image up to 5 MiB." });
+            await using var stream = file.OpenReadStream();
+            var result = await _mediator.Send(new UploadListingPhotoCommand
+            {
+                ListingId = id, OwnerId = userId, Content = stream, ContentType = file.ContentType
+            }, HttpContext.RequestAborted);
+            return HandleCommandResult<ListingPhotoResponse, ListingPhotoResult>(result);
+        }
+
+        /// <summary>Removes a photo belonging to the authenticated owner's listing.</summary>
+        [HttpDelete("{id:long}/photos/{photoId:long}")]
+        [ProducesResponseType(typeof(DeleteListingPhotoResult), StatusCodes.Status200OK)]
+        public async Task<IActionResult> DeletePhoto([FromRoute] long id, [FromRoute] long photoId)
+        {
+            var unauthorized = RequireCurrentUserId(_currentUser, out var userId);
+            if (unauthorized is not null) return unauthorized;
+            var result = await _mediator.Send(new DeleteListingPhotoCommand
+            {
+                ListingId = id, PhotoId = photoId, OwnerId = userId
+            }, HttpContext.RequestAborted);
+            return HandleCommandResult<DeleteListingPhotoResponse, DeleteListingPhotoResult>(result);
+        }
+
+        /// <summary>Returns public photos in stable upload order.</summary>
+        [HttpGet("{id:long}/photos")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(ListingPhotosResult), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetPhotos([FromRoute] long id)
+        {
+            var result = await _mediator.Send(new GetListingPhotosQuery { ListingId = id }, HttpContext.RequestAborted);
+            return HandleQueryResult<ListingPhotosResponse, ListingPhotosResult>(result);
+        }
+
+        /// <summary>Serves a stored photo only while its matching metadata exists.</summary>
+        [HttpGet("{id:long}/photos/{photoId:long}/content")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPhotoContent([FromRoute] long id, [FromRoute] long photoId)
+        {
+            Response.Headers.CacheControl = "no-store";
+            Response.Headers.XContentTypeOptions = "nosniff";
+            var result = await _mediator.Send(new GetListingPhotoContentQuery { ListingId = id, PhotoId = photoId }, HttpContext.RequestAborted);
+            if (!result.IsSuccessful)
+            {
+                if (System.Linq.Enumerable.Any(result.Errors, e => e.Contains("not found", System.StringComparison.OrdinalIgnoreCase)))
+                    return NotFound(result.Errors);
+                return BadRequest(result.Errors);
+            }
+            return File(result.Payload.Content, result.Payload.ContentType);
+        }
+
         [HttpGet("search")]
         [AllowAnonymous]
         [ProducesResponseType(typeof(SearchListingsResult), StatusCodes.Status200OK)]

@@ -94,3 +94,10 @@ export interface ListingMutationResult {
   listingId: number;
   isActive: boolean;
 }
+
+/** Saved public photo metadata. */
+export interface ListingPhoto {
+  /** Photo identity. */ id: number;
+  /** API-relative image endpoint. */ url: string;
+  /** UTC upload timestamp. */ uploadedAt: string;
+}

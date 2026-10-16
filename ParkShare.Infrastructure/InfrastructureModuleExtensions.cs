@@ -39,6 +39,8 @@ namespace ParkShare.Infrastructure
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IUserRoleRepository, UserRoleRepository>();
             services.AddScoped<IListingRepository, ListingRepository>();
+            services.AddScoped<IListingPhotoRepository, ListingPhotoRepository>();
+            services.AddScoped<IListingPhotoStorage, LocalListingPhotoStorage>();
             services.AddScoped<IAmenityRepository, AmenityRepository>();
             services.AddScoped<IListingAmenityRepository, ListingAmenityRepository>();
             services.AddScoped<IAvailabilityWindowRepository, AvailabilityWindowRepository>();

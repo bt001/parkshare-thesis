@@ -1,0 +1,27 @@
+<section aria-labelledby="photos-heading">
+  <h2 id="photos-heading">Photos</h2>
+  @if (editable) {
+    <p>Upload JPEG or PNG images, up to 5 MiB each. Maximum 8 photos. Photo changes save separately.</p>
+    <label for="listing-photo-file">Choose photo</label>
+    <input id="listing-photo-file" type="file" accept="image/jpeg,image/png" (change)="select($event)"
+      [disabled]="!ready || !!busy || photos.length >= 8 || sessionChanged" />
+    @if (selected) { <p class="filename">Selected: {{ selected.name }}</p> }
+    <button type="button" (click)="upload()" [disabled]="!selected || !ready || !!busy || photos.length >= 8 || sessionChanged">Upload photo</button>
+    @if (photos.length >= 8) { <p>Photo limit reached. Remove a photo to add another.</p> }
+  }
+  @if (loading) { <p role="status">Loading photos…</p> }
+  @if (busy) { <p role="status">{{ busy }}</p> }
+  @if (message) { <p role="status">{{ message }}</p> }
+  @if (error) { <p role="alert">{{ error }}</p> }
+  @if (!sessionChanged) { <button type="button" (click)="load()" [disabled]="loading || !!busy">{{ error ? 'Retry photos' : 'Refresh photos' }}</button> }
+  @if (ready && !photos.length) { <p>No photos yet.</p> }
+  <div class="photo-grid">
+    @for (photo of photos; track photo.id; let index = $index) {
+      <figure>
+        @if (broken.has(photo.id)) { <div class="image-fallback" role="img" [attr.aria-label]="'Photo ' + (index + 1) + ' unavailable'">Photo unavailable. Refresh photos to retry.</div> }
+        @else { <img [src]="imageUrl(photo.url)" [alt]="'Parking space photo ' + (index + 1)" loading="lazy" (error)="broken.add(photo.id)" /> }
+        @if (editable) { <figcaption><button type="button" (click)="remove(photo)" [disabled]="!ready || !!busy || sessionChanged" [attr.aria-label]="'Remove photo ' + (index + 1)">Remove photo</button></figcaption> }
+      </figure>
+    }
+  </div>
+</section>

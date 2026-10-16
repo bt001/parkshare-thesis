@@ -109,7 +109,7 @@ namespace ParkShare.Api.Controllers
             return ProcessCommandAsync<TApiRequest, TApiResult, TAppRequest, TAppResponse>(apiRequest);
         }
 
-        private IActionResult HandleQueryResult<TAppResponse, TApiResult>(ServiceResult<TAppResponse> result)
+        protected IActionResult HandleQueryResult<TAppResponse, TApiResult>(ServiceResult<TAppResponse> result)
             where TAppResponse : class
             where TApiResult : IApiResult
         {
@@ -133,7 +133,7 @@ namespace ParkShare.Api.Controllers
             return Ok(apiResult);
         }
 
-        private IActionResult HandleCommandResult<TAppResponse, TApiResult>(ServiceResult<TAppResponse> result)
+        protected IActionResult HandleCommandResult<TAppResponse, TApiResult>(ServiceResult<TAppResponse> result)
            where TAppResponse : class
            where TApiResult : IApiResult
         {

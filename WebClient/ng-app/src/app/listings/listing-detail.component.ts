@@ -1,3 +1,4 @@
+import { ListingPhotosComponent } from './listing-photos.component';
 import { ListingReviewsComponent } from './listing-reviews.component';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -24,7 +25,7 @@ interface BookingForm {
 @Component({
   selector: 'app-listing-detail',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, RouterLink, ListingReviewsComponent],
+  imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, RouterLink, ListingReviewsComponent, ListingPhotosComponent],
   templateUrl: './listing-detail.component.html',
   styleUrl: './listing-detail.component.scss'
 })

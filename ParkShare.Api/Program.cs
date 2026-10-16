@@ -27,6 +27,10 @@ internal class Program
         builder.Services.Configure<DatabaseConfig>(builder.Configuration.GetSection("DatabaseConfig"));
         builder.Services.Configure<JwtConfig>(builder.Configuration.GetSection("JwtConfig"));
 
+        builder.Services.Configure<ListingPhotoStorageConfig>(builder.Configuration.GetSection("ListingPhotoStorage"));
+        builder.Services.PostConfigure<ListingPhotoStorageConfig>(options =>
+            options.RootPath = System.IO.Path.GetFullPath(options.RootPath, builder.Environment.ContentRootPath));
+
         // ---- MODULES ----
 
         builder.Services.AddApiModule();

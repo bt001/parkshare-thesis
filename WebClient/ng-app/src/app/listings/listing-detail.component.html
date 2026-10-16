@@ -21,6 +21,8 @@
     </div>
   </section>
 
+  @defer (on immediate) { <app-listing-photos [listingId]="listing.id" /> }
+
   <div class="detail-grid">
     <div class="detail-column">
       <section class="panel description-panel">

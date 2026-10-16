@@ -1,3 +1,4 @@
+import { ListingPhotosComponent } from '../listings/listing-photos.component';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -18,7 +19,7 @@ interface ListingForm {
 @Component({
   selector: 'app-owner-listing-form',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, ListingPhotosComponent],
   templateUrl: './owner-listing-form.component.html',
   styleUrl: './owner-listing-form.component.scss'
 })

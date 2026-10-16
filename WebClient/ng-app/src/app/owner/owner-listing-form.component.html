@@ -37,3 +37,7 @@
     </form>
   }
 </section>
+
+@if (listingId && !isLoading && !errorMessages.length) {
+  @defer (on immediate) { <app-listing-photos [listingId]="listingId" [editable]="true" /> }
+} @else if (!isEditing) { <p>After creating your listing, open Edit to add photos.</p> }
