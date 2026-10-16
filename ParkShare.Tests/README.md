@@ -1,4 +1,4 @@
-# Booking, notification, chat, rating and amenity regression suite
+# Booking, notification, chat, rating, amenity and photo regression suite
 
 Run `dotnet run --project ParkShare.Tests` from the repository root.
 The executable exits nonzero on failure and uses the real SQL Server repositories.
@@ -15,3 +15,5 @@ Chat cases cover owner/renter participation in every booking status and inactive
 Completion and rating cases cover Romanian end-time boundaries, owner/renter isolation, inactive listings, repeated/concurrent completion, atomic completion notifications and rollback, serialized editable reviews, bounds, persistence, history, aggregates, stable pagination and listing-lock freshness. These flows reuse the existing schema and deterministic test clocks.
 
 Amenity cases cover catalog seeding without replacing existing rows/associations, sorted detail reads, optional selection semantics, owner-only active/inactive edits, invalid/duplicate IDs, persistence, cancellation, atomic listing/role rollback, concurrent replacements and fresh ownership after the listing lock.
+
+Photo cases cover upload bounds, ownership and cross-listing isolation, private storage key validation, persistence across context/storage recreation, cancellation, concurrent final-slot uploads, fresh ownership after lock waits, metadata/partial-file rollback, deletion-cleanup failures and lost commit acknowledgements. Each photo group uses and removes its own generated temporary directory. Browser coverage additionally verifies image rendering and persistence after an API process restart.
