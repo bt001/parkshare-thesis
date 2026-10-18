@@ -104,4 +104,13 @@ describe('ListingService', () => {
     search.flush({ items: [], totalCount: 0, page: 1, pageSize: 12 });
   });
 
+
+  it('serializes repeated unique amenities and secondary criteria', () => {
+    service.search({ page: 1, pageSize: 12, amenityIds: [2, 3, 2], minRating: 4.5, sortBy: 'ratingDesc' }).subscribe();
+    const req = http.expectOne(r => r.url === 'api/listing/search');
+    expect(req.request.params.getAll('amenityIds')).toEqual(['2', '3']);
+    expect(req.request.params.get('minRating')).toBe('4.5');
+    expect(req.request.params.get('sortBy')).toBe('ratingDesc');
+    req.flush({ items: [], totalCount: 0, page: 1, pageSize: 12 });
+  });
 });

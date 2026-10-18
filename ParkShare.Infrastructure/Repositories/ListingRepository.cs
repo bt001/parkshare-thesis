@@ -52,7 +52,7 @@ namespace ParkShare.Infrastructure.Repositories
                 .ToListAsync(cancellationToken);
 
         /// <inheritdoc/>
-        public async Task<PagedResult<Listing>> SearchAsync(
+        public async Task<PagedResult<ListingSearchRow>> SearchAsync(
             double? lat,
             double? lng,
             double? radiusKm,
@@ -64,7 +64,7 @@ namespace ParkShare.Infrastructure.Repositories
             string? addressContains,
             int page,
             int pageSize,
-            CancellationToken cancellationToken, DateTime? startDateTime = null, DateTime? endDateTime = null)
+            CancellationToken cancellationToken, DateTime? startDateTime = null, DateTime? endDateTime = null, IReadOnlyCollection<long>? amenityIds = null, double? minRating = null, string? sortBy = null)
         {
             var query = _db.Listings.AsNoTracking().AsQueryable();
 
@@ -115,15 +115,33 @@ namespace ParkShare.Infrastructure.Repositories
                                 && next.StartDateTime <= w.EndDateTime && next.EndDateTime > w.EndDateTime)))));
             }
 
+            foreach (var amenityId in amenityIds?.Distinct() ?? Enumerable.Empty<long>())
+                query = query.Where(listing => listing.ListingAmenities.Any(a => a.AmenityId == amenityId));
+            if (minRating.HasValue)
+                query = query.Where(listing => listing.Ratings.Average(r => (double?)r.Stars) >= minRating.Value);
+
             var total = await query.CountAsync(cancellationToken);
-            var items = await query
-                .OrderByDescending(listing => listing.CreatedAt)
-                .ThenByDescending(listing => listing.Id)
+            var ordered = sortBy switch
+            {
+                "priceAsc" => query.OrderBy(l => l.PricePerHour).ThenByDescending(l => l.CreatedAt).ThenByDescending(l => l.Id),
+                "priceDesc" => query.OrderByDescending(l => l.PricePerHour).ThenByDescending(l => l.CreatedAt).ThenByDescending(l => l.Id),
+                "ratingDesc" => query.OrderByDescending(l => l.Ratings.Average(r => (double?)r.Stars)).ThenByDescending(l => l.CreatedAt).ThenByDescending(l => l.Id),
+                _ => query.OrderByDescending(l => l.CreatedAt).ThenByDescending(l => l.Id)
+            };
+            var items = await ordered
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
+                .Select(l => new ListingSearchRow
+                {
+                    Id = l.Id, Title = l.Title, Address = l.Address, Latitude = l.Latitude,
+                    Longitude = l.Longitude, PricePerHour = l.PricePerHour, IsActive = l.IsActive,
+                    IsAlwaysAvailable = l.IsAlwaysAvailable, CreatedAt = l.CreatedAt,
+                    CoverPhotoId = l.Photos.OrderBy(p => p.UploadedAt).ThenBy(p => p.Id).Select(p => (long?)p.Id).FirstOrDefault(),
+                    AverageRating = l.Ratings.Average(r => (double?)r.Stars), RatingCount = l.Ratings.Count()
+                })
                 .ToListAsync(cancellationToken);
 
-            return new PagedResult<Listing>(items, total);
+            return new PagedResult<ListingSearchRow>(items, total);
         }
 
         /// <inheritdoc/>

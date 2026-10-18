@@ -12,14 +12,15 @@ import { routes } from './app.routes';
 import { serverRoutes } from './app.routes.server';
 
 describe('application routes', () => {
-  it('keeps listing browse and detail routes inside the protected shell', () => {
+  it('keeps listing browse and detail routes inside the protected shell', async () => {
     const shellRoute = routes.find((route) => route.component === AppShellComponent);
 
+    expect(await shellRoute?.children?.find(route => route.path === 'listings')?.loadComponent?.()).toBe(ListingListComponent);
     expect(shellRoute?.canActivate).toContain(authGuard);
     expect(shellRoute?.canActivateChild).toContain(authGuard);
     expect(shellRoute?.children).toContain(jasmine.objectContaining({
       path: 'listings',
-      component: ListingListComponent
+      loadComponent: jasmine.any(Function)
     }));
     expect(shellRoute?.children).toContain(jasmine.objectContaining({
       path: 'listings/:id',

@@ -40,6 +40,10 @@
       <label for="search-departure">Departure</label>
       <input id="search-departure" type="datetime-local" formControlName="endDateTime" [min]="minimumDateTime" />
     </div>
+  </div>
+  <fieldset class="secondary-filters">
+    <legend>More filters and sorting</legend>
+    <div class="filter-fields">
     <div>
       <label for="filter-title">Title</label>
       <input id="filter-title" type="text" formControlName="titleContains" aria-describedby="title-error" />
@@ -69,6 +73,27 @@
       }
     </div>
   </div>
+    <div class="filter-fields">
+      <div><label for="filter-rating">Minimum rating</label>
+        <select id="filter-rating" formControlName="minRating">
+          <option [ngValue]="null">Any rating</option><option [ngValue]="3">3+</option>
+          <option [ngValue]="4">4+</option><option [ngValue]="4.5">4.5+</option>
+        </select>
+      </div>
+      <div><label for="filter-sort">Sort by</label>
+        <select id="filter-sort" formControlName="sortBy">
+          <option value="newest">Newest</option><option value="priceAsc">Price: low to high</option>
+          <option value="priceDesc">Price: high to low</option><option value="ratingDesc">Highest rated</option>
+        </select>
+      </div>
+    </div>
+    <fieldset><legend>Amenities (all selected must match)</legend>
+      @for (amenity of amenities; track amenity.id) {
+        <label class="availability-filter"><input type="checkbox" [checked]="filterForm.controls.amenityIds.value.includes(amenity.id)" (change)="toggleAmenity(amenity.id)" />{{ amenity.name }}</label>
+      }
+      @if (amenityError) { <p role="alert">{{ amenityError }} <button type="button" (click)="loadAmenities()">Retry amenities</button></p> }
+    </fieldset>
+  </fieldset>
   @if (filterForm.touched && filterForm.hasError('priceRange')) {
     <p id="price-range-error" class="field-error" role="alert">Minimum price cannot exceed maximum price.</p>
   }
@@ -115,9 +140,9 @@
     <div class="listing-grid">
       @for (listing of listings; track listing.id) {
         <article class="listing-card">
-          <div class="card-map-placeholder" aria-hidden="true">
-            <span>{{ listing.latitude.toFixed(3) }}, {{ listing.longitude.toFixed(3) }}</span>
-          </div>
+          @if (listing.coverPhotoUrl && !brokenPhotos.has(listing.coverPhotoUrl)) {
+            <img class="cover-photo" [src]="imageUrl(listing.coverPhotoUrl)" [alt]="listing.title" loading="lazy" (error)="brokenPhotos.add(listing.coverPhotoUrl)" />
+          } @else { <div class="card-map-placeholder">No photo available</div> }
           <div class="card-body">
             <div class="card-topline">
               <span class="availability-badge">
@@ -127,6 +152,10 @@
             </div>
             <h2>{{ listing.title }}</h2>
             <p>{{ listing.address || 'Address available in listing details' }}</p>
+            <p class="review-summary">@if (listing.ratingCount && listing.averageRating != null) {
+              {{ listing.averageRating | number:'1.1-1' }} / 5 &middot; {{ listing.ratingCount }} reviews
+            } @else { No reviews yet }</p>
+            @if (listing.estimatedPeriodCost != null) { <p>Estimated period cost: <strong>{{ listing.estimatedPeriodCost | currency:'RON':'symbol-narrow':'1.2-2' }}</strong></p> }
             <a [routerLink]="['/listings', listing.id]" [queryParams]="detailParams">View space</a>
           </div>
         </article>
@@ -171,10 +200,17 @@
           <span class="availability-badge">
             {{ listing.isAlwaysAvailable ? 'Always available' : 'Scheduled availability' }}
           </span>
+          @if (listing.coverPhotoUrl && !brokenPhotos.has(listing.coverPhotoUrl)) {
+            <img class="cover-photo" [src]="imageUrl(listing.coverPhotoUrl)" [alt]="listing.title" loading="lazy" (error)="brokenPhotos.add(listing.coverPhotoUrl)" />
+          } @else { <div class="card-map-placeholder">No photo available</div> }
           <h2>{{ listing.title }}</h2>
           <p>{{ listing.address || 'Address available in listing details' }}</p>
           <strong>{{ listing.pricePerHour | currency:'RON':'symbol-narrow':'1.0-2' }}/hour</strong>
-          <a [routerLink]="['/listings', listing.id]" [queryParams]="detailParams">View space</a>
+          <p class="review-summary">@if (listing.ratingCount && listing.averageRating != null) {
+              {{ listing.averageRating | number:'1.1-1' }} / 5 &middot; {{ listing.ratingCount }} reviews
+            } @else { No reviews yet }</p>
+            @if (listing.estimatedPeriodCost != null) { <p>Estimated period cost: <strong>{{ listing.estimatedPeriodCost | currency:'RON':'symbol-narrow':'1.2-2' }}</strong></p> }
+            <a [routerLink]="['/listings', listing.id]" [queryParams]="detailParams">View space</a>
         </article>
       }
     </div>

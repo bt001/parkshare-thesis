@@ -1,4 +1,7 @@
 export interface SearchListingsRequest {
+  /** All selected amenities must match. */ amenityIds?: number[];
+  /** Inclusive average rating. */ minRating?: number;
+  /** Stable server ordering. */ sortBy?: 'newest' | 'priceAsc' | 'priceDesc' | 'ratingDesc';
   /** Resolved place centre and great-circle radius in kilometres. */
   lat?: number;
   lng?: number;
@@ -22,6 +25,10 @@ export interface SearchListingsRequest {
 }
 
 export interface SearchListingItem {
+  /** Public cover image endpoint. */ coverPhotoUrl?: string | null;
+  /** Unrounded review average. */ averageRating?: number | null;
+  /** Saved review count. */ ratingCount?: number;
+  /** Estimated RON cost for the applied period. */ estimatedPeriodCost?: number | null;
   id: number;
   title: string;
   address?: string | null;

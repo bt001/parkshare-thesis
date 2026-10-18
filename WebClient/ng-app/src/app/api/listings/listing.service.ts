@@ -34,13 +34,14 @@ export class ListingService {
       params = params.set('onlyActive', request.onlyActive);
     }
 
-    for (const key of ['lat', 'lng', 'radiusKm', 'startDateTime', 'endDateTime', 'titleContains', 'addressContains', 'minPrice', 'maxPrice', 'onlyAlwaysAvailable'] as const) {
+    for (const key of ['minRating', 'sortBy', 'lat', 'lng', 'radiusKm', 'startDateTime', 'endDateTime', 'titleContains', 'addressContains', 'minPrice', 'maxPrice', 'onlyAlwaysAvailable'] as const) {
       const value = request[key];
       if (value !== undefined) {
         params = params.set(key, value);
       }
     }
 
+    for (const id of [...new Set(request.amenityIds ?? [])]) params = params.append('amenityIds', id);
     return this.http.get<SearchListingsResult>('api/listing/search', { params, context: new HttpContext().set(ANONYMOUS_API, true) });
   }
 

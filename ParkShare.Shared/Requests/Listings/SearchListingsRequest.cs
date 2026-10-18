@@ -8,6 +8,12 @@ namespace ParkShare.Shared.Requests.Listings
         public DateTime? StartDateTime { get; set; }
         /// <summary>Requested departure in Romanian local time.</summary>
         public DateTime? EndDateTime { get; set; }
+        /// <summary>All selected amenity identifiers must match.</summary>
+        public long[]? AmenityIds { get; set; }
+        /// <summary>Inclusive unrounded review average threshold.</summary>
+        public double? MinRating { get; set; }
+        /// <summary>Ordering: newest, priceAsc, priceDesc or ratingDesc.</summary>
+        public string? SortBy { get; set; }
         public double? Lat { get; set; }
         public double? Lng { get; set; }
         public double? RadiusKm { get; set; }

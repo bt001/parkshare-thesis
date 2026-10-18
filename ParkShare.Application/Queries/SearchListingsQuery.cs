@@ -11,6 +11,12 @@ namespace ParkShare.Application.Queries
         public DateTime? StartDateTime { get; init; }
         /// <summary>Requested departure in Romanian local time.</summary>
         public DateTime? EndDateTime { get; init; }
+        /// <summary>All selected amenity identifiers must match.</summary>
+        public long[]? AmenityIds { get; set; }
+        /// <summary>Inclusive unrounded review average threshold.</summary>
+        public double? MinRating { get; set; }
+        /// <summary>Ordering: newest, priceAsc, priceDesc or ratingDesc.</summary>
+        public string? SortBy { get; set; }
         public double? Lat { get; init; }
         public double? Lng { get; init; }
         public double? RadiusKm { get; init; }
@@ -31,7 +37,7 @@ namespace ParkShare.Application.Queries
 
         public async Task<ServiceResult<SearchListingsResponse>> Handle(SearchListingsQuery request, CancellationToken cancellationToken)
         {
-            var response = await _listingService.SearchAsync(request.Lat, request.Lng, request.RadiusKm, request.MinPrice, request.MaxPrice, request.OnlyActive, request.OnlyAlwaysAvailable, request.TitleContains, request.AddressContains, request.Page, request.PageSize, cancellationToken, request.StartDateTime, request.EndDateTime);
+            var response = await _listingService.SearchAsync(request.Lat, request.Lng, request.RadiusKm, request.MinPrice, request.MaxPrice, request.OnlyActive, request.OnlyAlwaysAvailable, request.TitleContains, request.AddressContains, request.Page, request.PageSize, cancellationToken, request.StartDateTime, request.EndDateTime, request.AmenityIds, request.MinRating, request.SortBy);
             if (!response.IsSuccessful)
                 return ServiceResult<SearchListingsResponse>.WithErrors(response);
 

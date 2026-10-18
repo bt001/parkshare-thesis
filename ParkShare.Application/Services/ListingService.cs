@@ -285,7 +285,7 @@ namespace ParkShare.Application.Services
         }
 
         /// <inheritdoc/>
-        public async Task<ServiceResult<SearchListingsResponse>> SearchAsync(double? lat, double? lng, double? radiusKm, decimal? minPrice, decimal? maxPrice, bool? onlyActive, bool? onlyAlwaysAvailable, string? titleContains, string? addressContains, int page, int pageSize, CancellationToken ct, DateTime? startDateTime = null, DateTime? endDateTime = null)
+        public async Task<ServiceResult<SearchListingsResponse>> SearchAsync(double? lat, double? lng, double? radiusKm, decimal? minPrice, decimal? maxPrice, bool? onlyActive, bool? onlyAlwaysAvailable, string? titleContains, string? addressContains, int page, int pageSize, CancellationToken ct, DateTime? startDateTime = null, DateTime? endDateTime = null, IReadOnlyCollection<long>? amenityIds = null, double? minRating = null, string? sortBy = null)
         {
             if (startDateTime.HasValue != endDateTime.HasValue)
                 return ServiceResult<SearchListingsResponse>.WithError("Provide both arrival and departure.");
@@ -296,7 +296,7 @@ namespace ParkShare.Application.Services
             }
             try
             {
-                var results = await _listingRepository.SearchAsync(lat, lng, radiusKm, minPrice, maxPrice, onlyActive, onlyAlwaysAvailable, titleContains, addressContains, page, pageSize, ct, startDateTime, endDateTime);
+                var results = await _listingRepository.SearchAsync(lat, lng, radiusKm, minPrice, maxPrice, onlyActive, onlyAlwaysAvailable, titleContains, addressContains, page, pageSize, ct, startDateTime, endDateTime, amenityIds, minRating, sortBy);
 
                 return ServiceResult<SearchListingsResponse>.Success(new SearchListingsResponse
                 {
@@ -305,6 +305,11 @@ namespace ParkShare.Application.Services
                     TotalCount = results.TotalCount,
                     Items = results.Items.Select(listing => new SearchListingItemDto
                     {
+                        CoverPhotoUrl = listing.CoverPhotoId.HasValue ? $"api/listing/{listing.Id}/photos/{listing.CoverPhotoId}/content" : null,
+                        AverageRating = listing.AverageRating,
+                        RatingCount = listing.RatingCount,
+                        EstimatedPeriodCost = startDateTime.HasValue && endDateTime.HasValue
+                            ? Math.Round(listing.PricePerHour * (endDateTime.Value - startDateTime.Value).Ticks / TimeSpan.TicksPerHour, 2, MidpointRounding.AwayFromZero) : null,
                         Id = listing.Id,
                         Title = listing.Title,
                         Address = listing.Address,

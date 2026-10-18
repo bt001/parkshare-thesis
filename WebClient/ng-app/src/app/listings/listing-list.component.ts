@@ -1,13 +1,14 @@
 import { bookingTimeError, nextRomanianMinute } from '../services/booking-time';
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize, Subscription } from 'rxjs';
 
-import { SearchPlace, SearchListingItem, SearchListingsRequest } from '../api/listings/listing.models';
+import { Amenity, SearchPlace, SearchListingItem, SearchListingsRequest } from '../api/listings/listing.models';
 import { ListingService } from '../api/listings/listing.service';
+import { resolveApiUrl } from '../api/api-request';
 import { ListingMapComponent } from './listing-map.component';
 
 type ListingViewMode = 'list' | 'map';
@@ -15,17 +16,41 @@ type ListingViewMode = 'list' | 'map';
 @Component({
   selector: 'app-listing-list',
   standalone: true,
-  imports: [CurrencyPipe, RouterLink, ListingMapComponent, ReactiveFormsModule],
+  imports: [DecimalPipe, CurrencyPipe, RouterLink, ListingMapComponent, ReactiveFormsModule],
   templateUrl: './listing-list.component.html',
   styleUrl: './listing-list.component.scss'
 })
 export class ListingListComponent implements OnInit, OnDestroy {
+  /** Catalog options and independent retry feedback. */
+  amenities: Amenity[] = [];
+  /** Safe catalog failure feedback. */
+  amenityError = '';
+  private amenityRequest?: Subscription;
+  /** Broken covers retain a readable fallback. */
+  brokenPhotos = new Set<string>();
+  /** Uses the configured API origin for public images. */
+  readonly imageUrl = resolveApiUrl;
+  /** Loads catalog without changing restored selections. */
+  loadAmenities(): void {
+    this.amenityRequest?.unsubscribe();
+    this.amenityError = '';
+    this.amenityRequest = this.listingService.getAmenities().subscribe({
+      next: result => this.amenities = result.items,
+      error: () => this.amenityError = 'Amenities could not be loaded.'
+    });
+  }
+  /** Changes draft selections; Search applies them together. */
+  toggleAmenity(id: number): void {
+    const control = this.filterForm.controls.amenityIds;
+    control.setValue(control.value.includes(id) ? control.value.filter(value => value !== id) : [...control.value, id]);
+  }
+
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   /** Earliest selectable Romanian minute. */
   minimumDateTime = nextRomanianMinute();
   /** Applied criteria carried into detail and restored on return. */
-  detailParams: Record<string, string | number | boolean> = {};
+  detailParams: Record<string, string | number | boolean | number[]> = {};
   /** Explains an invalid requested period. */
   periodError: string | null = null;
   private readonly listingService = inject(ListingService);
@@ -89,6 +114,9 @@ export class ListingListComponent implements OnInit, OnDestroy {
 
   /** Draft filters, applied only after a valid submission. */
   readonly filterForm = new FormGroup({
+    amenityIds: new FormControl<number[]>([], { nonNullable: true }),
+    minRating: new FormControl<number | null>(null, [Validators.min(1), Validators.max(5)]),
+    sortBy: new FormControl<NonNullable<SearchListingsRequest['sortBy']>>('newest', { nonNullable: true }),
     where: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(200)] }),
     radiusKm: new FormControl(5, { nonNullable: true, validators: [Validators.min(0.1), Validators.max(100)] }),
     startDateTime: new FormControl('', { nonNullable: true }),
@@ -112,7 +140,7 @@ export class ListingListComponent implements OnInit, OnDestroy {
 
   /** Whether the displayed results have any discovery filters applied. */
   get hasFilters(): boolean {
-    return Object.keys(this.appliedFilters).length > 1;
+    return Object.keys(this.appliedFilters).some(key => key !== 'onlyActive' && key !== 'sortBy');
   }
 
   /** Applies valid draft values without retaining blank text or an unchecked toggle. */
@@ -139,6 +167,9 @@ export class ListingListComponent implements OnInit, OnDestroy {
     this.appliedRadius = values.radiusKm;
     this.appliedFilters = {
       onlyActive: true,
+      ...(values.amenityIds.length ? { amenityIds: [...new Set(values.amenityIds)] } : {}),
+      ...(values.minRating !== null ? { minRating: values.minRating } : {}),
+      ...(values.sortBy !== 'newest' ? { sortBy: values.sortBy } : {}),
       ...(this.selectedPlace ? { lat: this.selectedPlace.latitude, lng: this.selectedPlace.longitude, radiusKm: values.radiusKm } : {}),
       ...(values.startDateTime ? { startDateTime: values.startDateTime, endDateTime: values.endDateTime } : {}),
       ...(values.titleContains ? { titleContains: values.titleContains } : {}),
@@ -172,6 +203,7 @@ export class ListingListComponent implements OnInit, OnDestroy {
     this.listRequest?.unsubscribe();
     this.mapRequest?.unsubscribe();
     this.placeRequest?.unsubscribe();
+    this.amenityRequest?.unsubscribe();
   }
 
   readonly pageSize = 12;
@@ -196,6 +228,7 @@ export class ListingListComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.loadAmenities();
     const params = this.route.snapshot.queryParamMap;
     const lat = Number(params.get('lat'));
     const lng = Number(params.get('lng'));
@@ -208,10 +241,13 @@ export class ListingListComponent implements OnInit, OnDestroy {
     for (const key of ['titleContains', 'addressContains', 'startDateTime', 'endDateTime'] as const) {
       this.filterForm.controls[key].setValue(params.get(key) ?? '');
     }
-    for (const key of ['minPrice', 'maxPrice'] as const) {
+    for (const key of ['minPrice', 'maxPrice', 'minRating'] as const) {
       const value = params.get(key);
       this.filterForm.controls[key].setValue(value !== null && Number.isFinite(Number(value)) ? Number(value) : null);
     }
+    this.filterForm.controls.amenityIds.setValue([...new Set(params.getAll('amenityIds').map(Number).filter(id => Number.isSafeInteger(id) && id > 0))]);
+    const sort = params.get('sortBy');
+    this.filterForm.controls.sortBy.setValue(sort === 'priceAsc' || sort === 'priceDesc' || sort === 'ratingDesc' ? sort : 'newest');
     this.filterForm.controls.onlyAlwaysAvailable.setValue(params.get('onlyAlwaysAvailable') === 'true');
     this.applyFilters();
   }

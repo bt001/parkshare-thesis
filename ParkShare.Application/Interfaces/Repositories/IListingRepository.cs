@@ -46,7 +46,7 @@ namespace ParkShare.Application.Interfaces.Repositories
         /// <summary>
         /// Searches listings using the provided filters.
         /// </summary>
-        Task<PagedResult<Listing>> SearchAsync(
+        Task<PagedResult<ListingSearchRow>> SearchAsync(
             double? lat,
             double? lng,
             double? radiusKm,
@@ -58,7 +58,7 @@ namespace ParkShare.Application.Interfaces.Repositories
             string? addressContains,
             int page,
             int pageSize,
-            CancellationToken cancellationToken, DateTime? startDateTime = null, DateTime? endDateTime = null);
+            CancellationToken cancellationToken, DateTime? startDateTime = null, DateTime? endDateTime = null, IReadOnlyCollection<long>? amenityIds = null, double? minRating = null, string? sortBy = null);
 
         /// <summary>
         /// Persists tracked listing changes.

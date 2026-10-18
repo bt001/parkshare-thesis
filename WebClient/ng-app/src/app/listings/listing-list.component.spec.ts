@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 import { SearchListingItem, SearchListingsResult } from '../api/listings/listing.models';
 
@@ -10,9 +10,10 @@ import { ListingListComponent } from './listing-list.component';
 describe('ListingListComponent', () => {
   let component: ListingListComponent;
   let fixture: ComponentFixture<ListingListComponent>;
-  const listingService = jasmine.createSpyObj<ListingService>('ListingService', ['search', 'searchAll', 'searchPlaces']);
+  const listingService = jasmine.createSpyObj<ListingService>('ListingService', ['search', 'searchAll', 'searchPlaces', 'getAmenities']);
 
   beforeEach(async () => {
+    listingService.getAmenities.and.returnValue(of({ items: [] }));
     listingService.searchPlaces.calls.reset();
     listingService.search.calls.reset();
     listingService.searchAll.calls.reset();
@@ -294,4 +295,44 @@ describe('ListingListComponent', () => {
     expect(component.searchArea?.latitude).toBe(37.98);
   });
 
+
+  it('shares secondary filters with map, pagination and detail, then resets', () => {
+    component.filterForm.patchValue({ amenityIds: [2, 1, 2], minRating: 4.5, sortBy: 'priceAsc' });
+    component.applyFilters();
+    component.loadPage(2);
+    expect(listingService.search.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({ page: 2, amenityIds: [2, 1], minRating: 4.5, sortBy: 'priceAsc' }));
+    expect(component.detailParams['amenityIds']).toEqual([2, 1]);
+    component.setViewMode('map');
+    expect(listingService.searchAll.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({ amenityIds: [2, 1], minRating: 4.5, sortBy: 'priceAsc' }));
+    component.resetFilters();
+    expect(component.filterForm.controls.sortBy.value).toBe('newest');
+    expect(listingService.search.calls.mostRecent().args[0]).toEqual({ page: 1, pageSize: 12, onlyActive: true });
+  });
+
+  it('restores repeated amenities and sorting without catalog availability', () => {
+    const route = TestBed.inject(ActivatedRoute);
+    spyOnProperty(route.snapshot, 'queryParamMap', 'get').and.returnValue(convertToParamMap({ amenityIds: ['2', '3', '2'], minRating: '4.5', sortBy: 'ratingDesc' }));
+    listingService.getAmenities.and.returnValue(throwError(() => new Error('offline')));
+    component.ngOnInit();
+    expect(component.amenityError).toContain('could not be loaded');
+    expect(component.filterForm.controls.amenityIds.value).toEqual([2, 3]);
+    expect(listingService.search.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({ amenityIds: [2, 3], minRating: 4.5, sortBy: 'ratingDesc' }));
+    listingService.getAmenities.and.returnValue(of({ items: [{ id: 2, name: 'Lighting' }] }));
+    component.loadAmenities();
+    expect(component.amenityError).toBe('');
+    expect(component.filterForm.controls.amenityIds.value).toEqual([2, 3]);
+  });
+
+  it('renders photos, review summary and period cost with a broken-image fallback', () => {
+    component.listings[0] = { ...component.listings[0], coverPhotoUrl: 'api/listing/7/photos/1/content', averageRating: 4.5, ratingCount: 2, estimatedPeriodCost: 18.75 };
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.textContent).toContain('4.5 / 5');
+    expect(element.textContent).toContain('Estimated period cost:');
+    expect(element.textContent).toContain('18.75');
+    element.querySelector('img')!.dispatchEvent(new Event('error'));
+    fixture.detectChanges();
+    expect(element.querySelector('img')).toBeNull();
+    expect(element.textContent).toContain('No photo available');
+  });
 });

@@ -8,6 +8,10 @@ namespace ParkShare.Application.Queries.Validators
         /// <summary>Defines valid search ranges and required radius coordinates.</summary>
         public SearchListingsQueryValidator()
         {
+            RuleForEach(x => x.AmenityIds).GreaterThan(0);
+            RuleFor(x => x.MinRating).InclusiveBetween(1, 5);
+            RuleFor(x => x.SortBy).Must(value => value is null or "newest" or "priceAsc" or "priceDesc" or "ratingDesc")
+                .WithMessage("Unsupported search ordering.");
             RuleFor(x => x.Page).GreaterThanOrEqualTo(1);
             RuleFor(x => x.PageSize).InclusiveBetween(1, 100);
 
