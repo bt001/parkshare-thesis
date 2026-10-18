@@ -64,7 +64,7 @@ namespace ParkShare.Infrastructure.Repositories
             string? addressContains,
             int page,
             int pageSize,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken, DateTime? startDateTime = null, DateTime? endDateTime = null)
         {
             var query = _db.Listings.AsNoTracking().AsQueryable();
 
@@ -89,17 +89,30 @@ namespace ParkShare.Infrastructure.Repositories
 
             if (lat.HasValue && lng.HasValue && radiusKm.HasValue)
             {
-                var approxDeg = radiusKm.Value / 111.0;
-                var minLat = lat.Value - approxDeg;
-                var maxLat = lat.Value + approxDeg;
-                var minLng = lng.Value - approxDeg;
-                var maxLng = lng.Value + approxDeg;
-
+                const double radians = Math.PI / 180;
+                var latitude = lat.Value * radians;
+                var longitude = lng.Value * radians;
+                var limit = Math.Pow(Math.Sin(radiusKm.Value / (2 * 6371.0088)), 2);
                 query = query.Where(listing =>
-                    (double)listing.Latitude >= minLat &&
-                    (double)listing.Latitude <= maxLat &&
-                    (double)listing.Longitude >= minLng &&
-                    (double)listing.Longitude <= maxLng);
+                    Math.Pow(Math.Sin(((double)listing.Latitude * radians - latitude) / 2), 2)
+                    + Math.Cos(latitude) * Math.Cos((double)listing.Latitude * radians)
+                    * Math.Pow(Math.Sin(((double)listing.Longitude * radians - longitude) / 2), 2) <= limit);
+            }
+
+            if (startDateTime.HasValue && endDateTime.HasValue)
+            {
+                var start = startDateTime.Value;
+                var end = endDateTime.Value;
+                // Full union coverage starts at arrival and has no uncovered window end before departure.
+                query = query.Where(listing =>
+                    !listing.AvailabilityWindows.Any(w => w.IsBlocked && w.StartDateTime < end && w.EndDateTime > start)
+                    && !listing.Bookings.Any(b => b.Status == ParkShare.Common.Enums.BookingStatus.Confirmed
+                        && b.StartDateTime < end && b.EndDateTime > start)
+                    && (listing.IsAlwaysAvailable || (
+                        listing.AvailabilityWindows.Any(w => !w.IsBlocked && w.StartDateTime <= start && w.EndDateTime > start)
+                        && !listing.AvailabilityWindows.Any(w => !w.IsBlocked && w.EndDateTime > start && w.EndDateTime < end
+                            && !listing.AvailabilityWindows.Any(next => !next.IsBlocked
+                                && next.StartDateTime <= w.EndDateTime && next.EndDateTime > w.EndDateTime)))));
             }
 
             var total = await query.CountAsync(cancellationToken);

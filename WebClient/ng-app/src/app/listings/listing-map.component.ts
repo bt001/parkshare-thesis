@@ -28,6 +28,12 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
 
   @ViewChild('mapContainer') private mapContainer?: ElementRef<HTMLElement>;
   @Input() listings: SearchListingItem[] = [];
+  /** Applied search circle; keeps an empty map centred on the requested place. */
+  @Input() searchArea: { latitude: number; longitude: number } | null = null;
+  /** Great-circle search distance in kilometres. */
+  @Input() radiusKm = 5;
+  /** Explicit search action after the user pans or zooms. */
+  @Output() readonly areaSelected = new EventEmitter<{ latitude: number; longitude: number }>();
   @Output() readonly listingSelected = new EventEmitter<SearchListingItem>();
 
   isTileUnavailable = false;
@@ -35,6 +41,7 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
   private map?: LeafletMap;
   private markerLayer?: LayerGroup;
   private isDestroyed = false;
+  private resizeObserver?: ResizeObserver;
 
   ngAfterViewInit(): void {
     if (isPlatformBrowser(this.platformId)) {
@@ -43,14 +50,22 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['listings'] && this.map) {
+    if ((changes['listings'] || changes['searchArea'] || changes['radiusKm']) && this.map) {
       this.renderMarkers();
     }
   }
 
   ngOnDestroy(): void {
     this.isDestroyed = true;
+    this.resizeObserver?.disconnect();
     this.map?.remove();
+  }
+
+  /** Emits the current centre without querying on every map movement. */
+  searchCentre(): void {
+    if (!this.map) return;
+    const centre = this.map.getCenter();
+    this.areaSelected.emit({ latitude: Math.max(-90, Math.min(90, centre.lat)), longitude: ((centre.lng + 180) % 360 + 360) % 360 - 180 });
   }
 
   private async initializeMap(): Promise<void> {
@@ -63,7 +78,7 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
     this.map = leaflet.map(this.mapContainer.nativeElement, {
       zoomControl: true,
       attributionControl: true
-    }).setView([45.9432, 24.9668], 6);
+    }).setView([37.9838, 23.7275], 12);
 
     leaflet.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -72,6 +87,8 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
       .on('tileerror', () => (this.isTileUnavailable = true))
       .addTo(this.map);
 
+    this.resizeObserver = new ResizeObserver(() => this.map?.invalidateSize());
+    this.resizeObserver.observe(this.mapContainer.nativeElement);
     this.markerLayer = leaflet.layerGroup().addTo(this.map);
     this.renderMarkers();
   }
@@ -107,7 +124,12 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
     }
 
     this.map.invalidateSize();
-    if (coordinates.length === 1) {
+    if (this.searchArea) {
+      const circle = this.leaflet.circle([this.searchArea.latitude, this.searchArea.longitude], {
+        radius: this.radiusKm * 1000, color: '#17685e', weight: 1, fillOpacity: 0.04, interactive: false
+      }).addTo(this.markerLayer);
+      this.map.fitBounds(circle.getBounds(), { padding: [20, 20], maxZoom: 16 });
+    } else if (coordinates.length === 1) {
       this.map.setView(coordinates[0], 15);
     } else if (coordinates.length > 1) {
       this.map.fitBounds(this.leaflet.latLngBounds(coordinates), {

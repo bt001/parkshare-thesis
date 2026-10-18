@@ -67,6 +67,8 @@ internal static partial class Program
             await Test("amenity rollback, listing locks and concurrent replacement", AmenityTransactions);
             await Test("photo persistence, bounds, isolation and private storage", PhotoWorkflow);
             await Test("photo concurrency, fresh ownership, rollback and cleanup failures", PhotoTransactions);
+            await Test("place provider configuration, cache, budget and safe failures", PlaceSearch);
+            await Test("search periods, geography, paging and fresh booking checks", SearchAvailability);
             Console.WriteLine($"PASS: {_passed} regression groups.");
         }
         finally

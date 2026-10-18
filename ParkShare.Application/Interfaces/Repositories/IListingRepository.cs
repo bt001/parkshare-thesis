@@ -58,7 +58,7 @@ namespace ParkShare.Application.Interfaces.Repositories
             string? addressContains,
             int page,
             int pageSize,
-            CancellationToken cancellationToken);
+            CancellationToken cancellationToken, DateTime? startDateTime = null, DateTime? endDateTime = null);
 
         /// <summary>
         /// Persists tracked listing changes.

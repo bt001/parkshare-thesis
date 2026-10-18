@@ -10,9 +10,10 @@ import { ListingListComponent } from './listing-list.component';
 describe('ListingListComponent', () => {
   let component: ListingListComponent;
   let fixture: ComponentFixture<ListingListComponent>;
-  const listingService = jasmine.createSpyObj<ListingService>('ListingService', ['search', 'searchAll']);
+  const listingService = jasmine.createSpyObj<ListingService>('ListingService', ['search', 'searchAll', 'searchPlaces']);
 
   beforeEach(async () => {
+    listingService.searchPlaces.calls.reset();
     listingService.search.calls.reset();
     listingService.searchAll.calls.reset();
     listingService.search.and.returnValue(of({
@@ -237,4 +238,60 @@ describe('ListingListComponent', () => {
     expect(newList.observed).toBeFalse();
     expect(newMap.observed).toBeFalse();
   });
+  it('shares the requested period between list, map and detail links', () => {
+    const period = { startDateTime: '2099-01-15T10:00', endDateTime: '2099-01-15T12:00' };
+    component.filterForm.patchValue(period);
+    component.applyFilters();
+    component.setViewMode('map');
+    expect(listingService.searchAll).toHaveBeenCalledWith({ onlyActive: true, ...period });
+    expect(component.detailParams).toEqual(period);
+    component.resetFilters();
+    expect(component.filterForm.controls.startDateTime.value).toBe('');
+    expect(component.detailParams).toEqual({});
+  });
+
+  it('rejects incomplete, past and ambiguous periods without replacing applied results', () => {
+    for (const period of [
+      { startDateTime: '2099-01-15T10:00', endDateTime: '' },
+      { startDateTime: '2020-01-15T10:00', endDateTime: '2020-01-15T12:00' },
+      { startDateTime: '2030-10-27T03:30', endDateTime: '2030-10-27T05:00' }
+    ]) {
+      component.filterForm.patchValue(period);
+      component.applyFilters();
+      expect(component.periodError).not.toBeNull();
+      expect(component.listings.length).toBe(1);
+    }
+    expect(listingService.search).toHaveBeenCalledTimes(1);
+  });
+
+  it('requires an explicit resolved place and never substitutes address matching', () => {
+    const place = { label: 'Syntagma, Athens', latitude: 37.9755, longitude: 23.7348 };
+    listingService.searchPlaces.and.returnValue(of({ items: [place] }));
+    component.filterForm.controls.where.setValue('Syntagma');
+    component.applyFilters();
+    expect(listingService.search).toHaveBeenCalledTimes(1);
+    component.findPlaces();
+    expect(listingService.searchPlaces).toHaveBeenCalledOnceWith('Syntagma');
+    component.choosePlace(component.places[0]);
+    component.applyFilters();
+    expect(listingService.search).toHaveBeenCalledWith({ onlyActive: true, lat: 37.9755, lng: 23.7348, radiusKm: 5, page: 1, pageSize: 12 });
+    expect(component.detailParams['place']).toBe('Syntagma, Athens');
+  });
+
+  it('cancels stale place lookups and permits map search after provider failure', () => {
+    const old = new Subject<{ items: never[] }>();
+    listingService.searchPlaces.and.returnValue(old);
+    component.filterForm.controls.where.setValue('Athens');
+    component.findPlaces();
+    component.editPlace();
+    expect(old.observed).toBeFalse();
+    expect(component.isPlaceLoading).toBeFalse();
+    listingService.searchPlaces.and.returnValue(throwError(() => new Error('provider unavailable')));
+    component.findPlaces();
+    expect(component.placeError).toContain('unavailable');
+    component.searchMapCentre({ latitude: 37.98, longitude: 23.73 });
+    expect(component.placeError).toBe('');
+    expect(component.searchArea?.latitude).toBe(37.98);
+  });
+
 });

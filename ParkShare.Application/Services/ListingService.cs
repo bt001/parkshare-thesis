@@ -285,28 +285,44 @@ namespace ParkShare.Application.Services
         }
 
         /// <inheritdoc/>
-        public async Task<ServiceResult<SearchListingsResponse>> SearchAsync(double? lat, double? lng, double? radiusKm, decimal? minPrice, decimal? maxPrice, bool? onlyActive, bool? onlyAlwaysAvailable, string? titleContains, string? addressContains, int page, int pageSize, CancellationToken ct)
+        public async Task<ServiceResult<SearchListingsResponse>> SearchAsync(double? lat, double? lng, double? radiusKm, decimal? minPrice, decimal? maxPrice, bool? onlyActive, bool? onlyAlwaysAvailable, string? titleContains, string? addressContains, int page, int pageSize, CancellationToken ct, DateTime? startDateTime = null, DateTime? endDateTime = null)
         {
-            var results = await _listingRepository.SearchAsync(lat, lng, radiusKm, minPrice, maxPrice, onlyActive, onlyAlwaysAvailable, titleContains, addressContains, page, pageSize, ct);
-
-            return ServiceResult<SearchListingsResponse>.Success(new SearchListingsResponse
+            if (startDateTime.HasValue != endDateTime.HasValue)
+                return ServiceResult<SearchListingsResponse>.WithError("Provide both arrival and departure.");
+            if (startDateTime.HasValue)
             {
-                Page = page,
-                PageSize = pageSize,
-                TotalCount = results.TotalCount,
-                Items = results.Items.Select(listing => new SearchListingItemDto
+                var error = new BookingTimePolicy(TimeProvider.System).Validate(startDateTime.Value, endDateTime!.Value);
+                if (error != null) return ServiceResult<SearchListingsResponse>.WithError(error);
+            }
+            try
+            {
+                var results = await _listingRepository.SearchAsync(lat, lng, radiusKm, minPrice, maxPrice, onlyActive, onlyAlwaysAvailable, titleContains, addressContains, page, pageSize, ct, startDateTime, endDateTime);
+
+                return ServiceResult<SearchListingsResponse>.Success(new SearchListingsResponse
                 {
-                    Id = listing.Id,
-                    Title = listing.Title,
-                    Address = listing.Address,
-                    Latitude = listing.Latitude,
-                    Longitude = listing.Longitude,
-                    PricePerHour = listing.PricePerHour,
-                    IsActive = listing.IsActive,
-                    IsAlwaysAvailable = listing.IsAlwaysAvailable,
-                    CreatedAt = listing.CreatedAt
-                }).ToList()
-            });
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalCount = results.TotalCount,
+                    Items = results.Items.Select(listing => new SearchListingItemDto
+                    {
+                        Id = listing.Id,
+                        Title = listing.Title,
+                        Address = listing.Address,
+                        Latitude = listing.Latitude,
+                        Longitude = listing.Longitude,
+                        PricePerHour = listing.PricePerHour,
+                        IsActive = listing.IsActive,
+                        IsAlwaysAvailable = listing.IsAlwaysAvailable,
+                        CreatedAt = listing.CreatedAt
+                    }).ToList()
+                });
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Listing search failed.");
+                return ServiceResult<SearchListingsResponse>.WithError("Parking could not be searched. Please try again.");
+            }
         }
     }
 }

@@ -91,4 +91,17 @@ describe('ListingService', () => {
     service.deactivate(9).subscribe();
     expect(http.expectOne('api/listing/deactivate').request.method).toBe('PATCH');
   });
+  it('sends place lookups through the authenticated API and period/geography through listing search', () => {
+    service.searchPlaces('Σύνταγμα').subscribe();
+    const place = http.expectOne(req => req.url === 'api/place/search');
+    expect(place.request.context.get(ANONYMOUS_API)).toBeFalse();
+    expect(place.request.params.get('text')).toBe('Σύνταγμα');
+    place.flush({ items: [] });
+    service.search({ page: 1, pageSize: 12, lat: 37.98, lng: 23.73, radiusKm: 5, startDateTime: '2030-01-15T10:00', endDateTime: '2030-01-15T12:00' }).subscribe();
+    const search = http.expectOne(req => req.url === 'api/listing/search');
+    expect(search.request.params.get('lat')).toBe('37.98');
+    expect(search.request.params.get('startDateTime')).toBe('2030-01-15T10:00');
+    search.flush({ items: [], totalCount: 0, page: 1, pageSize: 12 });
+  });
+
 });

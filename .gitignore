@@ -432,3 +432,4 @@ WebClient/ng-app/playwright.config.ts
 
 # Private uploaded listing images
 **/App_Data/listing-photos/
+/state

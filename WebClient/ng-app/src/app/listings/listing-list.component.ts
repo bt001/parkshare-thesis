@@ -1,11 +1,12 @@
+import { bookingTimeError, nextRomanianMinute } from '../services/booking-time';
 import { CurrencyPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize, Subscription } from 'rxjs';
 
-import { SearchListingItem, SearchListingsRequest } from '../api/listings/listing.models';
+import { SearchPlace, SearchListingItem, SearchListingsRequest } from '../api/listings/listing.models';
 import { ListingService } from '../api/listings/listing.service';
 import { ListingMapComponent } from './listing-map.component';
 
@@ -19,10 +20,79 @@ type ListingViewMode = 'list' | 'map';
   styleUrl: './listing-list.component.scss'
 })
 export class ListingListComponent implements OnInit, OnDestroy {
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  /** Earliest selectable Romanian minute. */
+  minimumDateTime = nextRomanianMinute();
+  /** Applied criteria carried into detail and restored on return. */
+  detailParams: Record<string, string | number | boolean> = {};
+  /** Explains an invalid requested period. */
+  periodError: string | null = null;
   private readonly listingService = inject(ListingService);
+
+  /** Candidate places from the latest explicit lookup. */
+  places: SearchPlace[] = [];
+  /** Chosen geographic centre, distinct from unsubmitted text. */
+  selectedPlace: SearchPlace | null = null;
+  /** Applied centre shared with the map. */
+  searchArea: SearchPlace | null = null;
+  /** Applied distance shown by the map. */
+  appliedRadius = 5;
+  /** Lookup progress and safe error state. */
+  isPlaceLoading = false;
+  placeError = '';
+  private placeRequest?: Subscription;
+
+  /** Resolves names only on explicit submission, cancelling superseded requests. */
+  findPlaces(): void {
+    const text = this.filterForm.controls.where.value.trim();
+    this.placeRequest?.unsubscribe();
+    this.places = [];
+    this.placeError = '';
+    if (text.length < 2 || text.length > 200) {
+      this.placeError = 'Enter a city, address or landmark between 2 and 200 characters.';
+      return;
+    }
+    this.isPlaceLoading = true;
+    this.placeRequest = this.listingService.searchPlaces(text).pipe(finalize(() => this.isPlaceLoading = false))
+      .subscribe({
+        next: result => {
+          this.places = result.items;
+          if (!result.items.length) this.placeError = 'No places found. Try a fuller name or use the map.';
+        },
+        error: () => this.placeError = 'Place lookup is unavailable. Retry Find place, or browse the map and search around its centre.'
+      });
+  }
+
+  /** Invalidates a selected name and any in-flight lookup when the text changes. */
+  editPlace(): void {
+    this.placeRequest?.unsubscribe();
+    this.selectedPlace = null;
+    this.places = [];
+    this.placeError = '';
+  }
+
+  /** Selects an explicit geographic candidate without changing applied results yet. */
+  choosePlace(place: SearchPlace): void {
+    this.placeRequest?.unsubscribe();
+    this.selectedPlace = { ...place, label: place.label.slice(0, 200) };
+    this.filterForm.controls.where.setValue(this.selectedPlace.label);
+    this.places = [];
+    this.placeError = '';
+  }
+
+  /** Searches a manually chosen map centre while retaining the requested period and filters. */
+  searchMapCentre(point: { latitude: number; longitude: number }): void {
+    this.choosePlace({ ...point, label: 'Selected map area' });
+    this.applyFilters();
+  }
 
   /** Draft filters, applied only after a valid submission. */
   readonly filterForm = new FormGroup({
+    where: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(200)] }),
+    radiusKm: new FormControl(5, { nonNullable: true, validators: [Validators.min(0.1), Validators.max(100)] }),
+    startDateTime: new FormControl('', { nonNullable: true }),
+    endDateTime: new FormControl('', { nonNullable: true }),
     titleContains: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(120)] }),
     addressContains: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(200)] }),
     minPrice: new FormControl<number | null>(null, Validators.min(0)),
@@ -57,14 +127,29 @@ export class ListingListComponent implements OnInit, OnDestroy {
     }
 
     const values = this.filterForm.getRawValue();
+    this.minimumDateTime = nextRomanianMinute();
+    this.periodError = values.startDateTime || values.endDateTime
+      ? bookingTimeError(values.startDateTime, values.endDateTime) : null;
+    if (this.periodError) return;
+    if (values.where.trim() && !this.selectedPlace) {
+      this.placeError = 'Use Find place and select a result, or clear Where to browse all parking.';
+      return;
+    }
+    this.searchArea = this.selectedPlace;
+    this.appliedRadius = values.radiusKm;
     this.appliedFilters = {
       onlyActive: true,
+      ...(this.selectedPlace ? { lat: this.selectedPlace.latitude, lng: this.selectedPlace.longitude, radiusKm: values.radiusKm } : {}),
+      ...(values.startDateTime ? { startDateTime: values.startDateTime, endDateTime: values.endDateTime } : {}),
       ...(values.titleContains ? { titleContains: values.titleContains } : {}),
       ...(values.addressContains ? { addressContains: values.addressContains } : {}),
       ...(values.minPrice !== null ? { minPrice: values.minPrice } : {}),
       ...(values.maxPrice !== null ? { maxPrice: values.maxPrice } : {}),
       ...(values.onlyAlwaysAvailable ? { onlyAlwaysAvailable: true } : {})
     };
+    const { onlyActive, ...criteria } = this.appliedFilters;
+    this.detailParams = { ...criteria, ...(this.selectedPlace ? { place: this.selectedPlace.label } : {}) };
+    void this.router.navigate([], { relativeTo: this.route, queryParams: this.detailParams, replaceUrl: true });
     this.mapRequest?.unsubscribe();
     this.mapListings = [];
     this.isMapLoaded = false;
@@ -77,6 +162,7 @@ export class ListingListComponent implements OnInit, OnDestroy {
 
   /** Clears the draft and immediately restores active discovery results. */
   resetFilters(): void {
+    this.editPlace();
     this.filterForm.reset();
     this.applyFilters();
   }
@@ -85,6 +171,7 @@ export class ListingListComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.listRequest?.unsubscribe();
     this.mapRequest?.unsubscribe();
+    this.placeRequest?.unsubscribe();
   }
 
   readonly pageSize = 12;
@@ -109,7 +196,24 @@ export class ListingListComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.loadPage(1);
+    const params = this.route.snapshot.queryParamMap;
+    const lat = Number(params.get('lat'));
+    const lng = Number(params.get('lng'));
+    const radius = Number(params.get('radiusKm'));
+    if (params.has('lat') && params.has('lng') && Number.isFinite(lat) && Number.isFinite(lng)
+        && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && radius >= 0.1 && radius <= 100) {
+      this.choosePlace({ label: params.get('place')?.slice(0, 200) || 'Selected map area', latitude: lat, longitude: lng });
+      this.filterForm.controls.radiusKm.setValue(radius);
+    }
+    for (const key of ['titleContains', 'addressContains', 'startDateTime', 'endDateTime'] as const) {
+      this.filterForm.controls[key].setValue(params.get(key) ?? '');
+    }
+    for (const key of ['minPrice', 'maxPrice'] as const) {
+      const value = params.get(key);
+      this.filterForm.controls[key].setValue(value !== null && Number.isFinite(Number(value)) ? Number(value) : null);
+    }
+    this.filterForm.controls.onlyAlwaysAvailable.setValue(params.get('onlyAlwaysAvailable') === 'true');
+    this.applyFilters();
   }
 
   loadPage(page: number): void {

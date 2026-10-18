@@ -35,6 +35,7 @@ namespace ParkShare.Infrastructure
                 options.UseSqlServer(connectionString);
             });
 
+            services.AddSingleton<IPlaceSearchProvider, GeoapifyPlaceSearchProvider>();
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IUserRoleRepository, UserRoleRepository>();

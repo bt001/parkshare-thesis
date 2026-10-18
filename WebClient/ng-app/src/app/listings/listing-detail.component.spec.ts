@@ -208,6 +208,15 @@ describe('ListingDetailComponent', () => {
 
     expect(component.errorMessages).toEqual(['Listing not found.']);
   });
+  it('prefills and submits the requested discovery period unchanged', () => {
+    const period = { startDateTime: '2099-01-15T10:00', endDateTime: '2099-01-15T12:00' };
+    const route = TestBed.inject(ActivatedRoute);
+    Object.defineProperty(route.snapshot, 'queryParamMap', { value: convertToParamMap(period), configurable: true });
+    component.ngOnInit();
+    expect(component.bookingForm.getRawValue()).toEqual(period);
+    component.submitBooking();
+    expect(bookingService.create).toHaveBeenCalledWith({ listingId: 10, ...period });
+  });
 });
 
 describe('ListingDetailComponent with an invalid route id', () => {
@@ -234,4 +243,6 @@ describe('ListingDetailComponent with an invalid route id', () => {
     expect(availabilityService.getForListing).not.toHaveBeenCalled();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('This listing address is invalid.');
   });
+
+
 });

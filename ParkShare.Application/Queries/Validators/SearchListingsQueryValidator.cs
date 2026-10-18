@@ -11,9 +11,20 @@ namespace ParkShare.Application.Queries.Validators
             RuleFor(x => x.Page).GreaterThanOrEqualTo(1);
             RuleFor(x => x.PageSize).InclusiveBetween(1, 100);
 
+            RuleFor(x => x).Must(x => x.Lat.HasValue == x.Lng.HasValue && x.Lat.HasValue == x.RadiusKm.HasValue)
+                .WithMessage("Provide latitude, longitude and radius together.");
+            RuleFor(x => x).Must(x => x.StartDateTime.HasValue == x.EndDateTime.HasValue)
+                .WithMessage("Provide both arrival and departure.");
+            When(x => x.StartDateTime.HasValue && x.EndDateTime.HasValue, () =>
+                RuleFor(x => x).Custom((x, context) =>
+                {
+                    var error = new ParkShare.Application.Services.BookingTimePolicy(TimeProvider.System)
+                        .Validate(x.StartDateTime!.Value, x.EndDateTime!.Value);
+                    if (error != null) context.AddFailure(error);
+                }));
             When(x => x.RadiusKm.HasValue, () =>
             {
-                RuleFor(x => x.RadiusKm!.Value).GreaterThan(0);
+                RuleFor(x => x.RadiusKm!.Value).InclusiveBetween(0.1, 100);
                 RuleFor(x => x.Lat).NotNull().InclusiveBetween(-90, 90);
                 RuleFor(x => x.Lng).NotNull().InclusiveBetween(-180, 180);
             });

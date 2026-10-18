@@ -1,4 +1,4 @@
-<a class="back-link" routerLink="/listings">← Back to listings</a>
+<a class="back-link" routerLink="/listings" [queryParams]="searchParams">← Back to listings</a>
 
 @if (errorMessages.length > 0) {
   <div class="message error" role="alert">

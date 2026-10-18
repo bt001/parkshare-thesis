@@ -24,6 +24,7 @@ internal class Program
         var builder = WebApplication.CreateBuilder(args);
 
         // ---- CONFIGURATION ----
+        builder.Services.Configure<PlaceSearchConfig>(builder.Configuration.GetSection("PlaceSearch"));
         builder.Services.Configure<DatabaseConfig>(builder.Configuration.GetSection("DatabaseConfig"));
         builder.Services.Configure<JwtConfig>(builder.Configuration.GetSection("JwtConfig"));
 

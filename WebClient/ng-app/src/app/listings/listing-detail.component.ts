@@ -69,7 +69,18 @@ export class ListingDetailComponent implements OnInit {
     return !!startDateTime && !!endDateTime && startDateTime >= endDateTime;
   }
 
+  /** Applied discovery criteria for the return link. */
+  get searchParams(): Record<string, string> { return this.route.snapshot.queryParams; }
+
   ngOnInit(): void {
+    const params = this.route.snapshot.queryParamMap;
+    const start = params?.get('startDateTime');
+    const end = params?.get('endDateTime');
+    if (start && end) {
+      this.bookingForm.setValue({ startDateTime: start, endDateTime: end });
+      const error = bookingTimeError(start, end);
+      if (error) this.bookingErrorMessages = [error];
+    }
     const rawId = this.route.snapshot.paramMap.get('id');
     const listingId = rawId ? Number(rawId) : Number.NaN;
     if (!Number.isSafeInteger(listingId) || listingId <= 0) {

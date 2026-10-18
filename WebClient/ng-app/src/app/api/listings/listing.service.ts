@@ -4,6 +4,7 @@ import { inject, Injectable } from '@angular/core';
 import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
 
 import {
+  SearchPlace,
   Amenity,
   CreateListingRequest,
   GetOwnerListingsResult,
@@ -19,6 +20,11 @@ import {
 export class ListingService {
   private readonly http = inject(HttpClient);
 
+  /** Resolves an explicitly submitted place through the authenticated server adapter. */
+  searchPlaces(text: string): Observable<{ items: SearchPlace[] }> {
+    return this.http.get<{ items: SearchPlace[] }>('api/place/search', { params: { text } });
+  }
+
   search(request: SearchListingsRequest): Observable<SearchListingsResult> {
     let params = new HttpParams()
       .set('page', request.page)
@@ -28,7 +34,7 @@ export class ListingService {
       params = params.set('onlyActive', request.onlyActive);
     }
 
-    for (const key of ['titleContains', 'addressContains', 'minPrice', 'maxPrice', 'onlyAlwaysAvailable'] as const) {
+    for (const key of ['lat', 'lng', 'radiusKm', 'startDateTime', 'endDateTime', 'titleContains', 'addressContains', 'minPrice', 'maxPrice', 'onlyAlwaysAvailable'] as const) {
       const value = request[key];
       if (value !== undefined) {
         params = params.set(key, value);

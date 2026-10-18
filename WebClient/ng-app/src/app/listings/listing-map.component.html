@@ -1,3 +1,4 @@
+<button class="map-area-action" type="button" (click)="searchCentre()">Search within {{ radiusKm }} km of map centre</button>
 <div class="map-frame" role="region" aria-label="Active parking listings map">
   <div #mapContainer class="map-container"></div>
   @if (isTileUnavailable) {

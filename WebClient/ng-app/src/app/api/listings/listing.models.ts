@@ -1,4 +1,11 @@
 export interface SearchListingsRequest {
+  /** Resolved place centre and great-circle radius in kilometres. */
+  lat?: number;
+  lng?: number;
+  radiusKm?: number;
+  /** Requested Romanian wall-clock period. */
+  startDateTime?: string;
+  endDateTime?: string;
   page: number;
   pageSize: number;
   onlyActive?: boolean;
@@ -100,4 +107,11 @@ export interface ListingPhoto {
   /** Photo identity. */ id: number;
   /** API-relative image endpoint. */ url: string;
   /** UTC upload timestamp. */ uploadedAt: string;
+}
+
+/** Resolved place name and WGS84 coordinates. */
+export interface SearchPlace {
+  /** Provider display label. */ label: string;
+  /** Centre latitude. */ latitude: number;
+  /** Centre longitude. */ longitude: number;
 }

@@ -11,6 +11,35 @@
 
 <form class="search-filters" [formGroup]="filterForm" (ngSubmit)="applyFilters()" aria-label="Search parking">
   <div class="filter-fields">
+    <div class="place-field">
+      <label for="search-where">Where</label>
+      <input id="search-where" type="search" formControlName="where" (input)="editPlace()" placeholder="Athens, address or landmark" autocomplete="off" />
+      <button type="button" (click)="findPlaces()" [disabled]="isPlaceLoading">{{ isPlaceLoading ? 'Finding places…' : 'Find place' }}</button>
+      @if (places.length) {
+        <ul class="place-options" aria-label="Choose a place">
+          @for (place of places; track $index) {
+            <li><button type="button" (click)="choosePlace(place)">{{ place.label }}</button></li>
+          }
+        </ul>
+      }
+      @if (placeError) { <p class="field-error" role="alert">{{ placeError }}</p> }
+      <p><small>Place search: <a href="https://www.geoapify.com/" target="_blank" rel="noopener">Geoapify</a> / <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>. Greece, prioritizing Athens.</small></p>
+    </div>
+    <div>
+      <label for="search-radius">Distance from place (km)</label>
+      <input id="search-radius" type="number" formControlName="radiusKm" min="0.1" max="100" step="0.1" />
+      @if (filterForm.controls.radiusKm.touched && filterForm.controls.radiusKm.invalid) {
+        <p class="field-error" role="alert">Choose a distance from 0.1 to 100 km.</p>
+      }
+    </div>
+    <div>
+      <label for="search-arrival">Arrival</label>
+      <input id="search-arrival" type="datetime-local" formControlName="startDateTime" [min]="minimumDateTime" />
+    </div>
+    <div>
+      <label for="search-departure">Departure</label>
+      <input id="search-departure" type="datetime-local" formControlName="endDateTime" [min]="minimumDateTime" />
+    </div>
     <div>
       <label for="filter-title">Title</label>
       <input id="filter-title" type="text" formControlName="titleContains" aria-describedby="title-error" />
@@ -43,6 +72,8 @@
   @if (filterForm.touched && filterForm.hasError('priceRange')) {
     <p id="price-range-error" class="field-error" role="alert">Minimum price cannot exceed maximum price.</p>
   }
+  <p>Times are in Romania (Europe/Bucharest). Availability is checked again when you request a booking.</p>
+  @if (periodError) { <p class="field-error" role="alert">{{ periodError }}</p> }
   <label class="availability-filter">
     <input type="checkbox" formControlName="onlyAlwaysAvailable" aria-describedby="availability-help" />
     Always available only
@@ -96,7 +127,7 @@
             </div>
             <h2>{{ listing.title }}</h2>
             <p>{{ listing.address || 'Address available in listing details' }}</p>
-            <a [routerLink]="['/listings', listing.id]">View space</a>
+            <a [routerLink]="['/listings', listing.id]" [queryParams]="detailParams">View space</a>
           </div>
         </article>
       }
@@ -129,9 +160,10 @@
         <p>Check back when an owner has published a parking space.</p>
       }
     </div>
-  } @else if (isMapLoaded) {
+  }
+  @if (isMapLoaded) {
     <div class="map-stage">
-      <app-listing-map [listings]="mapListings" (listingSelected)="selectMapListing($event)" />
+      <app-listing-map [listings]="mapListings" [searchArea]="searchArea" [radiusKm]="appliedRadius" (areaSelected)="searchMapCentre($event)" (listingSelected)="selectMapListing($event)" />
 
       @if (selectedMapListing; as listing) {
         <article class="map-preview" aria-live="polite">
@@ -142,7 +174,7 @@
           <h2>{{ listing.title }}</h2>
           <p>{{ listing.address || 'Address available in listing details' }}</p>
           <strong>{{ listing.pricePerHour | currency:'RON':'symbol-narrow':'1.0-2' }}/hour</strong>
-          <a [routerLink]="['/listings', listing.id]">View space</a>
+          <a [routerLink]="['/listings', listing.id]" [queryParams]="detailParams">View space</a>
         </article>
       }
     </div>
