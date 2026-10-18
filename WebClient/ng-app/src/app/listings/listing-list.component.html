@@ -139,26 +139,7 @@
   } @else {
     <div class="listing-grid">
       @for (listing of listings; track listing.id) {
-        <article class="listing-card">
-          @if (listing.coverPhotoUrl && !brokenPhotos.has(listing.coverPhotoUrl)) {
-            <img class="cover-photo" [src]="imageUrl(listing.coverPhotoUrl)" [alt]="listing.title" loading="lazy" (error)="brokenPhotos.add(listing.coverPhotoUrl)" />
-          } @else { <div class="card-map-placeholder">No photo available</div> }
-          <div class="card-body">
-            <div class="card-topline">
-              <span class="availability-badge">
-                {{ listing.isAlwaysAvailable ? 'Always available' : 'Scheduled availability' }}
-              </span>
-              <strong>{{ listing.pricePerHour | currency:'RON':'symbol-narrow':'1.0-2' }}/h</strong>
-            </div>
-            <h2>{{ listing.title }}</h2>
-            <p>{{ listing.address || 'Address available in listing details' }}</p>
-            <p class="review-summary">@if (listing.ratingCount && listing.averageRating != null) {
-              {{ listing.averageRating | number:'1.1-1' }} / 5 &middot; {{ listing.ratingCount }} reviews
-            } @else { No reviews yet }</p>
-            @if (listing.estimatedPeriodCost != null) { <p>Estimated period cost: <strong>{{ listing.estimatedPeriodCost | currency:'RON':'symbol-narrow':'1.2-2' }}</strong></p> }
-            <a [routerLink]="['/listings', listing.id]" [queryParams]="detailParams">View space</a>
-          </div>
-        </article>
+        <ng-container *ngTemplateOutlet="resultCard; context: { $implicit: listing }" />
       }
     </div>
 
@@ -191,28 +172,60 @@
     </div>
   }
   @if (isMapLoaded) {
-    <div class="map-stage">
-      <app-listing-map [listings]="mapListings" [searchArea]="searchArea" [radiusKm]="appliedRadius" (areaSelected)="searchMapCentre($event)" (listingSelected)="selectMapListing($event)" />
+    <div class="connected-results">
+      <section class="map-result-list" aria-label="Mapped parking spaces">
+        <p>{{ mapListings.length }} spaces on the map</p>
+        @for (listing of mapListings; track listing.id) {
+          <ng-container *ngTemplateOutlet="resultCard; context: { $implicit: listing }" />
+        }
+      </section>
+      <div class="map-stage">
+        <app-listing-map [listings]="mapListings" [selectedListingId]="selectedMapListing?.id ?? null" [searchArea]="searchArea" [radiusKm]="appliedRadius" (areaSelected)="searchMapCentre($event)" (listingSelected)="selectMapListing($event)" />
 
-      @if (selectedMapListing; as listing) {
-        <article class="map-preview" aria-live="polite">
-          <button class="preview-close" type="button" aria-label="Close listing preview" (click)="closeMapPreview()">&times;</button>
-          <span class="availability-badge">
-            {{ listing.isAlwaysAvailable ? 'Always available' : 'Scheduled availability' }}
-          </span>
-          @if (listing.coverPhotoUrl && !brokenPhotos.has(listing.coverPhotoUrl)) {
-            <img class="cover-photo" [src]="imageUrl(listing.coverPhotoUrl)" [alt]="listing.title" loading="lazy" (error)="brokenPhotos.add(listing.coverPhotoUrl)" />
-          } @else { <div class="card-map-placeholder">No photo available</div> }
-          <h2>{{ listing.title }}</h2>
-          <p>{{ listing.address || 'Address available in listing details' }}</p>
-          <strong>{{ listing.pricePerHour | currency:'RON':'symbol-narrow':'1.0-2' }}/hour</strong>
-          <p class="review-summary">@if (listing.ratingCount && listing.averageRating != null) {
-              {{ listing.averageRating | number:'1.1-1' }} / 5 &middot; {{ listing.ratingCount }} reviews
-            } @else { No reviews yet }</p>
-            @if (listing.estimatedPeriodCost != null) { <p>Estimated period cost: <strong>{{ listing.estimatedPeriodCost | currency:'RON':'symbol-narrow':'1.2-2' }}</strong></p> }
-            <a [routerLink]="['/listings', listing.id]" [queryParams]="detailParams">View space</a>
-        </article>
-      }
+        @if (selectedMapListing; as listing) {
+          <article class="map-preview" aria-live="polite">
+            <button class="preview-close" type="button" aria-label="Close listing preview" (click)="closeMapPreview()">&times;</button>
+            <span class="availability-badge">
+              {{ listing.isAlwaysAvailable ? 'Always available' : 'Scheduled availability' }}
+            </span>
+            @if (listing.coverPhotoUrl && !brokenPhotos.has(listing.coverPhotoUrl)) {
+              <img class="cover-photo" [src]="imageUrl(listing.coverPhotoUrl)" [alt]="listing.title" loading="lazy" (error)="brokenPhotos.add(listing.coverPhotoUrl)" />
+            } @else { <div class="card-map-placeholder">No photo available</div> }
+            <h2>{{ listing.title }}</h2>
+            <p>{{ listing.address || 'Address available in listing details' }}</p>
+            <strong>{{ listing.pricePerHour | currency:'RON':'symbol-narrow':'1.0-2' }}/hour</strong>
+            <p class="review-summary">@if (listing.ratingCount && listing.averageRating != null) {
+                {{ listing.averageRating | number:'1.1-1' }} / 5 &middot; {{ listing.ratingCount }} reviews
+              } @else { No reviews yet }</p>
+              @if (listing.estimatedPeriodCost != null) { <p>Estimated period cost: <strong>{{ listing.estimatedPeriodCost | currency:'RON':'symbol-narrow':'1.2-2' }}</strong></p> }
+              <a [routerLink]="['/listings', listing.id]" [queryParams]="detailParams">View space</a>
+          </article>
+        }
+      </div>
     </div>
   }
 }
+
+<ng-template #resultCard let-listing>
+  <article class="listing-card" [class.selected-card]="selectedMapListing?.id === listing.id" [attr.data-card-id]="listing.id">
+    @if (listing.coverPhotoUrl && !brokenPhotos.has(listing.coverPhotoUrl)) {
+      <img class="cover-photo" [src]="imageUrl(listing.coverPhotoUrl)" [alt]="listing.title" loading="lazy" (error)="brokenPhotos.add(listing.coverPhotoUrl)" />
+    } @else { <div class="card-map-placeholder">No photo available</div> }
+    <div class="card-body">
+      <div class="card-topline">
+        <span class="availability-badge">
+          {{ listing.isAlwaysAvailable ? 'Always available' : 'Scheduled availability' }}
+        </span>
+        <strong>{{ listing.pricePerHour | currency:'RON':'symbol-narrow':'1.0-2' }}/h</strong>
+      </div>
+      <h2>{{ listing.title }}</h2>
+      <p>{{ listing.address || 'Address available in listing details' }}</p>
+      <p class="review-summary">@if (listing.ratingCount && listing.averageRating != null) {
+        {{ listing.averageRating | number:'1.1-1' }} / 5 &middot; {{ listing.ratingCount }} reviews
+      } @else { No reviews yet }</p>
+      @if (listing.estimatedPeriodCost != null) { <p>Estimated period cost: <strong>{{ listing.estimatedPeriodCost | currency:'RON':'symbol-narrow':'1.2-2' }}</strong></p> }
+      <button class="show-on-map" type="button" [attr.aria-pressed]="selectedMapListing?.id === listing.id" (click)="showOnMap(listing)">Show on map</button>
+      <a [routerLink]="['/listings', listing.id]" [queryParams]="detailParams">View space</a>
+    </div>
+  </article>
+</ng-template>

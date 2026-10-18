@@ -13,7 +13,7 @@ import {
   SimpleChanges,
   ViewChild
 } from '@angular/core';
-import type { LayerGroup, Map as LeafletMap } from 'leaflet';
+import type { LayerGroup, Marker, Map as LeafletMap } from 'leaflet';
 
 import { SearchListingItem } from '../api/listings/listing.models';
 
@@ -36,6 +36,11 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
   @Output() readonly areaSelected = new EventEmitter<{ latitude: number; longitude: number }>();
   @Output() readonly listingSelected = new EventEmitter<SearchListingItem>();
 
+  /** Selected card or marker, shared by the discovery view. */
+  @Input() selectedListingId: number | null = null;
+  /** Marker references allow selection updates without refitting the map. */
+  private readonly markers = new Map<number, Marker>();
+
   isTileUnavailable = false;
   private leaflet?: typeof import('leaflet/dist/leaflet-src.esm.js');
   private map?: LeafletMap;
@@ -53,6 +58,7 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
     if ((changes['listings'] || changes['searchArea'] || changes['radiusKm']) && this.map) {
       this.renderMarkers();
     }
+    if (changes['selectedListingId']) this.updateSelection(true);
   }
 
   ngOnDestroy(): void {
@@ -99,6 +105,7 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
     }
 
     this.markerLayer.clearLayers();
+    this.markers.clear();
     const validListings = this.listings.filter((listing) => this.hasValidCoordinates(listing));
     const coordinates: Array<[number, number]> = [];
 
@@ -113,7 +120,7 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
         iconAnchor: [36, 16]
       });
 
-      this.leaflet.marker(coordinate, {
+      const marker = this.leaflet.marker(coordinate, {
         icon,
         title: listing.title,
         alt: `${listing.title}, ${price} RON per hour`,
@@ -121,8 +128,18 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
       })
         .on('click', () => this.listingSelected.emit(listing))
         .addTo(this.markerLayer);
+      this.markers.set(listing.id, marker);
+      const element = marker.getElement();
+      element?.setAttribute('aria-label', `${listing.title}, ${price} RON per hour`);
+      element?.addEventListener('keydown', event => {
+        if (event.key === ' ' || event.key === 'Enter') {
+          event.preventDefault();
+          this.listingSelected.emit(listing);
+        }
+      });
     }
 
+    this.updateSelection(false);
     this.map.invalidateSize();
     if (this.searchArea) {
       const circle = this.leaflet.circle([this.searchArea.latitude, this.searchArea.longitude], {
@@ -136,6 +153,19 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
         padding: [40, 40],
         maxZoom: 15
       });
+    }
+  }
+
+  /** Highlights selection in place and brings an off-screen selected marker into view. */
+  private updateSelection(pan: boolean): void {
+    for (const [id, marker] of this.markers) {
+      const selected = id === this.selectedListingId;
+      marker.getElement()?.classList.toggle('selected-marker', selected);
+      marker.getElement()?.setAttribute('aria-pressed', String(selected));
+      marker.setZIndexOffset(selected ? 1000 : 0);
+      if (selected && pan && this.map && !this.map.getBounds().contains(marker.getLatLng())) {
+        this.map.panTo(marker.getLatLng());
+      }
     }
   }
 

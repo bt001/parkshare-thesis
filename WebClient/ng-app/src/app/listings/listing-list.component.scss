@@ -1,6 +1,3 @@
-:host {
-  display: block;
-}
 
 .page-heading {
   display: flex;
@@ -27,11 +24,6 @@ h1 {
   margin-bottom: 0.45rem;
   font-size: clamp(2rem, 5vw, 3.25rem);
   line-height: 1;
-}
-
-.page-heading p:last-child {
-  margin-bottom: 0;
-  color: #526b80;
 }
 
 .result-count,
@@ -157,11 +149,6 @@ h1 {
   margin-bottom: 1rem;
 }
 
-.card-body h2 {
-  margin-bottom: 0.45rem;
-  font-size: 1.25rem;
-}
-
 .card-body p {
   min-height: 2.5rem;
   margin-bottom: 1rem;
@@ -191,17 +178,9 @@ h1 {
   text-align: center;
 }
 
-.message p:last-of-type {
-  margin-bottom: 0;
-}
-
 .message.error {
   border-color: #e8b5b5;
   color: #8a2c2c;
-}
-
-.message.error p:last-of-type {
-  margin-bottom: 1rem;
 }
 
 .pagination {
@@ -225,31 +204,12 @@ h1 {
 }
 
 .map-preview {
-  position: absolute;
-  z-index: 600;
-  top: 1rem;
-  right: 1rem;
-  width: min(22rem, calc(100% - 2rem));
+  position: relative;
+  width: 100%;
   padding: 1.25rem;
   border-radius: 1rem;
   background: rgba(255, 255, 255, 0.97);
 }
-
-.map-preview h2 {
-  margin: 1rem 2rem 0.45rem 0;
-  font-size: 1.35rem;
-}
-
-.map-preview p {
-  margin-bottom: 0.8rem;
-  color: #607589;
-}
-
-.map-preview strong {
-  display: block;
-  margin-bottom: 1rem;
-}
-
 
 
 .preview-close {
@@ -287,16 +247,8 @@ h1 {
     box-shadow: none;
   }
 
-  .map-preview {
-    position: relative;
-    top: auto;
-    right: auto;
-    width: 100%;
-    margin-top: 0.75rem;
-    border: 1px solid rgba(95, 124, 163, 0.16);
-    }
-}
 
+}
 
 .place-options { padding: 0; list-style: none; }
 .place-options button { width: 100%; text-align: left; overflow-wrap: anywhere; }
@@ -305,4 +257,13 @@ h1 {
 .secondary-filters { margin: 1rem 0; min-width: 0; border: 0; padding: 0; }
 fieldset { min-width: 0; }
 select { width: 100%; padding: 0.7rem; font: inherit; }
-.map-preview { box-sizing: border-box; }
+
+.show-on-map { margin: 0 0.5rem 0.5rem 0; padding: 0.6rem; border-radius: 1rem; cursor: pointer; }
+.selected-card { outline: 3px solid #17685e; outline-offset: -3px; }
+.map-result-list { display: none; }
+@media (min-width: 1000px) {
+  .connected-results { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 1rem; align-items: start; }
+  .map-result-list { display: grid; gap: 1rem; max-height: 46rem; overflow-y: auto; padding: 0.25rem; }
+  .map-stage { position: sticky; top: 1rem; }
+  .map-preview .cover-photo, .map-preview .card-map-placeholder { display: none; }
+}

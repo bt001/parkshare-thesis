@@ -1,7 +1,7 @@
 import { bookingTimeError, nextRomanianMinute } from '../services/booking-time';
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize, Subscription } from 'rxjs';
@@ -16,7 +16,7 @@ type ListingViewMode = 'list' | 'map';
 @Component({
   selector: 'app-listing-list',
   standalone: true,
-  imports: [DecimalPipe, CurrencyPipe, RouterLink, ListingMapComponent, ReactiveFormsModule],
+  imports: [NgTemplateOutlet, DecimalPipe, CurrencyPipe, RouterLink, ListingMapComponent, ReactiveFormsModule],
   templateUrl: './listing-list.component.html',
   styleUrl: './listing-list.component.scss'
 })
@@ -292,9 +292,21 @@ export class ListingListComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** Selects the matching card without moving keyboard focus from the marker. */
   selectMapListing(listing: SearchListingItem): void {
     this.selectedMapListing = listing;
+    this.element.nativeElement.querySelector<HTMLElement>(`.map-result-list [data-card-id="${listing.id}"]`)
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
+
+  /** Opens the connected map and highlights the requested result. */
+  showOnMap(listing: SearchListingItem): void {
+    this.selectedMapListing = listing;
+    this.setViewMode('map');
+  }
+
+  /** Limits linked-card scrolling to this discovery view. */
+  private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
 
   closeMapPreview(): void {
     this.selectedMapListing = null;

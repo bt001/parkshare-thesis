@@ -51,6 +51,25 @@ describe('ListingMapComponent', () => {
     fixture.destroy();
   });
 
+  it('links selection without recreating markers and supports Space activation', async () => {
+    const { component, fixture } = await createComponent();
+    const marker = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.leaflet-marker-icon')!;
+    fixture.componentRef.setInput('selectedListingId', listing.id);
+    fixture.detectChanges();
+    expect(marker.classList.contains('selected-marker')).toBeTrue();
+    expect(marker.getAttribute('aria-pressed')).toBe('true');
+    expect(marker.getAttribute('aria-label')).toContain('<Central parking>');
+    expect((fixture.nativeElement as HTMLElement).querySelector('.leaflet-marker-icon')).toBe(marker);
+    const selection = spyOn(component.listingSelected, 'emit');
+    marker.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', cancelable: true }));
+    marker.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }));
+    expect(selection).toHaveBeenCalledWith(listing);
+    fixture.componentRef.setInput('selectedListingId', null);
+    fixture.detectChanges();
+    expect(marker.getAttribute('aria-pressed')).toBe('false');
+    fixture.destroy();
+  });
+
   it('does not initialize Leaflet during server rendering', async () => {
     const { fixture } = await createComponent('server');
     expect((fixture.nativeElement as HTMLElement).querySelector('.leaflet-container')).toBeNull();

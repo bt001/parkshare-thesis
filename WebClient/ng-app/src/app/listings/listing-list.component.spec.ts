@@ -127,6 +127,22 @@ describe('ListingListComponent', () => {
     expect(component.isMapLoaded).toBeTrue();
   });
 
+  it('opens a card on the map and links cards beyond the paged list', () => {
+    const extra = { ...component.listings[0], id: 99, title: 'Another mapped space' };
+    listingService.searchAll.and.returnValue(of([component.listings[0], extra]));
+    component.showOnMap(component.listings[0]);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelectorAll('.map-result-list .listing-card').length).toBe(2);
+    component.selectMapListing(extra);
+    fixture.detectChanges();
+    expect(element.querySelector('.selected-card')?.getAttribute('data-card-id')).toBe('99');
+    expect(element.querySelector('.selected-card button')?.getAttribute('aria-pressed')).toBe('true');
+    component.applyFilters();
+    fixture.detectChanges();
+    expect(element.querySelector('.selected-card')).toBeNull();
+  });
+
   it('surfaces API errors', () => {
     listingService.search.and.returnValue(throwError(() => new HttpErrorResponse({
       status: 400,
