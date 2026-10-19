@@ -4,7 +4,7 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Params, RouterLink } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
 
 import { AuthService } from '../api/auth/auth.service';
@@ -69,8 +69,8 @@ export class ListingDetailComponent implements OnInit {
     return !!startDateTime && !!endDateTime && startDateTime >= endDateTime;
   }
 
-  /** Applied discovery criteria for the return link. */
-  get searchParams(): Record<string, string> { return this.route.snapshot.queryParams; }
+  /** Applied discovery criteria and presentation state for the return link. */
+  get searchParams(): Params { return this.route.snapshot.queryParams; }
 
   ngOnInit(): void {
     const params = this.route.snapshot.queryParamMap;

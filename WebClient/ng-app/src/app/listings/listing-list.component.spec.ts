@@ -1,10 +1,11 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { of, Subject, throwError } from 'rxjs';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ActivatedRoute, convertToParamMap, provideRouter, ParamMap } from '@angular/router';
+import { BehaviorSubject, of, Subject, throwError } from 'rxjs';
 import { SearchListingItem, SearchListingsResult } from '../api/listings/listing.models';
 
 import { ListingService } from '../api/listings/listing.service';
+import { BrowserLocationService } from '../services/browser-location.service';
 import { ListingListComponent } from './listing-list.component';
 
 describe('ListingListComponent', () => {
@@ -12,7 +13,12 @@ describe('ListingListComponent', () => {
   let fixture: ComponentFixture<ListingListComponent>;
   const listingService = jasmine.createSpyObj<ListingService>('ListingService', ['search', 'searchAll', 'searchPlaces', 'getAmenities']);
 
+  const location = { unavailableReason: '', locate: jasmine.createSpy('locate') };
+
   beforeEach(async () => {
+    location.unavailableReason = '';
+    location.locate.calls.reset();
+    location.locate.and.stub();
     listingService.getAmenities.and.returnValue(of({ items: [] }));
     listingService.searchPlaces.calls.reset();
     listingService.search.calls.reset();
@@ -49,13 +55,133 @@ describe('ListingListComponent', () => {
       imports: [ListingListComponent],
       providers: [
         provideRouter([]),
-        { provide: ListingService, useValue: listingService }
+        { provide: ListingService, useValue: listingService },
+        { provide: BrowserLocationService, useValue: location }
       ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(ListingListComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  /** Completes the most recent controlled browser location request. */
+  const locateSuccess = (latitude = 44.43, longitude = 26.1): void =>
+    location.locate.calls.mostRecent().args[0]({ coords: { latitude, longitude } });
+
+  it('selects location only as a draft and applies it with retained filters', () => {
+    expect(location.locate).not.toHaveBeenCalled();
+    component.filterForm.patchValue({ titleContains: 'Central', radiusKm: 3, amenityIds: [1], sortBy: 'priceAsc' });
+    const calls = listingService.search.calls.count();
+    const params = { ...component.detailParams };
+    component.useMyLocation();
+    component.useMyLocation();
+    expect(location.locate).toHaveBeenCalledTimes(1);
+    locateSuccess();
+    expect(component.isLocationLoading).toBeFalse();
+    expect(component.selectedPlace?.label).toBe('Current location');
+    expect(component.searchArea).toBeNull();
+    expect(component.detailParams).toEqual(params);
+    expect(listingService.search.calls.count()).toBe(calls);
+    component.applyFilters();
+    expect(listingService.search.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
+      lat: 44.43, lng: 26.1, radiusKm: 3, titleContains: 'Central', amenityIds: [1], sortBy: 'priceAsc'
+    }));
+  });
+
+  for (const [code, message] of [[1, 'denied'], [2, 'unavailable'], [3, 'timed out']] as const) {
+    it(`preserves an existing centre/results on location failure ${code} and allows retry`, () => {
+      component.choosePlace({ label: 'Existing', latitude: 10, longitude: 20 });
+      component.applyFilters();
+      const results = component.listings;
+      component.useMyLocation();
+      location.locate.calls.mostRecent().args[1]({ code });
+      expect(component.locationError).toContain(message);
+      expect(component.selectedPlace?.label).toBe('Existing');
+      expect(component.searchArea?.label).toBe('Existing');
+      expect(component.listings).toBe(results);
+      component.useMyLocation();
+      locateSuccess();
+      expect(component.locationError).toBe('');
+    });
+  }
+
+  for (const reason of ['not supported', 'requires a secure HTTPS connection']) {
+    it(`reports capability failure: ${reason}`, () => {
+      location.unavailableReason = reason;
+      component.useMyLocation();
+      expect(location.locate).not.toHaveBeenCalled();
+      expect(component.locationError).toContain(reason);
+      expect(component.isLocationLoading).toBeFalse();
+    });
+  }
+
+  it('handles synchronous failure and invalid coordinates', () => {
+    location.locate.and.throwError('unavailable');
+    component.useMyLocation();
+    expect(component.locationError).toContain('unavailable');
+    location.locate.and.stub();
+    for (const [lat, lng] of [[NaN, 0], [91, 0], [0, 181], [0, Infinity]]) {
+      component.useMyLocation();
+      locateSuccess(lat, lng);
+      expect(component.selectedPlace).toBeNull();
+      expect(component.locationError).toContain('unavailable');
+    }
+  });
+
+  it('bounds permission waiting and ignores expired callbacks after retry', fakeAsync(() => {
+    component.useMyLocation();
+    const old = location.locate.calls.mostRecent().args;
+    tick(15_000);
+    expect(component.isLocationLoading).toBeFalse();
+    expect(component.locationError).toContain('timed out');
+    component.useMyLocation();
+    old[0]({ coords: { latitude: 1, longitude: 1 } });
+    old[1]({ code: 1 });
+    expect(component.isLocationLoading).toBeTrue();
+    locateSuccess();
+    tick(15_000);
+    expect(component.locationError).toBe('');
+    expect(component.selectedPlace?.latitude).toBe(44.43);
+  }));
+
+  for (const action of ['edit', 'find', 'choose', 'map', 'search', 'reset', 'destroy', 'restore']) {
+    it(`ignores stale location callbacks after ${action}`, fakeAsync(() => {
+      component.useMyLocation();
+      const pending = location.locate.calls.mostRecent().args;
+      switch (action) {
+        case 'edit': component.editPlace(); break;
+        case 'find': component.findPlaces(); break;
+        case 'choose': component.choosePlace({ label: 'New', latitude: 1, longitude: 2 }); break;
+        case 'map': component.searchMapCentre({ latitude: 1, longitude: 2 }); break;
+        case 'search': component.applyFilters(); break;
+        case 'reset': component.resetFilters(); break;
+        case 'destroy': component.ngOnDestroy(); break;
+        case 'restore': (component as any).restoreNavigation(convertToParamMap({ lat: '3', lng: '4', radiusKm: '5' })); break;
+      }
+      const selected = component.selectedPlace;
+      pending[0]({ coords: { latitude: 50, longitude: 60 } });
+      pending[1]({ code: 1 });
+      tick(15_000);
+      expect(component.selectedPlace).toBe(selected);
+      expect(component.locationError).toBe('');
+      expect(component.isLocationLoading).toBeFalse();
+    }));
+  }
+
+  it('cancels pending place lookup while keeping location through other filter/view changes', () => {
+    const places = new Subject<any>();
+    listingService.searchPlaces.and.returnValue(places);
+    component.filterForm.controls.where.setValue('Athens');
+    component.findPlaces();
+    component.useMyLocation();
+    expect(places.observed).toBeFalse();
+    component.filterForm.controls.radiusKm.setValue(7);
+    component.setViewMode('map');
+    locateSuccess(-33.8, 151.2);
+    expect(component.selectedPlace?.latitude).toBe(-33.8);
+    expect(component.filterForm.controls.radiusKm.value).toBe(7);
+    expect(component.searchArea).toBeNull();
   });
 
   it('loads and renders active listings', () => {
@@ -261,10 +387,10 @@ describe('ListingListComponent', () => {
     component.applyFilters();
     component.setViewMode('map');
     expect(listingService.searchAll).toHaveBeenCalledWith({ onlyActive: true, ...period });
-    expect(component.detailParams).toEqual(period);
+    expect(component.detailParams).toEqual({ ...period, view: 'map' });
     component.resetFilters();
     expect(component.filterForm.controls.startDateTime.value).toBe('');
-    expect(component.detailParams).toEqual({});
+    expect(component.detailParams).toEqual({ view: 'map' });
   });
 
   it('rejects incomplete, past and ambiguous periods without replacing applied results', () => {
@@ -351,4 +477,115 @@ describe('ListingListComponent', () => {
     expect(element.querySelector('img')).toBeNull();
     expect(element.textContent).toContain('No photo available');
   });
+  it('restores page, selection and camera without passing navigation fields to the API', () => {
+    const route = TestBed.inject(ActivatedRoute);
+    spyOnProperty(route.snapshot, 'queryParamMap', 'get').and.returnValue(convertToParamMap({
+      view: 'map', page: '2', selectedId: '7', mapLat: '37.98', mapLng: '23.73', mapZoom: '14', amenityIds: ['2', '3']
+    }));
+    listingService.search.and.returnValue(of({ page: 2, pageSize: 12, totalCount: 13, items: [] }));
+    component.ngOnInit();
+    expect(component.page).toBe(2);
+    expect(component.viewMode).toBe('map');
+    expect(component.selectedMapListing?.id).toBe(7);
+    expect(component.viewport).toEqual({ latitude: 37.98, longitude: 23.73, zoom: 14 });
+    expect(listingService.search.calls.mostRecent().args[0]).toEqual({ onlyActive: true, amenityIds: [2, 3], page: 2, pageSize: 12 });
+    expect(component.detailParams['selectedId']).toBe(7);
+  });
+
+  it('retries the requested page and bounds correction when results shrink', () => {
+    listingService.search.and.returnValues(
+      throwError(() => new Error('offline')),
+      of({ page: 4, pageSize: 12, totalCount: 13, items: [] }),
+      of({ page: 2, pageSize: 12, totalCount: 13, items: [] })
+    );
+    component.loadPage(4);
+    expect(component.page).toBe(4);
+    component.loadPage(component.page);
+    expect(component.page).toBe(2);
+    expect(listingService.search.calls.mostRecent().args[0].page).toBe(2);
+    listingService.search.and.returnValue(of({ page: 2, pageSize: 12, totalCount: 0, items: [] }));
+    component.loadPage(2);
+    expect(component.page).toBe(1);
+  });
+
+  it('retains selection and viewport through map failure, but clears a missing successful result', () => {
+    component.saveViewport({ latitude: 37.98, longitude: 23.73, zoom: 14 });
+    listingService.searchAll.and.returnValues(throwError(() => new Error('offline')), of(component.listings), of([]));
+    component.showOnMap(component.listings[0]);
+    expect(component.detailParams['selectedId']).toBe(7);
+    expect(component.detailParams['mapZoom']).toBe(14);
+    component.retryMap();
+    expect(component.selectedMapListing?.id).toBe(7);
+    component.retryMap();
+    expect(component.selectedMapListing).toBeNull();
+    expect(component.detailParams['selectedId']).toBeUndefined();
+  });
+
+  it('handles mounted route changes without refetching unchanged criteria', () => {
+    const route = TestBed.inject(ActivatedRoute);
+    const params = new BehaviorSubject<ParamMap>(convertToParamMap({}));
+    Object.defineProperty(route, 'queryParamMap', { value: params });
+    component.ngOnInit();
+    listingService.search.calls.reset();
+    params.next(convertToParamMap({ view: 'map', selectedId: '7', mapLat: '38', mapLng: '24', mapZoom: '13' }));
+    expect(component.viewMode).toBe('map');
+    expect(component.selectedMapListing?.id).toBe(7);
+    expect(listingService.search).not.toHaveBeenCalled();
+    expect(listingService.searchAll).toHaveBeenCalledTimes(1);
+    params.next(convertToParamMap({ view: 'list', mapLat: '38', mapLng: '24', mapZoom: '13' }));
+    expect(component.viewMode).toBe('list');
+    expect(listingService.search).not.toHaveBeenCalled();
+    params.next(convertToParamMap({ titleContains: 'Changed' }));
+    expect(listingService.search).toHaveBeenCalledTimes(1);
+    fixture.destroy();
+    expect(params.observed).toBeFalse();
+  });
+
+  it('does not broaden malformed or expired restored searches and recovers through Reset', () => {
+    const route = TestBed.inject(ActivatedRoute);
+    const params = spyOnProperty(route.snapshot, 'queryParamMap', 'get');
+    for (const invalid of [{ minPrice: 'nope' }, { lat: '38' }, { startDateTime: '2020-01-01T10:00', endDateTime: '2020-01-01T11:00' }]) {
+      params.and.returnValue(convertToParamMap(invalid));
+      listingService.search.calls.reset();
+      component.ngOnInit();
+      fixture.detectChanges();
+      expect(component.restorationError).toContain('invalid or expired');
+      expect(listingService.search).not.toHaveBeenCalled();
+      expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('No active listings yet');
+    }
+    component.resetFilters();
+    expect(component.restorationError).toBe('');
+    expect(listingService.search).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores its own URL echo without overwriting drafts or issuing extra requests', () => {
+    const route = TestBed.inject(ActivatedRoute);
+    const params = new BehaviorSubject<ParamMap>(convertToParamMap({}));
+    Object.defineProperty(route, 'queryParamMap', { value: params });
+    component.ngOnInit();
+    component.filterForm.controls.titleContains.setValue('Unsubmitted');
+    component.useMyLocation();
+    component.setViewMode('map');
+    const count = listingService.search.calls.count();
+    params.next(convertToParamMap({ view: 'map' }));
+    expect(component.filterForm.controls.titleContains.value).toBe('Unsubmitted');
+    expect(component.isLocationLoading).toBeTrue();
+    locateSuccess();
+    expect(component.selectedPlace?.label).toBe('Current location');
+    expect(listingService.search.calls.count()).toBe(count);
+  });
+
+  it('recovers when mounted navigation returns from invalid criteria to the previous valid URL', () => {
+    const route = TestBed.inject(ActivatedRoute);
+    const params = new BehaviorSubject<ParamMap>(convertToParamMap({}));
+    Object.defineProperty(route, 'queryParamMap', { value: params });
+    component.ngOnInit();
+    params.next(convertToParamMap({ minPrice: 'invalid' }));
+    expect(component.restorationError).not.toBe('');
+    listingService.search.calls.reset();
+    params.next(convertToParamMap({}));
+    expect(component.restorationError).toBe('');
+    expect(listingService.search).toHaveBeenCalledOnceWith({ onlyActive: true, page: 1, pageSize: 12 });
+  });
+
 });

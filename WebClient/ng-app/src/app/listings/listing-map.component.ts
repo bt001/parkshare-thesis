@@ -15,6 +15,8 @@ import {
 } from '@angular/core';
 import type { LayerGroup, Marker, Map as LeafletMap } from 'leaflet';
 
+import { MapViewport } from './discovery-navigation';
+
 import { SearchListingItem } from '../api/listings/listing.models';
 
 @Component({
@@ -41,6 +43,13 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
   /** Marker references allow selection updates without refitting the map. */
   private readonly markers = new Map<number, Marker>();
 
+  /** Saved camera takes precedence over automatic result fitting. */
+  @Input() viewport: MapViewport | null = null;
+  /** Settled camera movement for URL persistence. */
+  @Output() readonly viewportChanged = new EventEmitter<MapViewport>();
+  /** Suppresses feedback while applying a restored camera. */
+  private restoringViewport = false;
+
   isTileUnavailable = false;
   private leaflet?: typeof import('leaflet/dist/leaflet-src.esm.js');
   private map?: LeafletMap;
@@ -58,7 +67,8 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
     if ((changes['listings'] || changes['searchArea'] || changes['radiusKm']) && this.map) {
       this.renderMarkers();
     }
-    if (changes['selectedListingId']) this.updateSelection(true);
+    if (changes['viewport'] && this.map) this.restoreViewport();
+    if (changes['selectedListingId']) this.updateSelection(!changes['viewport']);
   }
 
   ngOnDestroy(): void {
@@ -83,6 +93,7 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
     this.leaflet = leaflet;
     this.map = leaflet.map(this.mapContainer.nativeElement, {
       zoomControl: true,
+      trackResize: false,
       attributionControl: true
     }).setView([37.9838, 23.7275], 12);
 
@@ -93,10 +104,44 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
       .on('tileerror', () => (this.isTileUnavailable = true))
       .addTo(this.map);
 
-    this.resizeObserver = new ResizeObserver(() => this.map?.invalidateSize());
+    this.resizeObserver = new ResizeObserver(() => this.resizeMap());
     this.resizeObserver.observe(this.mapContainer.nativeElement);
     this.markerLayer = leaflet.layerGroup().addTo(this.map);
     this.renderMarkers();
+    this.map.on('moveend', () => this.emitViewport());
+    this.emitViewport();
+  }
+
+  /** Resizes without persisting Leaflet pixel-rounding drift as user movement. */
+  private resizeMap(): void {
+    if (!this.map) return;
+    this.restoringViewport = true;
+    this.map.invalidateSize({ animate: false });
+    this.restoringViewport = false;
+    this.restoreViewport();
+  }
+
+  /** Applies a saved camera without animation or a movement feedback loop. */
+  private restoreViewport(): void {
+    if (!this.map || !this.viewport) return;
+    const { latitude, longitude, zoom } = this.viewport;
+    const centre = this.map.getCenter();
+    if (Math.abs(centre.lat - latitude) < 0.000001 && Math.abs(centre.lng - longitude) < 0.000001 && this.map.getZoom() === zoom) return;
+    this.restoringViewport = true;
+    this.map.setView([latitude, longitude], zoom, { animate: false });
+    this.restoringViewport = false;
+  }
+
+  /** Emits a bounded, stable camera after movement has finished. */
+  private emitViewport(): void {
+    if (!this.map || this.restoringViewport || this.isDestroyed) return;
+    const centre = this.map.getCenter();
+    const viewport = {
+      latitude: Number(Math.max(-90, Math.min(90, centre.lat)).toFixed(6)),
+      longitude: Number((((centre.lng + 180) % 360 + 360) % 360 - 180).toFixed(6)),
+      zoom: this.map.getZoom()
+    };
+    if (JSON.stringify(viewport) !== JSON.stringify(this.viewport)) this.viewportChanged.emit(viewport);
   }
 
   private renderMarkers(): void {
@@ -140,20 +185,21 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
     }
 
     this.updateSelection(false);
-    this.map.invalidateSize();
+    this.resizeMap();
     if (this.searchArea) {
       const circle = this.leaflet.circle([this.searchArea.latitude, this.searchArea.longitude], {
         radius: this.radiusKm * 1000, color: '#17685e', weight: 1, fillOpacity: 0.04, interactive: false
       }).addTo(this.markerLayer);
-      this.map.fitBounds(circle.getBounds(), { padding: [20, 20], maxZoom: 16 });
-    } else if (coordinates.length === 1) {
+      if (!this.viewport) this.map.fitBounds(circle.getBounds(), { padding: [20, 20], maxZoom: 16 });
+    } else if (!this.viewport && coordinates.length === 1) {
       this.map.setView(coordinates[0], 15);
-    } else if (coordinates.length > 1) {
+    } else if (!this.viewport && coordinates.length > 1) {
       this.map.fitBounds(this.leaflet.latLngBounds(coordinates), {
         padding: [40, 40],
         maxZoom: 15
       });
     }
+    this.restoreViewport();
   }
 
   /** Highlights selection in place and brings an off-screen selected marker into view. */

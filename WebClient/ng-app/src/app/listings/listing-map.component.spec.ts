@@ -75,4 +75,29 @@ describe('ListingMapComponent', () => {
     expect((fixture.nativeElement as HTMLElement).querySelector('.leaflet-container')).toBeNull();
     fixture.destroy();
   });
+  it('restores the camera after rendering and does not refit on result updates', async () => {
+    const { component, fixture } = await createComponent();
+    const camera = { latitude: 37.98, longitude: 23.73, zoom: 14 };
+    const emitted = spyOn(component.viewportChanged, 'emit');
+    fixture.componentRef.setInput('viewport', camera);
+    fixture.componentRef.setInput('selectedListingId', listing.id);
+    fixture.detectChanges();
+    const map = (component as unknown as { map: import('leaflet').Map }).map;
+    expect(map.getCenter().lat).toBeCloseTo(camera.latitude, 5);
+    expect(map.getCenter().lng).toBeCloseTo(camera.longitude, 5);
+    expect(map.getZoom()).toBe(14);
+    fixture.componentRef.setInput('listings', [{ ...listing, pricePerHour: 20 }]);
+    fixture.detectChanges();
+    expect(map.getCenter().lat).toBeCloseTo(camera.latitude, 5);
+    expect(map.getZoom()).toBe(14);
+    expect(emitted).not.toHaveBeenCalled();
+    map.getContainer().style.width = '501px';
+    (component as unknown as { resizeMap(): void }).resizeMap();
+    expect(map.getCenter().lng).toBeCloseTo(camera.longitude, 5);
+    expect(emitted).not.toHaveBeenCalled();
+    map.setView([38.1, 24.1], 13, { animate: false });
+    expect(emitted).toHaveBeenCalledWith({ latitude: 38.1, longitude: 24.1, zoom: 13 });
+    fixture.destroy();
+  });
+
 });

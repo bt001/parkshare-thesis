@@ -3,13 +3,16 @@ import { CurrencyPipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, ElementRef, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { finalize, Subscription } from 'rxjs';
+import { ActivatedRoute, convertToParamMap, ParamMap, Router, RouterLink } from '@angular/router';
+import { finalize, skip, Subscription, switchMap, of } from 'rxjs';
 
 import { Amenity, SearchPlace, SearchListingItem, SearchListingsRequest } from '../api/listings/listing.models';
 import { ListingService } from '../api/listings/listing.service';
 import { resolveApiUrl } from '../api/api-request';
+import { BrowserLocationService } from '../services/browser-location.service';
 import { ListingMapComponent } from './listing-map.component';
+
+import { MapViewport, readDiscoveryNavigation, writeDiscoveryNavigation, discoveryParamsKey } from './discovery-navigation';
 
 type ListingViewMode = 'list' | 'map';
 
@@ -55,6 +58,19 @@ export class ListingListComponent implements OnInit, OnDestroy {
   periodError: string | null = null;
   private readonly listingService = inject(ListingService);
 
+  /** Saved camera shared with the map. */
+  viewport: MapViewport | null = null;
+  /** Invalid restored criteria must be corrected before loading results. */
+  restorationError = '';
+  /** Selected identity survives transient map failures. */
+  private selectedId: number | null = null;
+  /** Subscription for navigation while this route remains mounted. */
+  private routeRequest?: Subscription;
+  /** Canonical state last written by this component. */
+  private writtenKey = '';
+  /** Whether any valid criteria have been applied. */
+  private hasApplied = false;
+
   /** Candidate places from the latest explicit lookup. */
   places: SearchPlace[] = [];
   /** Chosen geographic centre, distinct from unsubmitted text. */
@@ -68,8 +84,72 @@ export class ListingListComponent implements OnInit, OnDestroy {
   placeError = '';
   private placeRequest?: Subscription;
 
+  /** Browser boundary for explicit device-location requests. */
+  private readonly browserLocation = inject(BrowserLocationService);
+  /** Whether the current location request is still pending. */
+  isLocationLoading = false;
+  /** Accessible progress and draft-selection feedback. */
+  locationStatus = '';
+  /** Actionable device-location failure feedback. */
+  locationError = '';
+  /** Invalidates callbacks from requests that cannot be physically cancelled. */
+  private locationGeneration = 0;
+  /** Bounds waiting even when a permission prompt remains unanswered. */
+  private locationDeadline?: ReturnType<typeof setTimeout>;
+
+  /** Discards pending callbacks and clears transient location feedback. */
+  private invalidateLocation(): void {
+    this.locationGeneration++;
+    clearTimeout(this.locationDeadline);
+    this.locationDeadline = undefined;
+    this.isLocationLoading = false;
+    this.locationStatus = '';
+    this.locationError = '';
+  }
+
+  /** Selects device coordinates as a draft; Search remains the apply boundary. */
+  useMyLocation(): void {
+    if (this.isLocationLoading) return;
+    this.invalidateLocation();
+    this.placeRequest?.unsubscribe();
+    this.places = [];
+    this.placeError = '';
+    const fallback = ' Try again, find a place, or search around the map centre.';
+    if (this.browserLocation.unavailableReason) {
+      this.locationError = this.browserLocation.unavailableReason + fallback;
+      return;
+    }
+    const generation = this.locationGeneration;
+    const fail = (message: string): void => {
+      if (generation !== this.locationGeneration) return;
+      this.invalidateLocation();
+      this.locationError = message + fallback;
+    };
+    this.isLocationLoading = true;
+    this.locationStatus = 'Getting location…';
+    this.locationDeadline = setTimeout(() => fail('Location request timed out.'), 15_000);
+    try {
+      this.browserLocation.locate(position => {
+        if (generation !== this.locationGeneration) return;
+        const { latitude, longitude } = position.coords;
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)
+            || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+          fail('Your location is unavailable.');
+          return;
+        }
+        this.choosePlace({ latitude, longitude, label: 'Current location' });
+        this.locationStatus = 'Location selected. Search to apply your distance and filters.';
+      }, error => fail(error.code === 1
+        ? 'Location permission was denied. Allow location in your browser settings to retry.'
+        : error.code === 3 ? 'Location request timed out.' : 'Your location is unavailable.'));
+    } catch {
+      fail('Your location is unavailable.');
+    }
+  }
+
   /** Resolves names only on explicit submission, cancelling superseded requests. */
   findPlaces(): void {
+    this.invalidateLocation();
     const text = this.filterForm.controls.where.value.trim();
     this.placeRequest?.unsubscribe();
     this.places = [];
@@ -91,6 +171,7 @@ export class ListingListComponent implements OnInit, OnDestroy {
 
   /** Invalidates a selected name and any in-flight lookup when the text changes. */
   editPlace(): void {
+    this.invalidateLocation();
     this.placeRequest?.unsubscribe();
     this.selectedPlace = null;
     this.places = [];
@@ -99,6 +180,7 @@ export class ListingListComponent implements OnInit, OnDestroy {
 
   /** Selects an explicit geographic candidate without changing applied results yet. */
   choosePlace(place: SearchPlace): void {
+    this.invalidateLocation();
     this.placeRequest?.unsubscribe();
     this.selectedPlace = { ...place, label: place.label.slice(0, 200) };
     this.filterForm.controls.where.setValue(this.selectedPlace.label);
@@ -145,23 +227,35 @@ export class ListingListComponent implements OnInit, OnDestroy {
 
   /** Applies valid draft values without retaining blank text or an unchecked toggle. */
   applyFilters(): void {
+    this.invalidateLocation();
+    if (!this.applyDraft()) return;
+    this.restorationError = '';
+    this.selectedId = null;
+    this.viewport = null;
+    this.invalidateMap();
+    this.loadPage(1);
+    if (this.viewMode === 'map') this.loadMapListings();
+  }
+
+  /** Validates the draft and captures criteria without resetting navigation. */
+  private applyDraft(): boolean {
     this.filterForm.patchValue({
       titleContains: this.filterForm.controls.titleContains.value.trim(),
       addressContains: this.filterForm.controls.addressContains.value.trim()
     });
     if (this.filterForm.invalid) {
       this.filterForm.markAllAsTouched();
-      return;
+      return false;
     }
 
     const values = this.filterForm.getRawValue();
     this.minimumDateTime = nextRomanianMinute();
     this.periodError = values.startDateTime || values.endDateTime
       ? bookingTimeError(values.startDateTime, values.endDateTime) : null;
-    if (this.periodError) return;
+    if (this.periodError) return false;
     if (values.where.trim() && !this.selectedPlace) {
       this.placeError = 'Use Find place and select a result, or clear Where to browse all parking.';
-      return;
+      return false;
     }
     this.searchArea = this.selectedPlace;
     this.appliedRadius = values.radiusKm;
@@ -178,17 +272,35 @@ export class ListingListComponent implements OnInit, OnDestroy {
       ...(values.maxPrice !== null ? { maxPrice: values.maxPrice } : {}),
       ...(values.onlyAlwaysAvailable ? { onlyAlwaysAvailable: true } : {})
     };
-    const { onlyActive, ...criteria } = this.appliedFilters;
-    this.detailParams = { ...criteria, ...(this.selectedPlace ? { place: this.selectedPlace.label } : {}) };
-    void this.router.navigate([], { relativeTo: this.route, queryParams: this.detailParams, replaceUrl: true });
+    this.hasApplied = true;
+    return true;
+  }
+
+  /** Discards results tied to previous search criteria. */
+  private invalidateMap(): void {
     this.mapRequest?.unsubscribe();
     this.mapListings = [];
     this.isMapLoaded = false;
     this.mapErrorMessages = [];
     this.selectedMapListing = null;
-    this.page = 1;
-    this.loadPage(1);
-    if (this.viewMode === 'map') this.loadMapListings();
+  }
+
+  /** Keeps detail links and the current history entry synchronized. */
+  private syncNavigation(): void {
+    if (this.restorationError) return;
+    const { onlyActive, ...criteria } = this.appliedFilters;
+    this.detailParams = { ...criteria, ...(this.searchArea ? { place: this.searchArea.label } : {}),
+      ...writeDiscoveryNavigation({ view: this.viewMode, page: this.page, selectedId: this.selectedId, viewport: this.viewport }) };
+    this.writtenKey = discoveryParamsKey(convertToParamMap(this.detailParams));
+    if (this.writtenKey !== discoveryParamsKey(this.route.snapshot.queryParamMap)) {
+      void this.router.navigate([], { relativeTo: this.route, queryParams: this.detailParams, replaceUrl: true });
+    }
+  }
+
+  /** Saves settled movement without changing the applied search area. */
+  saveViewport(viewport: MapViewport): void {
+    this.viewport = viewport;
+    this.syncNavigation();
   }
 
   /** Clears the draft and immediately restores active discovery results. */
@@ -200,10 +312,12 @@ export class ListingListComponent implements OnInit, OnDestroy {
 
   /** Cancels requests when leaving discovery. */
   ngOnDestroy(): void {
+    this.invalidateLocation();
     this.listRequest?.unsubscribe();
     this.mapRequest?.unsubscribe();
     this.placeRequest?.unsubscribe();
     this.amenityRequest?.unsubscribe();
+    this.routeRequest?.unsubscribe();
   }
 
   readonly pageSize = 12;
@@ -229,7 +343,27 @@ export class ListingListComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadAmenities();
-    const params = this.route.snapshot.queryParamMap;
+    this.routeRequest?.unsubscribe();
+    this.restoreNavigation(this.route.snapshot.queryParamMap);
+    this.routeRequest = this.route.queryParamMap.pipe(skip(1)).subscribe(params => {
+      if (discoveryParamsKey(params) !== this.writtenKey) this.restoreNavigation(params);
+    });
+  }
+
+  /** Restores route state without submitting a new search or discarding pagination. */
+  private restoreNavigation(params: ParamMap): void {
+    this.writtenKey = discoveryParamsKey(params);
+    const previous = JSON.stringify(this.appliedFilters);
+    const previousPage = this.page;
+    const wasApplied = this.hasApplied && !this.restorationError;
+    this.editPlace();
+    this.filterForm.reset();
+    this.restorationError = '';
+    const navigation = readDiscoveryNavigation(params);
+    this.viewMode = navigation.view;
+    this.page = navigation.page;
+    this.selectedId = navigation.selectedId;
+    this.viewport = navigation.viewport;
     const lat = Number(params.get('lat'));
     const lng = Number(params.get('lng'));
     const radius = Number(params.get('radiusKm'));
@@ -249,27 +383,57 @@ export class ListingListComponent implements OnInit, OnDestroy {
     const sort = params.get('sortBy');
     this.filterForm.controls.sortBy.setValue(sort === 'priceAsc' || sort === 'priceDesc' || sort === 'ratingDesc' ? sort : 'newest');
     this.filterForm.controls.onlyAlwaysAvailable.setValue(params.get('onlyAlwaysAvailable') === 'true');
-    this.applyFilters();
+    const numericKeys = ['minPrice', 'maxPrice', 'minRating'];
+    const malformed = numericKeys.some(key => params.has(key) && (!params.get(key)?.trim() || !Number.isFinite(Number(params.get(key)))))
+      || (['lat', 'lng', 'radiusKm'].some(key => params.has(key)) && (!this.selectedPlace || ['lat', 'lng', 'radiusKm'].some(key => !params.get(key)?.trim())))
+      || params.getAll('amenityIds').some(value => !Number.isSafeInteger(Number(value)) || Number(value) <= 0)
+      || (params.has('sortBy') && !['newest', 'priceAsc', 'priceDesc', 'ratingDesc'].includes(params.get('sortBy')!))
+      || (params.has('onlyAlwaysAvailable') && !['true', 'false'].includes(params.get('onlyAlwaysAvailable')!));
+    if (malformed || !this.applyDraft()) {
+      this.restorationError = 'Saved search criteria are invalid or expired. Correct the filters and Search, or Reset to browse again.';
+      this.filterForm.markAllAsTouched();
+      this.listRequest?.unsubscribe();
+      this.listings = [];
+      this.totalCount = 0;
+      this.invalidateMap();
+      return;
+    }
+    const changed = !wasApplied || previous !== JSON.stringify(this.appliedFilters);
+    if (changed) this.invalidateMap();
+    if (changed || previousPage !== this.page) this.loadPage(this.page);
+    if (this.isMapLoaded) this.resolveSelection();
+    if (this.viewMode === 'map' && !this.isMapLoaded && !this.isMapLoading) this.loadMapListings();
+    this.syncNavigation();
   }
 
   loadPage(page: number): void {
-    if (page < 1) {
+    if (this.restorationError || !Number.isInteger(page) || page < 1) {
       return;
     }
 
     this.listRequest?.unsubscribe();
+    this.page = page;
+    this.syncNavigation();
     this.isLoading = true;
     this.listings = [];
     this.totalCount = 0;
     this.errorMessages = [];
 
     this.listRequest = this.listingService.search({ ...this.appliedFilters, page, pageSize: this.pageSize })
-      .pipe(finalize(() => (this.isLoading = false)))
+      .pipe(switchMap(result => {
+        const lastPage = Math.max(1, Math.ceil(result.totalCount / this.pageSize));
+        if (page <= lastPage) return of(result);
+        this.page = lastPage;
+        this.syncNavigation();
+        return result.totalCount === 0 ? of({ ...result, page: 1 })
+          : this.listingService.search({ ...this.appliedFilters, page: lastPage, pageSize: this.pageSize });
+      }), finalize(() => (this.isLoading = false)))
       .subscribe({
         next: (result) => {
           this.listings = result.items;
           this.page = result.page;
           this.totalCount = result.totalCount;
+          this.syncNavigation();
         },
         error: (error) => {
           this.listings = [];
@@ -281,13 +445,14 @@ export class ListingListComponent implements OnInit, OnDestroy {
 
   setViewMode(viewMode: ListingViewMode): void {
     this.viewMode = viewMode;
-    if (viewMode === 'map' && !this.isMapLoaded && !this.isMapLoading) {
+    this.syncNavigation();
+    if (!this.restorationError && viewMode === 'map' && !this.isMapLoaded && !this.isMapLoading) {
       this.loadMapListings();
     }
   }
 
   retryMap(): void {
-    if (!this.isMapLoading) {
+    if (!this.restorationError && !this.isMapLoading) {
       this.loadMapListings();
     }
   }
@@ -295,6 +460,8 @@ export class ListingListComponent implements OnInit, OnDestroy {
   /** Selects the matching card without moving keyboard focus from the marker. */
   selectMapListing(listing: SearchListingItem): void {
     this.selectedMapListing = listing;
+    this.selectedId = listing.id;
+    this.syncNavigation();
     this.element.nativeElement.querySelector<HTMLElement>(`.map-result-list [data-card-id="${listing.id}"]`)
       ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
@@ -302,6 +469,8 @@ export class ListingListComponent implements OnInit, OnDestroy {
   /** Opens the connected map and highlights the requested result. */
   showOnMap(listing: SearchListingItem): void {
     this.selectedMapListing = listing;
+    this.selectedId = listing.id;
+    this.syncNavigation();
     this.setViewMode('map');
   }
 
@@ -310,6 +479,15 @@ export class ListingListComponent implements OnInit, OnDestroy {
 
   closeMapPreview(): void {
     this.selectedMapListing = null;
+    this.selectedId = null;
+    this.syncNavigation();
+  }
+
+  /** Resolves only successful results, clearing unavailable selections. */
+  private resolveSelection(): void {
+    this.selectedMapListing = this.mapListings.find(item => item.id === this.selectedId) ?? null;
+    this.selectedId = this.selectedMapListing?.id ?? null;
+    this.syncNavigation();
   }
 
   private loadMapListings(): void {
@@ -323,6 +501,7 @@ export class ListingListComponent implements OnInit, OnDestroy {
         next: (listings) => {
           this.mapListings = listings;
           this.isMapLoaded = true;
+          this.resolveSelection();
         },
         error: (error) => {
           this.mapListings = [];

@@ -15,6 +15,9 @@
       <label for="search-where">Where</label>
       <input id="search-where" type="search" formControlName="where" (input)="editPlace()" placeholder="Athens, address or landmark" autocomplete="off" />
       <button type="button" (click)="findPlaces()" [disabled]="isPlaceLoading">{{ isPlaceLoading ? 'Finding places…' : 'Find place' }}</button>
+      <button type="button" (click)="useMyLocation()" [disabled]="isLocationLoading">{{ isLocationLoading ? 'Getting location…' : 'Use my location' }}</button>
+      <p role="status" aria-live="polite">{{ locationStatus }}</p>
+      @if (locationError) { <p class="field-error" role="alert">{{ locationError }}</p> }
       @if (places.length) {
         <ul class="place-options" aria-label="Choose a place">
           @for (place of places; track $index) {
@@ -115,7 +118,9 @@
   <button type="button" [attr.aria-pressed]="viewMode === 'map'" (click)="setViewMode('map')">Map</button>
 </div>
 
-@if (viewMode === 'list') {
+@if (restorationError) {
+  <div class="message error" role="alert">{{ restorationError }}</div>
+} @else if (viewMode === 'list') {
   @if (errorMessages.length > 0) {
     <div class="message error" role="alert">
       @for (message of errorMessages; track message) {
@@ -180,7 +185,7 @@
         }
       </section>
       <div class="map-stage">
-        <app-listing-map [listings]="mapListings" [selectedListingId]="selectedMapListing?.id ?? null" [searchArea]="searchArea" [radiusKm]="appliedRadius" (areaSelected)="searchMapCentre($event)" (listingSelected)="selectMapListing($event)" />
+        <app-listing-map [listings]="mapListings" [viewport]="viewport" (viewportChanged)="saveViewport($event)" [selectedListingId]="selectedMapListing?.id ?? null" [searchArea]="searchArea" [radiusKm]="appliedRadius" (areaSelected)="searchMapCentre($event)" (listingSelected)="selectMapListing($event)" />
 
         @if (selectedMapListing; as listing) {
           <article class="map-preview" aria-live="polite">
