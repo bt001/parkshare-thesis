@@ -58,7 +58,7 @@ namespace ParkShare.Application.Interfaces.Repositories
             string? addressContains,
             int page,
             int pageSize,
-            CancellationToken cancellationToken, DateTime? startDateTime = null, DateTime? endDateTime = null, IReadOnlyCollection<long>? amenityIds = null, double? minRating = null, string? sortBy = null);
+            CancellationToken cancellationToken, DateTime? startDateTime = null, DateTime? endDateTime = null, IReadOnlyCollection<long>? amenityIds = null, double? minRating = null, string? sortBy = null, double? south = null, double? north = null, double? west = null, double? east = null);
 
         /// <summary>
         /// Persists tracked listing changes.

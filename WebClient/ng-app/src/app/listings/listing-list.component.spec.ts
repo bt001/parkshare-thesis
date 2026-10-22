@@ -588,4 +588,52 @@ describe('ListingListComponent', () => {
     expect(listingService.search).toHaveBeenCalledOnceWith({ onlyActive: true, page: 1, pageSize: 12 });
   });
 
+  it('applies bounds consistently without changing the camera and switches back to radius', () => {
+    component.setViewMode('map');
+    const camera = { latitude: 44.43, longitude: 26.1, zoom: 13 };
+    component.saveViewport(camera);
+    const calls = listingService.search.calls.count();
+    component.saveViewport({ ...camera, zoom: 14 });
+    expect(listingService.search.calls.count()).toBe(calls);
+    component.filterForm.patchValue({ titleContains: 'Central', minPrice: 5, sortBy: 'priceAsc' });
+    const bounds = { south: 44, north: 45, west: 26, east: 27 };
+    component.filterForm.controls.radiusKm.setValue(0);
+    component.searchMapBounds(bounds);
+    expect(component.filterForm.controls.radiusKm.disabled).toBeTrue();
+    expect(listingService.search.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({ ...bounds, titleContains: 'Central', minPrice: 5, page: 1 }));
+    expect(listingService.searchAll.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining(bounds));
+    expect(component.viewport?.zoom).toBe(14);
+    expect(component.detailParams['south']).toBe(44);
+    expect(component.detailParams['radiusKm']).toBeUndefined();
+    component.applyFilters();
+    expect(component.viewport?.zoom).toBe(14);
+    component.choosePlace({ latitude: 38, longitude: 24, label: 'Athens' });
+    expect(component.filterForm.controls.radiusKm.enabled).toBeTrue();
+    component.filterForm.controls.radiusKm.setValue(5);
+    component.applyFilters();
+    expect(listingService.search.calls.mostRecent().args[0].south).toBeUndefined();
+    expect(listingService.search.calls.mostRecent().args[0].lat).toBe(38);
+    component.searchMapBounds(bounds);
+    component.resetFilters();
+    expect(listingService.search.calls.mostRecent().args[0].south).toBeUndefined();
+  });
+
+  it('restores bounds and rejects incomplete or conflicting saved geography', () => {
+    const restore = (params: Record<string, string | undefined>) => (component as unknown as { restoreNavigation(params: ParamMap): void })
+      .restoreNavigation(convertToParamMap(params));
+    restore({ south: '44', north: '45', west: '26', east: '27' });
+    expect(component.restorationError).toBe('');
+    expect(listingService.search.calls.mostRecent().args[0].south).toBe(44);
+    for (const params of [ { south: '44' }, { south: '45', north: '44', west: '26', east: '27' },
+      { south: '44', north: '45', west: '26', east: '27', lat: '44', lng: '26', radiusKm: '5' } ]) {
+      const calls = listingService.search.calls.count();
+      restore(params);
+      expect(component.restorationError).toContain('invalid');
+      expect(listingService.search.calls.count()).toBe(calls);
+    }
+    restore({ south: '-10', north: '10', west: '170', east: '-170' });
+    expect(component.restorationError).toBe('');
+    expect(component.bounds?.west).toBe(170);
+  });
+
 });

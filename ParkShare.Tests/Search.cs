@@ -95,4 +95,45 @@ internal static partial class Program
             new SearchListingsQuery { Page = 1, PageSize = 20, SortBy = "invalid" } })
             Check(!validator.Validate(query).IsValid, "invalid secondary filters rejected");
     }
+    /// <summary>Checks visible bounds, antimeridian, inclusive edges and validation against SQL.</summary>
+    private static async Task SearchViewport()
+    {
+        await using var db = Context();
+        var prefix = "Viewport-" + Guid.NewGuid().ToString("N");
+        var rows = new[] { (44m, 26m), (45m, 27m), (44.5m, 26.5m), (46m, 26m), (0m, 179m), (0m, -179m), (0m, 0m) }
+            .Select((point, i) => new Listing { OwnerId = _owner, Title = prefix + i, Description = "Viewport fixture",
+                Latitude = point.Item1, Longitude = point.Item2, PricePerHour = 10, IsAlwaysAvailable = true }).ToArray();
+        db.Listings.AddRange(rows); await db.SaveChangesAsync();
+        var repository = new ListingRepository(db);
+        var result = await repository.SearchAsync(null, null, null, 10, 10, true, true, prefix, null, 1, 2, Ct,
+            Future, Future.AddHours(1), south: 44, north: 45, west: 26, east: 27);
+        Check(result.TotalCount == 3 && result.Items.Count == 2, "inclusive bounds filter before count and paging");
+        var second = await repository.SearchAsync(null, null, null, null, null, true, null, prefix, null, 2, 2, Ct,
+            south: 44, north: 45, west: 26, east: 27);
+        Check(result.Items.Concat(second.Items).Select(x => x.Id).Distinct().Count() == 3, "stable viewport pages");
+        var wrapped = await repository.SearchAsync(null, null, null, null, null, true, null, prefix, null, 1, 20, Ct,
+            south: -10, north: 10, west: 170, east: -170);
+        Check(wrapped.Items.Select(x => x.Id).Order().SequenceEqual(rows.Skip(4).Take(2).Select(x => x.Id).Order()), "antimeridian excludes central longitudes");
+        rows[2].PricePerHour = 20;
+        db.AvailabilityWindows.Add(new() { ListingId = rows[0].Id, StartDateTime = Future,
+            EndDateTime = Future.AddHours(1), IsBlocked = true });
+        await db.SaveChangesAsync();
+        var combined = await Listings(db).SearchAsync(null, null, null, null, 10, true, true, prefix, null, 1, 20, Ct,
+            Future, Future.AddHours(1), sortBy: "priceAsc", south: 44, north: 45, west: 26, east: 27);
+        Check(combined.IsSuccessful && combined.Payload.Items.Single().Id == rows[1].Id,
+            "application forwards bounds and combines price, period and geography before paging");
+        var validator = new SearchListingsQueryValidator();
+        foreach (var query in new[] {
+            new SearchListingsQuery { Page = 1, PageSize = 20, South = -10, North = 10, West = 180, East = -180 },
+            new SearchListingsQuery { Page = 1, PageSize = 20, South = 44 },
+            new SearchListingsQuery { Page = 1, PageSize = 20, South = 45, North = 44, West = 26, East = 27 },
+            new SearchListingsQuery { Page = 1, PageSize = 20, South = 44, North = 45, West = 26, East = 26 },
+            new SearchListingsQuery { Page = 1, PageSize = 20, South = double.NaN, North = 45, West = 26, East = 27 },
+            new SearchListingsQuery { Page = 1, PageSize = 20, South = -91, North = 45, West = 26, East = 27 },
+            new SearchListingsQuery { Page = 1, PageSize = 20, South = 44, North = 45, West = 26, East = 181 },
+            new SearchListingsQuery { Page = 1, PageSize = 20, South = 44, North = 45, West = 26, East = 27, Lat = 44, Lng = 26, RadiusKm = 5 } })
+            Check(!validator.Validate(query).IsValid, "invalid viewport rejected");
+        Check(validator.Validate(new SearchListingsQuery { Page = 1, PageSize = 20, South = -10, North = 10, West = 170, East = -170 }).IsValid, "wrapped bounds valid");
+    }
+
 }

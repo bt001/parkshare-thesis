@@ -285,7 +285,7 @@ namespace ParkShare.Application.Services
         }
 
         /// <inheritdoc/>
-        public async Task<ServiceResult<SearchListingsResponse>> SearchAsync(double? lat, double? lng, double? radiusKm, decimal? minPrice, decimal? maxPrice, bool? onlyActive, bool? onlyAlwaysAvailable, string? titleContains, string? addressContains, int page, int pageSize, CancellationToken ct, DateTime? startDateTime = null, DateTime? endDateTime = null, IReadOnlyCollection<long>? amenityIds = null, double? minRating = null, string? sortBy = null)
+        public async Task<ServiceResult<SearchListingsResponse>> SearchAsync(double? lat, double? lng, double? radiusKm, decimal? minPrice, decimal? maxPrice, bool? onlyActive, bool? onlyAlwaysAvailable, string? titleContains, string? addressContains, int page, int pageSize, CancellationToken ct, DateTime? startDateTime = null, DateTime? endDateTime = null, IReadOnlyCollection<long>? amenityIds = null, double? minRating = null, string? sortBy = null, double? south = null, double? north = null, double? west = null, double? east = null)
         {
             if (startDateTime.HasValue != endDateTime.HasValue)
                 return ServiceResult<SearchListingsResponse>.WithError("Provide both arrival and departure.");
@@ -296,7 +296,7 @@ namespace ParkShare.Application.Services
             }
             try
             {
-                var results = await _listingRepository.SearchAsync(lat, lng, radiusKm, minPrice, maxPrice, onlyActive, onlyAlwaysAvailable, titleContains, addressContains, page, pageSize, ct, startDateTime, endDateTime, amenityIds, minRating, sortBy);
+                var results = await _listingRepository.SearchAsync(lat, lng, radiusKm, minPrice, maxPrice, onlyActive, onlyAlwaysAvailable, titleContains, addressContains, page, pageSize, ct, startDateTime, endDateTime, amenityIds, minRating, sortBy, south, north, west, east);
 
                 return ServiceResult<SearchListingsResponse>.Success(new SearchListingsResponse
                 {

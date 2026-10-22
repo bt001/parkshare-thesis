@@ -64,7 +64,7 @@ namespace ParkShare.Infrastructure.Repositories
             string? addressContains,
             int page,
             int pageSize,
-            CancellationToken cancellationToken, DateTime? startDateTime = null, DateTime? endDateTime = null, IReadOnlyCollection<long>? amenityIds = null, double? minRating = null, string? sortBy = null)
+            CancellationToken cancellationToken, DateTime? startDateTime = null, DateTime? endDateTime = null, IReadOnlyCollection<long>? amenityIds = null, double? minRating = null, string? sortBy = null, double? south = null, double? north = null, double? west = null, double? east = null)
         {
             var query = _db.Listings.AsNoTracking().AsQueryable();
 
@@ -86,6 +86,18 @@ namespace ParkShare.Infrastructure.Repositories
 
             if (!string.IsNullOrWhiteSpace(addressContains))
                 query = query.Where(listing => listing.Address != null && EF.Functions.Like(listing.Address, $"%{addressContains}%"));
+
+            if (south.HasValue && north.HasValue && west.HasValue && east.HasValue)
+            {
+                var bottom = (decimal)south.Value;
+                var top = (decimal)north.Value;
+                var left = (decimal)west.Value;
+                var right = (decimal)east.Value;
+                query = query.Where(listing => listing.Latitude >= bottom && listing.Latitude <= top);
+                query = left < right
+                    ? query.Where(listing => listing.Longitude >= left && listing.Longitude <= right)
+                    : query.Where(listing => listing.Longitude >= left || listing.Longitude <= right);
+            }
 
             if (lat.HasValue && lng.HasValue && radiusKm.HasValue)
             {

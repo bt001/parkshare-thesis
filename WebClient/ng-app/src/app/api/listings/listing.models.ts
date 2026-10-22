@@ -1,4 +1,17 @@
+/** Inclusive geographic bounds; west greater than east crosses the antimeridian. */
+export interface SearchBounds {
+  /** Southern latitude. */ south: number;
+  /** Northern latitude. */ north: number;
+  /** Western longitude. */ west: number;
+  /** Eastern longitude. */ east: number;
+}
+
 export interface SearchListingsRequest {
+  /** Optional visible bounds, mutually exclusive with centre/radius. */
+  south?: number;
+  north?: number;
+  west?: number;
+  east?: number;
   /** All selected amenities must match. */ amenityIds?: number[];
   /** Inclusive average rating. */ minRating?: number;
   /** Stable server ordering. */ sortBy?: 'newest' | 'priceAsc' | 'priceDesc' | 'ratingDesc';

@@ -34,7 +34,7 @@ export class ListingService {
       params = params.set('onlyActive', request.onlyActive);
     }
 
-    for (const key of ['minRating', 'sortBy', 'lat', 'lng', 'radiusKm', 'startDateTime', 'endDateTime', 'titleContains', 'addressContains', 'minPrice', 'maxPrice', 'onlyAlwaysAvailable'] as const) {
+    for (const key of ['south', 'north', 'west', 'east', 'minRating', 'sortBy', 'lat', 'lng', 'radiusKm', 'startDateTime', 'endDateTime', 'titleContains', 'addressContains', 'minPrice', 'maxPrice', 'onlyAlwaysAvailable'] as const) {
       const value = request[key];
       if (value !== undefined) {
         params = params.set(key, value);

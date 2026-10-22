@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 
 namespace ParkShare.Application.Queries.Validators
 {
@@ -8,6 +8,14 @@ namespace ParkShare.Application.Queries.Validators
         /// <summary>Defines valid search ranges and required radius coordinates.</summary>
         public SearchListingsQueryValidator()
         {
+            RuleFor(x => x).Must(x => {
+                var bounds = new[] { x.South, x.North, x.West, x.East };
+                return bounds.All(v => !v.HasValue) || (bounds.All(v => v.HasValue && double.IsFinite(v.Value))
+                    && x.South >= -90 && x.North <= 90 && x.South < x.North
+                    && x.West >= -180 && x.West <= 180 && x.East >= -180 && x.East <= 180 && x.West != x.East
+                    && !(x.West == 180 && x.East == -180)
+                    && !x.Lat.HasValue && !x.Lng.HasValue && !x.RadiusKm.HasValue);
+            }).WithMessage("Provide complete valid bounds without a radius search; south must be below north and west must differ from east.");
             RuleForEach(x => x.AmenityIds).GreaterThan(0);
             RuleFor(x => x.MinRating).InclusiveBetween(1, 5);
             RuleFor(x => x.SortBy).Must(value => value is null or "newest" or "priceAsc" or "priceDesc" or "ratingDesc")

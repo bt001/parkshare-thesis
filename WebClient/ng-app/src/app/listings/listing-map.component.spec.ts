@@ -100,4 +100,21 @@ describe('ListingMapComponent', () => {
     fixture.destroy();
   });
 
+  it('emits visible bounds only on explicit activation and normalizes wrapped worlds', async () => {
+    const { component, fixture } = await createComponent();
+    const map = (component as unknown as { map: import('leaflet').Map }).map;
+    const emit = spyOn(component.boundsSelected, 'emit');
+    map.setView([0, 180], 3, { animate: false });
+    expect(emit).not.toHaveBeenCalled();
+    spyOn(map, 'getBounds').and.returnValue({ getSouth: () => -10, getNorth: () => 10,
+      getWest: () => 170, getEast: () => 190 } as import('leaflet').LatLngBounds);
+    component.searchBounds();
+    expect(emit).toHaveBeenCalledWith({ south: -10, north: 10, west: 170, east: -170 });
+    (map.getBounds as jasmine.Spy).and.returnValue({ getSouth: () => -95, getNorth: () => 95,
+      getWest: () => -200, getEast: () => 200 });
+    component.searchBounds();
+    expect(emit).toHaveBeenCalledWith({ south: -90, north: 90, west: -180, east: 180 });
+    fixture.destroy();
+  });
+
 });

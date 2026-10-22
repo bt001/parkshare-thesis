@@ -70,6 +70,7 @@ internal static partial class Program
             await Test("place provider configuration, cache, budget and safe failures", PlaceSearch);
             await Test("search periods, geography, paging and fresh booking checks", SearchAvailability);
             await Test("search quality projections, filters, sorting and estimates", SearchQuality);
+            await Test("viewport bounds, edges, wrapping and pagination", SearchViewport);
             Console.WriteLine($"PASS: {_passed} regression groups.");
         }
         finally

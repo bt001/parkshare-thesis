@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using ParkShare.Application.Dto;
 using ParkShare.Application.Dto.Application;
 using ParkShare.Application.Interfaces;
@@ -17,6 +17,14 @@ namespace ParkShare.Application.Queries
         public double? MinRating { get; set; }
         /// <summary>Ordering: newest, priceAsc, priceDesc or ratingDesc.</summary>
         public string? SortBy { get; set; }
+        /// <summary>Inclusive southern latitude of the visible search bounds.</summary>
+        public double? South { get; init; }
+        /// <summary>Inclusive northern latitude of the visible search bounds.</summary>
+        public double? North { get; init; }
+        /// <summary>Inclusive western longitude; west greater than east crosses the antimeridian.</summary>
+        public double? West { get; init; }
+        /// <summary>Inclusive eastern longitude of the visible search bounds.</summary>
+        public double? East { get; init; }
         public double? Lat { get; init; }
         public double? Lng { get; init; }
         public double? RadiusKm { get; init; }
@@ -37,7 +45,7 @@ namespace ParkShare.Application.Queries
 
         public async Task<ServiceResult<SearchListingsResponse>> Handle(SearchListingsQuery request, CancellationToken cancellationToken)
         {
-            var response = await _listingService.SearchAsync(request.Lat, request.Lng, request.RadiusKm, request.MinPrice, request.MaxPrice, request.OnlyActive, request.OnlyAlwaysAvailable, request.TitleContains, request.AddressContains, request.Page, request.PageSize, cancellationToken, request.StartDateTime, request.EndDateTime, request.AmenityIds, request.MinRating, request.SortBy);
+            var response = await _listingService.SearchAsync(request.Lat, request.Lng, request.RadiusKm, request.MinPrice, request.MaxPrice, request.OnlyActive, request.OnlyAlwaysAvailable, request.TitleContains, request.AddressContains, request.Page, request.PageSize, cancellationToken, request.StartDateTime, request.EndDateTime, request.AmenityIds, request.MinRating, request.SortBy, request.South, request.North, request.West, request.East);
             if (!response.IsSuccessful)
                 return ServiceResult<SearchListingsResponse>.WithErrors(response);
 

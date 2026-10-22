@@ -6,7 +6,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { ActivatedRoute, convertToParamMap, ParamMap, Router, RouterLink } from '@angular/router';
 import { finalize, skip, Subscription, switchMap, of } from 'rxjs';
 
-import { Amenity, SearchPlace, SearchListingItem, SearchListingsRequest } from '../api/listings/listing.models';
+import { SearchBounds, Amenity, SearchPlace, SearchListingItem, SearchListingsRequest } from '../api/listings/listing.models';
 import { ListingService } from '../api/listings/listing.service';
 import { resolveApiUrl } from '../api/api-request';
 import { BrowserLocationService } from '../services/browser-location.service';
@@ -77,6 +77,8 @@ export class ListingListComponent implements OnInit, OnDestroy {
   selectedPlace: SearchPlace | null = null;
   /** Applied centre shared with the map. */
   searchArea: SearchPlace | null = null;
+  /** Draft bounds retained until a place or Reset replaces them. */
+  bounds: SearchBounds | null = null;
   /** Applied distance shown by the map. */
   appliedRadius = 5;
   /** Lookup progress and safe error state. */
@@ -174,6 +176,8 @@ export class ListingListComponent implements OnInit, OnDestroy {
     this.invalidateLocation();
     this.placeRequest?.unsubscribe();
     this.selectedPlace = null;
+    this.bounds = null;
+    this.filterForm.controls.radiusKm.enable();
     this.places = [];
     this.placeError = '';
   }
@@ -182,6 +186,8 @@ export class ListingListComponent implements OnInit, OnDestroy {
   choosePlace(place: SearchPlace): void {
     this.invalidateLocation();
     this.placeRequest?.unsubscribe();
+    this.bounds = null;
+    this.filterForm.controls.radiusKm.enable();
     this.selectedPlace = { ...place, label: place.label.slice(0, 200) };
     this.filterForm.controls.where.setValue(this.selectedPlace.label);
     this.places = [];
@@ -191,6 +197,15 @@ export class ListingListComponent implements OnInit, OnDestroy {
   /** Searches a manually chosen map centre while retaining the requested period and filters. */
   searchMapCentre(point: { latitude: number; longitude: number }): void {
     this.choosePlace({ ...point, label: 'Selected map area' });
+    this.applyFilters();
+  }
+
+  /** Applies actual visible bounds with current filters while retaining the camera. */
+  searchMapBounds(bounds: SearchBounds): void {
+    this.editPlace();
+    this.filterForm.controls.where.setValue('');
+    this.bounds = bounds;
+    this.filterForm.controls.radiusKm.disable();
     this.applyFilters();
   }
 
@@ -231,7 +246,7 @@ export class ListingListComponent implements OnInit, OnDestroy {
     if (!this.applyDraft()) return;
     this.restorationError = '';
     this.selectedId = null;
-    this.viewport = null;
+    if (!this.bounds) this.viewport = null;
     this.invalidateMap();
     this.loadPage(1);
     if (this.viewMode === 'map') this.loadMapListings();
@@ -261,6 +276,7 @@ export class ListingListComponent implements OnInit, OnDestroy {
     this.appliedRadius = values.radiusKm;
     this.appliedFilters = {
       onlyActive: true,
+      ...(this.bounds ?? {}),
       ...(values.amenityIds.length ? { amenityIds: [...new Set(values.amenityIds)] } : {}),
       ...(values.minRating !== null ? { minRating: values.minRating } : {}),
       ...(values.sortBy !== 'newest' ? { sortBy: values.sortBy } : {}),
@@ -383,13 +399,27 @@ export class ListingListComponent implements OnInit, OnDestroy {
     const sort = params.get('sortBy');
     this.filterForm.controls.sortBy.setValue(sort === 'priceAsc' || sort === 'priceDesc' || sort === 'ratingDesc' ? sort : 'newest');
     this.filterForm.controls.onlyAlwaysAvailable.setValue(params.get('onlyAlwaysAvailable') === 'true');
+    const boundsKeys = ['south', 'north', 'west', 'east'] as const;
+    const hasBounds = boundsKeys.some(key => params.has(key));
+    const validBounds = boundsKeys.every(key => !!params.get(key)?.trim() && Number.isFinite(Number(params.get(key))))
+      && Number(params.get('south')) >= -90 && Number(params.get('north')) <= 90
+      && Number(params.get('south')) < Number(params.get('north'))
+      && Math.abs(Number(params.get('west'))) <= 180 && Math.abs(Number(params.get('east'))) <= 180
+      && Number(params.get('west')) !== Number(params.get('east'))
+      && !(Number(params.get('west')) === 180 && Number(params.get('east')) === -180)
+      && !['lat', 'lng', 'radiusKm'].some(key => params.has(key));
+    if (hasBounds && validBounds) this.bounds = {
+      south: Number(params.get('south')), north: Number(params.get('north')),
+      west: Number(params.get('west')), east: Number(params.get('east'))
+    };
+    if (this.bounds) this.filterForm.controls.radiusKm.disable();
     const numericKeys = ['minPrice', 'maxPrice', 'minRating'];
     const malformed = numericKeys.some(key => params.has(key) && (!params.get(key)?.trim() || !Number.isFinite(Number(params.get(key)))))
       || (['lat', 'lng', 'radiusKm'].some(key => params.has(key)) && (!this.selectedPlace || ['lat', 'lng', 'radiusKm'].some(key => !params.get(key)?.trim())))
       || params.getAll('amenityIds').some(value => !Number.isSafeInteger(Number(value)) || Number(value) <= 0)
       || (params.has('sortBy') && !['newest', 'priceAsc', 'priceDesc', 'ratingDesc'].includes(params.get('sortBy')!))
       || (params.has('onlyAlwaysAvailable') && !['true', 'false'].includes(params.get('onlyAlwaysAvailable')!));
-    if (malformed || !this.applyDraft()) {
+    if ((hasBounds && !validBounds) || malformed || !this.applyDraft()) {
       this.restorationError = 'Saved search criteria are invalid or expired. Correct the filters and Search, or Reset to browse again.';
       this.filterForm.markAllAsTouched();
       this.listRequest?.unsubscribe();

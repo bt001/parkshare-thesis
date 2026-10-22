@@ -17,7 +17,7 @@ import type { LayerGroup, Marker, Map as LeafletMap } from 'leaflet';
 
 import { MapViewport } from './discovery-navigation';
 
-import { SearchListingItem } from '../api/listings/listing.models';
+import { SearchBounds, SearchListingItem } from '../api/listings/listing.models';
 
 @Component({
   selector: 'app-listing-map',
@@ -36,6 +36,8 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
   @Input() radiusKm = 5;
   /** Explicit search action after the user pans or zooms. */
   @Output() readonly areaSelected = new EventEmitter<{ latitude: number; longitude: number }>();
+  /** Explicit visible-bounds request, independent of camera persistence. */
+  @Output() readonly boundsSelected = new EventEmitter<SearchBounds>();
   @Output() readonly listingSelected = new EventEmitter<SearchListingItem>();
 
   /** Selected card or marker, shared by the discovery view. */
@@ -82,6 +84,18 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
     if (!this.map) return;
     const centre = this.map.getCenter();
     this.areaSelected.emit({ latitude: Math.max(-90, Math.min(90, centre.lat)), longitude: ((centre.lng + 180) % 360 + 360) % 360 - 180 });
+  }
+
+  /** Reads visible edges at activation, including wrapped worlds and polar clamping. */
+  searchBounds(): void {
+    if (!this.map) return;
+    const bounds = this.map.getBounds();
+    const wrap = (value: number): number => ((value + 180) % 360 + 360) % 360 - 180;
+    const fullWorld = bounds.getEast() - bounds.getWest() >= 360;
+    this.boundsSelected.emit({
+      south: Math.max(-90, bounds.getSouth()), north: Math.min(90, bounds.getNorth()),
+      west: fullWorld ? -180 : wrap(bounds.getWest()), east: fullWorld ? 180 : wrap(bounds.getEast())
+    });
   }
 
   private async initializeMap(): Promise<void> {

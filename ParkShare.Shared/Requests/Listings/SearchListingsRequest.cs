@@ -1,4 +1,4 @@
-﻿using ParkShare.Shared.Results;
+using ParkShare.Shared.Results;
 
 namespace ParkShare.Shared.Requests.Listings
 {
@@ -14,6 +14,14 @@ namespace ParkShare.Shared.Requests.Listings
         public double? MinRating { get; set; }
         /// <summary>Ordering: newest, priceAsc, priceDesc or ratingDesc.</summary>
         public string? SortBy { get; set; }
+        /// <summary>Inclusive southern latitude of the visible search bounds.</summary>
+        public double? South { get; init; }
+        /// <summary>Inclusive northern latitude of the visible search bounds.</summary>
+        public double? North { get; init; }
+        /// <summary>Inclusive western longitude; west greater than east crosses the antimeridian.</summary>
+        public double? West { get; init; }
+        /// <summary>Inclusive eastern longitude of the visible search bounds.</summary>
+        public double? East { get; init; }
         public double? Lat { get; set; }
         public double? Lng { get; set; }
         public double? RadiusKm { get; set; }
