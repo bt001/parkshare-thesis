@@ -1,7 +1,7 @@
 import { bookingTimeError, nextRomanianMinute } from '../services/booking-time';
-import { CurrencyPipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
+import { isPlatformBrowser, DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, ElementRef, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, PLATFORM_ID, ViewChild, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, convertToParamMap, ParamMap, Router, RouterLink } from '@angular/router';
 import { finalize, skip, Subscription, switchMap, of } from 'rxjs';
@@ -19,11 +19,74 @@ type ListingViewMode = 'list' | 'map';
 @Component({
   selector: 'app-listing-list',
   standalone: true,
-  imports: [NgTemplateOutlet, DecimalPipe, CurrencyPipe, RouterLink, ListingMapComponent, ReactiveFormsModule],
+  imports: [NgTemplateOutlet, DecimalPipe, RouterLink, ListingMapComponent, ReactiveFormsModule],
   templateUrl: './listing-list.component.html',
   styleUrl: './listing-list.component.scss'
 })
 export class ListingListComponent implements OnInit, OnDestroy {
+  /** Single filter panel, presented inline only when there is sufficient room. */
+  @ViewChild('filterDialog') private filterDialog?: ElementRef<HTMLDialogElement>;
+  /** Trigger receiving focus after modal dismissal. */
+  @ViewChild('filterTrigger') private filterTrigger?: ElementRef<HTMLButtonElement>;
+  /** Browser-only layout boundary; protected routes remain client-rendered. */
+  private readonly platformId = inject(PLATFORM_ID);
+  /** Current viewport width used to choose sidebar or modal presentation. */
+  private layoutWidth = isPlatformBrowser(this.platformId) ? window.innerWidth : 0;
+  /** Last applied form snapshot, separate from URL and API criteria. */
+  private appliedDraft = '';
+
+  /** Keeps the primary search compact on small screens until explicitly expanded. */
+  get searchExpanded(): boolean { return this.layoutWidth >= 768; }
+
+  /** Whether filters fit alongside this results layout. */
+  get filtersInline(): boolean { return this.layoutWidth >= (this.viewMode === 'map' ? 1440 : 1000); }
+
+  /** Whether draft controls differ from the most recent valid submission. */
+  get hasDraftChanges(): boolean {
+    return this.appliedDraft !== '' && this.appliedDraft !== this.draftSnapshot();
+  }
+
+  /** Includes geographic intent even when a new location has the same display label. */
+  private draftSnapshot(): string {
+    return JSON.stringify({ values: this.filterForm.getRawValue(), place: this.selectedPlace, bounds: this.bounds });
+  }
+
+  /** Preserves drafts while reconciling a modal during viewport changes. */
+  @HostListener('window:resize')
+  updateFilterLayout(): void {
+    const dialog = this.filterDialog?.nativeElement;
+    this.layoutWidth = window.innerWidth;
+    if (this.filtersInline && dialog?.matches(':modal')) dialog.close();
+  }
+
+  /** Opens the secondary filters with native focus containment. */
+  openFilters(): void { this.filterDialog?.nativeElement.showModal(); }
+
+  /** Cycles Tab within the modal without moving focus into browser chrome. */
+  containFilterFocus(event: KeyboardEvent): void {
+    const dialog = this.filterDialog?.nativeElement;
+    if (event.key !== 'Tab' || !dialog?.matches(':modal')) return;
+    const controls = Array.from(dialog.querySelectorAll<HTMLElement>('button, input, select, textarea, a[href], [tabindex]'))
+      .filter(control => control.tabIndex >= 0 && !control.matches(':disabled') && control.getClientRects().length > 0);
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && dialog.ownerDocument.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && dialog.ownerDocument.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
+    }
+  }
+
+  /** Dismisses without applying drafts and restores the invoking control. */
+  closeFilters(): void {
+    if (this.filterDialog?.nativeElement.matches(':modal')) {
+      this.filterDialog.nativeElement.close();
+      this.filterTrigger?.nativeElement.focus();
+    }
+  }
+
   /** Catalog options and independent retry feedback. */
   amenities: Amenity[] = [];
   /** Safe catalog failure feedback. */
@@ -243,13 +306,33 @@ export class ListingListComponent implements OnInit, OnDestroy {
   /** Applies valid draft values without retaining blank text or an unchecked toggle. */
   applyFilters(): void {
     this.invalidateLocation();
-    if (!this.applyDraft()) return;
+    if (!this.applyDraft()) {
+      this.revealInvalidFilters();
+      return;
+    }
+    this.closeFilters();
     this.restorationError = '';
     this.selectedId = null;
     if (!this.bounds) this.viewport = null;
     this.invalidateMap();
     this.loadPage(1);
     if (this.viewMode === 'map') this.loadMapListings();
+  }
+
+  /** Makes invalid controls reachable when their responsive container is closed. */
+  private revealInvalidFilters(): void {
+    const host = this.element.nativeElement;
+    const dialog = this.filterDialog?.nativeElement;
+    const secondaryInvalid = ['titleContains', 'addressContains', 'minPrice', 'maxPrice', 'minRating']
+      .some(key => this.filterForm.get(key)?.invalid) || this.filterForm.hasError('priceRange');
+    if (secondaryInvalid && !this.filtersInline && dialog && !dialog.open) dialog.showModal();
+    if (dialog?.matches(':modal')) {
+      dialog.querySelector<HTMLElement>('input.ng-invalid, select.ng-invalid')?.focus();
+    } else {
+      const primary = host.querySelector<HTMLDetailsElement>('.primary-search');
+      if (primary && !secondaryInvalid) primary.open = true;
+      host.querySelector<HTMLElement>('input.ng-invalid, select.ng-invalid')?.focus();
+    }
   }
 
   /** Validates the draft and captures criteria without resetting navigation. */
@@ -288,6 +371,7 @@ export class ListingListComponent implements OnInit, OnDestroy {
       ...(values.maxPrice !== null ? { maxPrice: values.maxPrice } : {}),
       ...(values.onlyAlwaysAvailable ? { onlyAlwaysAvailable: true } : {})
     };
+    this.appliedDraft = this.draftSnapshot();
     this.hasApplied = true;
     return true;
   }
@@ -542,9 +626,10 @@ export class ListingListComponent implements OnInit, OnDestroy {
       });
   }
 
+  /** Keeps failures visible and retryable even when the server sends an empty error list. */
   private getErrorMessages(error: unknown): string[] {
     if (error instanceof HttpErrorResponse) {
-      if (Array.isArray(error.error) && error.error.every((item) => typeof item === 'string')) {
+      if (Array.isArray(error.error) && error.error.length > 0 && error.error.every((item) => typeof item === 'string' && item.trim())) {
         return error.error;
       }
 

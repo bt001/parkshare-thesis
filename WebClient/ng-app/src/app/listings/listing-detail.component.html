@@ -5,6 +5,7 @@
     @for (message of errorMessages; track message) {
       <p>{{ message }}</p>
     }
+    @if (canRetryListing) { <button type="button" (click)="retryListing()">Retry listing</button> }
   </div>
 } @else if (isLoading) {
   <div class="message" aria-live="polite">Loading listing details…</div>
@@ -16,15 +17,59 @@
       <p class="address">{{ listing.address || 'Address not provided' }}</p>
     </div>
     <div class="price">
-      <strong>{{ listing.pricePerHour | currency:'RON':'symbol-narrow':'1.0-2' }}</strong>
+      <strong>{{ listing.pricePerHour | number:'1.0-2' }} RON</strong>
       <span>per hour</span>
     </div>
   </section>
 
-  @defer (on immediate) { <app-listing-photos [listingId]="listing.id" /> }
-
   <div class="detail-grid">
+    <aside class="panel booking-panel ui-controls" aria-labelledby="booking-heading">
+      <p class="eyebrow">Request parking</p>
+      <h2 id="booking-heading">Choose your time</h2>
+      <p id="booking-time-note" class="muted">All booking times are Romanian local time.</p>
+
+      @if (isOwnListing) {
+        <div class="message compact">You own this listing, so you cannot request a booking for it.</div>
+      } @else {
+        <form aria-describedby="booking-time-note" [formGroup]="bookingForm" (ngSubmit)="submitBooking()">
+          <label for="booking-start">Start</label>
+          <input id="booking-start" type="datetime-local" formControlName="startDateTime" [min]="minimumDateTime" />
+          @if (bookingForm.controls.startDateTime.touched && bookingForm.controls.startDateTime.hasError('required')) {
+            <p class="field-error">Choose a start time.</p>
+          }
+
+          <label for="booking-end">End</label>
+          <input id="booking-end" type="datetime-local" formControlName="endDateTime" [min]="minimumDateTime" />
+          @if (bookingForm.controls.endDateTime.touched && bookingForm.controls.endDateTime.hasError('required')) {
+            <p class="field-error">Choose an end time.</p>
+          }
+          @if (hasInvalidRange) {
+            <p class="field-error">End time must be after start time.</p>
+          }
+
+          <button type="submit" [disabled]="isSubmitting">
+            {{ isSubmitting ? 'Sending request…' : 'Request booking' }}
+          </button>
+          <p class="booking-note">The owner will review your request. Your space is confirmed after approval.</p>
+        </form>
+
+        @if (bookingErrorMessages.length > 0) {
+          <div class="message error compact" role="alert">
+            @for (message of bookingErrorMessages; track message) { <p>{{ message }}</p> }
+          </div>
+        }
+
+        @if (bookingResult) {
+          <div class="message success compact" role="status">
+            <strong>Request #{{ bookingResult.bookingId }} sent</strong>
+            <p>Status: {{ bookingResult.statusText }}</p>
+            <a routerLink="/bookings">My bookings</a>
+          </div>
+        }
+      }
+    </aside>
     <div class="detail-column">
+      @defer (on immediate) { <app-listing-photos [listingId]="listing.id" /> }
       <section class="panel description-panel">
         <h2>About this space</h2>
         <p>{{ listing.description }}</p>
@@ -32,15 +77,15 @@
           @if (listing.size) {
             <div><dt>Space size</dt><dd>{{ listing.size }}</dd></div>
           }
-          <div><dt>Coordinates</dt><dd>{{ listing.latitude }}, {{ listing.longitude }}</dd></div>
           <div><dt>Availability</dt><dd>{{ listing.isAlwaysAvailable ? 'Always available' : 'Scheduled windows' }}</dd></div>
         </dl>
+        <details class="coordinates"><summary>Location coordinates</summary><p>{{ listing.latitude }}, {{ listing.longitude }}</p></details>
       </section>
 
       <section class="panel" aria-labelledby="amenities-heading">
         <h2 id="amenities-heading">Amenities</h2>
         @if (listing.amenities.length) {
-          <ul>@for (amenity of listing.amenities; track amenity.id) { <li>{{ amenity.name }}</li> }</ul>
+          <ul class="amenities">@for (amenity of listing.amenities; track amenity.id) { <li>{{ amenity.name }}</li> }</ul>
         } @else { <p>No amenities listed.</p> }
       </section>
 
@@ -67,6 +112,7 @@
                 type="button"
                 class="window-card selectable"
                 [class.selected]="selectedWindowId === window.availabilityWindowId"
+                [attr.aria-pressed]="selectedWindowId === window.availabilityWindowId"
                 [disabled]="!canSelectWindow(window)"
                 (click)="selectWindow(window)">
                 <span>{{ window.startDateTime | date:'medium' }}</span>
@@ -92,50 +138,7 @@
       </section>
     </div>
 
-    <aside class="panel booking-panel">
-      <p class="eyebrow">Request parking</p>
-      <h2>Choose your time</h2>
-      <p>All booking times are Romanian local time.</p>
 
-      @if (isOwnListing) {
-        <div class="message compact">You own this listing, so you cannot request a booking for it.</div>
-      } @else {
-        <form [formGroup]="bookingForm" (ngSubmit)="submitBooking()">
-          <label for="booking-start">Start</label>
-          <input id="booking-start" type="datetime-local" formControlName="startDateTime" [min]="minimumDateTime" />
-          @if (bookingForm.controls.startDateTime.touched && bookingForm.controls.startDateTime.hasError('required')) {
-            <p class="field-error">Choose a start time.</p>
-          }
-
-          <label for="booking-end">End</label>
-          <input id="booking-end" type="datetime-local" formControlName="endDateTime" [min]="minimumDateTime" />
-          @if (bookingForm.controls.endDateTime.touched && bookingForm.controls.endDateTime.hasError('required')) {
-            <p class="field-error">Choose an end time.</p>
-          }
-          @if (hasInvalidRange) {
-            <p class="field-error">End time must be after start time.</p>
-          }
-
-          <button type="submit" [disabled]="isSubmitting">
-            {{ isSubmitting ? 'Sending request…' : 'Request booking' }}
-          </button>
-        </form>
-
-        @if (bookingErrorMessages.length > 0) {
-          <div class="message error compact" role="alert">
-            @for (message of bookingErrorMessages; track message) { <p>{{ message }}</p> }
-          </div>
-        }
-
-        @if (bookingResult) {
-          <div class="message success compact" role="status">
-            <strong>Request #{{ bookingResult.bookingId }} sent</strong>
-            <p>Status: {{ bookingResult.statusText }}</p>
-            <a routerLink="/bookings">My bookings</a>
-          </div>
-        }
-      }
-    </aside>
   </div>
   @defer (on viewport) { <app-listing-reviews [listingId]="listing.id" /> } @placeholder { <p>Reviews</p> }
 

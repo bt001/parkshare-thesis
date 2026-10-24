@@ -3,6 +3,7 @@
   <button type="button" class="primary-button" [disabled]="isLoading || saving" (click)="refresh()">Refresh</button>
 </section>
 <form class="filter-bar" [formGroup]="filters" (ngSubmit)="applyFilters()">
+  <div class="filter-field">
   <label for="renter-booking-status">Status</label>
   <select id="renter-booking-status" [formControl]="status">
     <option value="">All statuses</option>
@@ -11,8 +12,10 @@
     <option [value]="BookingStatus.Rejected">Rejected</option>
     <option [value]="BookingStatus.Completed">Completed</option>
   </select>
+  </div>
   <button class="primary-button" type="submit" [disabled]="saving">Apply filters</button>
 </form>
+<p class="time-note">Parking start and end times are shown in Romanian local time.</p>
 @if (ratingSuccess) { <p class="message" role="status">{{ ratingSuccess }}</p> }
 @if (isLoading) {
   <div class="message" role="status">Loading your bookings…</div>
@@ -29,16 +32,18 @@
       <a routerLink="/listings">Browse parking</a>
     </div>
   } @else {
+    <p class="results-summary">{{ totalCount }} bookings · Page {{ page }}</p>
     <div class="card-grid">
       @for (booking of bookings; track booking.bookingId) {
         <article class="workspace-card booking-card">
           <div class="card-heading"><span class="badge status-{{ booking.statusText.toLowerCase() }}">{{ booking.statusText }}</span><small>Request #{{ booking.bookingId }}</small></div>
-          <h2>{{ booking.listingTitle }}</h2>
+          <div class="booking-details"><h2>{{ booking.listingTitle }}</h2>
           <p>{{ booking.listingAddress }}</p>
-          <strong>{{ booking.startDateTime | date:'medium' }}</strong>
-          <span>to {{ booking.endDateTime | date:'medium' }}</span>
-          <small>Requested {{ booking.createdAt | date:'medium' }}</small>
+          <small>Requested {{ booking.createdAt | date:'medium' }}</small></div>
+          <dl class="booking-period"><dt>Start</dt><dd>{{ booking.startDateTime | date:'medium' }}</dd><dt>End</dt><dd>{{ booking.endDateTime | date:'medium' }}</dd></dl>
+          <div class="actions"><a [routerLink]="['/listings', booking.listingId]">View listing</a><a [routerLink]="['/bookings', booking.bookingId, 'chat']">Chat</a></div>
           @if (booking.status === BookingStatus.Completed) {
+            <div class="rating-section">
             @if (booking.rating; as rating) { <p class="saved-rating">Your rating: {{ rating.stars }} / 5</p><p class="review-comment">{{ rating.comment }}</p> }
             @if (editingId === booking.bookingId) {
               <form class="rating-form" [formGroup]="review" (ngSubmit)="saveRating(booking)">
@@ -53,9 +58,9 @@
                 <div class="actions rating-actions"><button type="submit" class="primary-button" [disabled]="!canSaveRating">{{ saving ? 'Saving…' : 'Save rating' }}</button><button type="button" [disabled]="saving" (click)="cancelRating()">Cancel</button></div>
               </form>
             } @else { <button class="primary-button" type="button" [disabled]="saving" (click)="editRating(booking)">{{ booking.rating ? 'Edit rating' : 'Rate' }}</button> }
+            </div>
           }
-          <a [routerLink]="['/listings', booking.listingId]">View listing</a>
-        <a [routerLink]="['/bookings', booking.bookingId, 'chat']">Chat</a></article>
+        </article>
       }
     </div>
   }

@@ -1,14 +1,46 @@
-<section class="page-heading"><div><p class="eyebrow">Owner workspace</p><h1>Booking requests</h1><p>Review requests across your parking spaces.</p></div></section>
-<nav class="workspace-nav" aria-label="Owner workspace"><a routerLink="/owner/listings">Listings</a><a routerLink="/owner/bookings" class="active">Booking requests</a></nav>
+<section class="page-heading">
+  <div><p class="eyebrow">Owner workspace</p><h1>Booking requests</h1><p>Review requests across your parking spaces.</p></div>
+  <button type="button" [disabled]="isLoading || !!changingId" (click)="refresh()">Refresh / retry</button>
+</section>
+<nav class="workspace-nav" aria-label="Owner workspace"><a routerLink="/owner/listings">Listings</a><a routerLink="/owner/bookings" class="active" aria-current="page">Booking requests</a></nav>
 <form class="filter-bar" [formGroup]="filters" (ngSubmit)="applyFilters()">
-  <label for="booking-listing">Listing</label><select id="booking-listing" formControlName="listingId"><option value="">All listings</option>@for (listing of listings; track listing.id) { <option [value]="listing.id">{{ listing.title }}</option> }</select>
-  <label for="booking-status">Status</label><select id="booking-status" formControlName="status"><option value="">All statuses</option><option [value]="BookingStatus.Pending">Pending</option><option [value]="BookingStatus.Confirmed">Confirmed</option><option [value]="BookingStatus.Rejected">Rejected</option><option [value]="BookingStatus.Completed">Completed</option></select>
-  <button class="primary-button" type="submit" [disabled]="!!changingId">Apply filters</button>
+  <div class="filter-field">
+    <label for="booking-listing">Listing</label>
+    <select id="booking-listing" formControlName="listingId"><option value="">All listings</option>@for (listing of listings; track listing.id) { <option [value]="listing.id">{{ listing.title }}</option> }</select>
+  </div>
+  <div class="filter-field">
+    <label for="booking-status">Status</label>
+    <select id="booking-status" formControlName="status"><option value="">All statuses</option><option [value]="BookingStatus.Pending">Pending</option><option [value]="BookingStatus.Confirmed">Confirmed</option><option [value]="BookingStatus.Rejected">Rejected</option><option [value]="BookingStatus.Completed">Completed</option></select>
+  </div>
+  <button type="submit" [disabled]="!!changingId">Apply filters</button>
 </form>
+<p class="time-note">Parking start and end times are shown in Romanian local time.</p>
 @if (successMessage) { <div class="message" role="status">{{ successMessage }}</div> }
-<button type="button" [disabled]="isLoading || !!changingId" (click)="refresh()">Refresh / retry</button>
 @if (errorMessages.length) { <div class="message error" role="alert">@for (message of errorMessages; track message) { <p>{{ message }}</p> }</div> }
-@if (isLoading) { <div class="message">Loading booking requests…</div> } @else if (!bookings.length) { <div class="message"><h2>No matching requests</h2></div> } @else {
-  <div class="card-grid">@for (booking of bookings; track booking.bookingId) { <article class="workspace-card booking-card"><div class="card-heading"><span class="badge status-{{ booking.statusText.toLowerCase() }}">{{ booking.statusText }}</span><small>Request #{{ booking.bookingId }}</small></div><h2>{{ booking.listingTitle }}</h2><p>Renter #{{ booking.renterId }}</p><strong>{{ booking.startUtc | date:'medium' }}</strong><span>to {{ booking.endUtc | date:'medium' }}</span><small>Requested {{ booking.createdAt | date:'medium' }}</small>@if (booking.status === BookingStatus.Pending) { <div class="actions"><button class="primary-button" type="button" [disabled]="isLoading || !!changingId" (click)="decide(booking, true)">Approve</button><button class="danger" type="button" [disabled]="isLoading || !!changingId" (click)="decide(booking, false)">Reject</button></div> }@if (booking.canComplete) { <button class="primary-button" type="button" [disabled]="isLoading || !!changingId" (click)="complete(booking)">{{ changingId === booking.bookingId ? 'Completing…' : 'Complete' }}</button> }<a [routerLink]="['/bookings', booking.bookingId, 'chat']">Chat</a></article> }</div>
-  <nav class="pagination" aria-label="Booking pages"><button type="button" [disabled]="!canGoBack" (click)="load(page - 1)">Previous</button><span>Page {{ page }}</span><button type="button" [disabled]="!canGoForward" (click)="load(page + 1)">Next</button></nav>
+@if (isLoading) {
+  <div class="message" role="status">Loading booking requests…</div>
+} @else if (!bookings.length) {
+  @if (!errorMessages.length) {
+    <div class="message"><h2>No matching requests</h2><p>Try another listing or status. New requests will appear here when renters book your spaces.</p><a routerLink="/owner/listings">Manage listings</a></div>
+  }
+} @else {
+  <p class="results-summary">{{ totalCount }} booking requests · Page {{ page }}</p>
+  <div class="card-grid">
+    @for (booking of bookings; track booking.bookingId) {
+      <article class="workspace-card booking-card">
+        <div class="card-heading"><span class="badge status-{{ booking.statusText.toLowerCase() }}">{{ booking.statusText }}</span><small>Request #{{ booking.bookingId }}</small></div>
+        <div class="booking-details"><h2>{{ booking.listingTitle }}</h2><small>Requested {{ booking.createdAt | date:'medium' }}</small></div>
+        <dl class="booking-period"><dt>Start</dt><dd>{{ booking.startUtc | date:'medium' }}</dd><dt>End</dt><dd>{{ booking.endUtc | date:'medium' }}</dd></dl>
+        <div class="actions">
+          @if (booking.status === BookingStatus.Pending) {
+            <button class="primary-button" type="button" [disabled]="isLoading || !!changingId" (click)="decide(booking, true)">Approve</button>
+            <button class="danger" type="button" [disabled]="isLoading || !!changingId" (click)="decide(booking, false)">Reject</button>
+          }
+          @if (booking.canComplete) { <button class="primary-button" type="button" [disabled]="isLoading || !!changingId" (click)="complete(booking)">{{ changingId === booking.bookingId ? 'Completing…' : 'Complete' }}</button> }
+          <a [routerLink]="['/bookings', booking.bookingId, 'chat']">Chat</a>
+        </div>
+      </article>
+    }
+  </div>
+  <nav class="pagination" aria-label="Booking pages"><button type="button" [disabled]="!canGoBack" (click)="load(page - 1)">Previous</button><span>Page {{ page }} · {{ totalCount }} bookings</span><button type="button" [disabled]="!canGoForward" (click)="load(page + 1)">Next</button></nav>
 }

@@ -4,13 +4,12 @@
     <h1>Available parking</h1>
     <p>Browse active ParkShare listings and request the time that works for you.</p>
   </div>
-  @if (!isLoading && errorMessages.length === 0) {
-    <span class="result-count">{{ totalCount }} {{ totalCount === 1 ? 'space' : 'spaces' }}</span>
-  }
 </section>
-
+<div class="discovery-layout ui-controls" [class.map-layout]="viewMode === 'map'" [class.inline-filters]="filtersInline">
 <form class="search-filters" [formGroup]="filterForm" (ngSubmit)="applyFilters()" aria-label="Search parking">
-  <div class="filter-fields">
+  <details class="primary-search" [open]="searchExpanded">
+    <summary>Location and dates <span>{{ searchArea?.label || (bounds ? 'Selected map area' : 'All locations') }}</span></summary>
+  <div class="filter-fields primary-fields">
     <div class="place-field">
       <label for="search-where">Where</label>
       <input id="search-where" type="search" formControlName="where" (input)="editPlace()" placeholder="Athens, address or landmark" autocomplete="off" />
@@ -45,8 +44,14 @@
       <input id="search-departure" type="datetime-local" formControlName="endDateTime" [min]="minimumDateTime" />
     </div>
   </div>
+  <p>Times are in Romania (Europe/Bucharest). Availability is checked again when you request a booking.</p>
+  @if (periodError) { <p class="field-error" role="alert">{{ periodError }}</p> }
+    <div class="filter-actions"><button type="submit">Search</button><button type="button" (click)="resetFilters()">Reset</button></div>
+  </details>
+  <dialog #filterDialog class="filter-panel" [open]="filtersInline" aria-labelledby="filter-panel-title" (cancel)="closeFilters()" (keydown)="containFilterFocus($event)">
+    <div class="panel-heading"><h2 id="filter-panel-title">Filters</h2><button class="panel-close" type="button" (click)="closeFilters()" aria-label="Close filters">&times;</button></div>
   <fieldset class="secondary-filters">
-    <legend>More filters and sorting</legend>
+    <legend>Refine your search</legend>
     <div class="filter-fields">
     <div>
       <label for="filter-title">Title</label>
@@ -84,12 +89,7 @@
           <option [ngValue]="4">4+</option><option [ngValue]="4.5">4.5+</option>
         </select>
       </div>
-      <div><label for="filter-sort">Sort by</label>
-        <select id="filter-sort" formControlName="sortBy">
-          <option value="newest">Newest</option><option value="priceAsc">Price: low to high</option>
-          <option value="priceDesc">Price: high to low</option><option value="ratingDesc">Highest rated</option>
-        </select>
-      </div>
+
     </div>
     <fieldset><legend>Amenities (all selected must match)</legend>
       @for (amenity of amenities; track amenity.id) {
@@ -98,27 +98,31 @@
       @if (amenityError) { <p role="alert">{{ amenityError }} <button type="button" (click)="loadAmenities()">Retry amenities</button></p> }
     </fieldset>
   </fieldset>
-  @if (filterForm.touched && filterForm.hasError('priceRange')) {
-    <p id="price-range-error" class="field-error" role="alert">Minimum price cannot exceed maximum price.</p>
-  }
-  <p>Times are in Romania (Europe/Bucharest). Availability is checked again when you request a booking.</p>
-  @if (periodError) { <p class="field-error" role="alert">{{ periodError }}</p> }
   <label class="availability-filter">
     <input type="checkbox" formControlName="onlyAlwaysAvailable" aria-describedby="availability-help" />
     Always available only
   </label>
   <p id="availability-help">Always available describes the listing schedule. Existing bookings may still limit available times.</p>
-  <div class="filter-actions">
-    <button type="submit">Search</button>
-    <button type="button" (click)="resetFilters()">Reset</button>
-  </div>
+  @if (filterForm.touched && filterForm.hasError('priceRange')) {
+    <p id="price-range-error" class="field-error" role="alert">Minimum price cannot exceed maximum price.</p>
+  }
+    <div class="filter-actions"><button type="submit">Apply filters</button><button type="button" (click)="resetFilters()">Reset filters</button></div>
+    @if (!filtersInline && (periodError || placeError)) { <p class="field-error" role="alert">Check your search fields. {{ periodError || placeError }} @if (periodError || placeError) { Close filters to correct location and dates. }</p> }
+  </dialog>
 </form>
-
-<div class="view-switch" role="group" aria-label="Listings view">
-  <button type="button" [attr.aria-pressed]="viewMode === 'list'" (click)="setViewMode('list')">List</button>
-  <button type="button" [attr.aria-pressed]="viewMode === 'map'" (click)="setViewMode('map')">Map</button>
-</div>
-
+<section class="results" aria-label="Parking results">
+  <div class="results-toolbar">
+    <button #filterTrigger class="filter-trigger" type="button" (click)="openFilters()">Filters{{ hasFilters ? ' (applied)' : '' }}</button>
+    @if (!isLoading && !isMapLoading && !restorationError && errorMessages.length === 0 && mapErrorMessages.length === 0) { <span class="result-count">{{ viewMode === 'map' ? mapListings.length : totalCount }} {{ (viewMode === 'map' ? mapListings.length : totalCount) === 1 ? 'space' : 'spaces' }}</span> }
+      <div><label for="filter-sort">Sort by</label>
+        <select id="filter-sort" [formControl]="filterForm.controls.sortBy">
+          <option value="newest">Newest</option><option value="priceAsc">Price: low to high</option>
+          <option value="priceDesc">Price: high to low</option><option value="ratingDesc">Highest rated</option>
+        </select>
+      </div>    <div class="view-switch" role="group" aria-label="Listings view"><button type="button" [attr.aria-pressed]="viewMode === 'list'" (click)="setViewMode('list')">List</button><button type="button" [attr.aria-pressed]="viewMode === 'map'" (click)="setViewMode('map')">Map</button></div>
+  </div>
+  @if (hasDraftChanges) { <p class="draft-notice" role="status">You have unapplied changes. <button type="button" (click)="applyFilters()">Apply search</button></p> }
+  @if (hasFilters) { <p class="applied-notice">Filters applied to these results. <button type="button" (click)="resetFilters()">Clear filters</button></p> }
 @if (restorationError) {
   <div class="message error" role="alert">{{ restorationError }}</div>
 } @else if (viewMode === 'list') {
@@ -199,11 +203,11 @@
             } @else { <div class="card-map-placeholder">No photo available</div> }
             <h2>{{ listing.title }}</h2>
             <p>{{ listing.address || 'Address available in listing details' }}</p>
-            <strong>{{ listing.pricePerHour | currency:'RON':'symbol-narrow':'1.0-2' }}/hour</strong>
+            <strong>{{ listing.pricePerHour | number:'1.0-2' }} RON/h</strong>
             <p class="review-summary">@if (listing.ratingCount && listing.averageRating != null) {
                 {{ listing.averageRating | number:'1.1-1' }} / 5 &middot; {{ listing.ratingCount }} reviews
               } @else { No reviews yet }</p>
-              @if (listing.estimatedPeriodCost != null) { <p>Estimated period cost: <strong>{{ listing.estimatedPeriodCost | currency:'RON':'symbol-narrow':'1.2-2' }}</strong></p> }
+              @if (listing.estimatedPeriodCost != null) { <p>Estimated period cost: <strong>{{ listing.estimatedPeriodCost | number:'1.2-2' }} RON</strong></p> }
               <a [routerLink]="['/listings', listing.id]" [queryParams]="detailParams">View space</a>
           </article>
         }
@@ -211,6 +215,9 @@
     </div>
   }
 }
+
+</section>
+</div>
 
 <ng-template #resultCard let-listing>
   <article class="listing-card" [class.selected-card]="selectedMapListing?.id === listing.id" [attr.data-card-id]="listing.id">
@@ -222,14 +229,14 @@
         <span class="availability-badge">
           {{ listing.isAlwaysAvailable ? 'Always available' : 'Scheduled availability' }}
         </span>
-        <strong>{{ listing.pricePerHour | currency:'RON':'symbol-narrow':'1.0-2' }}/h</strong>
+        <strong>{{ listing.pricePerHour | number:'1.0-2' }} RON/h</strong>
       </div>
       <h2>{{ listing.title }}</h2>
       <p>{{ listing.address || 'Address available in listing details' }}</p>
       <p class="review-summary">@if (listing.ratingCount && listing.averageRating != null) {
         {{ listing.averageRating | number:'1.1-1' }} / 5 &middot; {{ listing.ratingCount }} reviews
       } @else { No reviews yet }</p>
-      @if (listing.estimatedPeriodCost != null) { <p>Estimated period cost: <strong>{{ listing.estimatedPeriodCost | currency:'RON':'symbol-narrow':'1.2-2' }}</strong></p> }
+      @if (listing.estimatedPeriodCost != null) { <p>Estimated period cost: <strong>{{ listing.estimatedPeriodCost | number:'1.2-2' }} RON</strong></p> }
       <button class="show-on-map" type="button" [attr.aria-pressed]="selectedMapListing?.id === listing.id" (click)="showOnMap(listing)">Show on map</button>
       <a [routerLink]="['/listings', listing.id]" [queryParams]="detailParams">View space</a>
     </div>

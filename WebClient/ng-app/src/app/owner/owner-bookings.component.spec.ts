@@ -79,6 +79,17 @@ describe('OwnerBookingsComponent', () => {
     expect(old.observed).toBeFalse();
   });
 
+  it('shows a retryable error instead of an empty state for an empty API error array', () => {
+    service.getForOwner.and.returnValue(throwError(() => new HttpErrorResponse({ status: 503, error: [] })));
+    component.refresh(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('could not be loaded');
+    expect(fixture.nativeElement.textContent).not.toContain('No matching requests');
+    service.getForOwner.and.returnValue(of(page()));
+    component.refresh(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('article').length).toBe(1);
+  });
+
   it('uses initial loading state, disables decisions, and cancels on destroy', () => {
     const waiting = new Subject<GetOwnerBookingsResult>(); service.getForOwner.and.returnValue(waiting); component.ngOnInit();
     expect(component.isLoading).toBeTrue(); component.decide(pending, true); expect(service.approve).not.toHaveBeenCalled();

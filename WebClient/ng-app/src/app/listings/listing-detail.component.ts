@@ -1,6 +1,6 @@
 import { ListingPhotosComponent } from './listing-photos.component';
 import { ListingReviewsComponent } from './listing-reviews.component';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DecimalPipe, DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -25,7 +25,7 @@ interface BookingForm {
 @Component({
   selector: 'app-listing-detail',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, RouterLink, ListingReviewsComponent, ListingPhotosComponent],
+  imports: [DecimalPipe, DatePipe, ReactiveFormsModule, RouterLink, ListingReviewsComponent, ListingPhotosComponent],
   templateUrl: './listing-detail.component.html',
   styleUrl: './listing-detail.component.scss'
 })
@@ -43,6 +43,8 @@ export class ListingDetailComponent implements OnInit {
     endDateTime: new FormControl('', { nonNullable: true, validators: [Validators.required] })
   });
 
+  /** Whether the route identifies a listing that can be retried. */
+  canRetryListing = false;
   listing?: ListingDetails;
   availabilityWindows: AvailabilityWindow[] = [];
   selectedWindowId?: number;
@@ -88,6 +90,7 @@ export class ListingDetailComponent implements OnInit {
       return;
     }
 
+    this.canRetryListing = true;
     this.loadListing(listingId);
   }
 
@@ -142,6 +145,12 @@ export class ListingDetailComponent implements OnInit {
       });
   }
 
+  /** Retries a valid listing route without replacing the current booking draft. */
+  retryListing(): void {
+    const listingId = Number(this.route.snapshot.paramMap.get('id'));
+    if (Number.isSafeInteger(listingId) && listingId > 0) this.loadListing(listingId);
+  }
+
   private loadListing(listingId: number): void {
     this.isLoading = true;
     this.errorMessages = [];
@@ -176,7 +185,7 @@ export class ListingDetailComponent implements OnInit {
 
   private getErrorMessages(error: unknown, fallback: string): string[] {
     if (error instanceof HttpErrorResponse) {
-      if (Array.isArray(error.error) && error.error.every((item) => typeof item === 'string')) {
+      if (Array.isArray(error.error) && error.error.length > 0 && error.error.every((item) => typeof item === 'string')) {
         return error.error;
       }
 

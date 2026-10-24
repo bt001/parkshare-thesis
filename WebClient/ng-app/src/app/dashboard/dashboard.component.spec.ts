@@ -55,7 +55,16 @@ describe('DashboardComponent', () => {
     const compiled = fixture.nativeElement as HTMLElement;
 
     expect(compiled.textContent).toContain('Owner User');
-    expect(compiled.textContent).toContain('owner@example.com');
-    expect(compiled.textContent).toContain('Owner');
+    expect(compiled.querySelector('a[href="/listings"]')?.textContent).toContain('Find parking');
+    expect(compiled.querySelector('a[href="/bookings"]')).not.toBeNull();
+    expect(compiled.querySelector('a[href="/owner/listings"]')).not.toBeNull();
+    expect(compiled.textContent).not.toContain('Developer verification');
+    expect(testService.ping).not.toHaveBeenCalled();
   });
+  it('offers first-listing navigation to renters without owner access', () => {
+    authService.hasRole.and.returnValue(false);
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('a[href="/owner/listings"]')?.textContent).toContain('List your space');
+  });
+
 });

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, DeferBlockBehavior, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
@@ -89,6 +89,7 @@ describe('ListingDetailComponent', () => {
     }));
 
     await TestBed.configureTestingModule({
+      deferBlockBehavior: DeferBlockBehavior.Manual,
       imports: [ListingDetailComponent],
       providers: [
         provideRouter([]),
@@ -208,6 +209,20 @@ describe('ListingDetailComponent', () => {
 
     expect(component.errorMessages).toEqual(['Listing not found.']);
   });
+  it('keeps empty API errors visible and retries without replacing a booking draft', () => {
+    listingService.getById.and.returnValue(throwError(() => new HttpErrorResponse({ status: 503, error: [] })));
+    component.ngOnInit();
+    component.bookingForm.setValue({ startDateTime: '2099-01-15T10:00', endDateTime: '2099-01-15T12:00' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toBeTruthy();
+    listingService.getById.and.returnValue(of(listing));
+    fixture.nativeElement.querySelector('[role="alert"] button').click();
+    fixture.detectChanges();
+    expect(component.errorMessages).toEqual([]);
+    expect(component.bookingForm.controls.startDateTime.value).toBe('2099-01-15T10:00');
+    expect(fixture.nativeElement.querySelector('#booking-start')).toBeTruthy();
+  });
+
   it('prefills and submits the requested discovery period unchanged', () => {
     const period = { startDateTime: '2099-01-15T10:00', endDateTime: '2099-01-15T12:00' };
     const route = TestBed.inject(ActivatedRoute);

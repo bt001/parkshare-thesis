@@ -65,6 +65,55 @@ describe('ListingListComponent', () => {
     fixture.detectChanges();
   });
 
+  it('keeps modal drafts without searching when dismissed', () => {
+    const dialog = fixture.nativeElement.querySelector('dialog') as HTMLDialogElement;
+    spyOn(dialog, 'showModal');
+    component.openFilters();
+    expect(dialog.showModal).toHaveBeenCalled();
+    const calls = listingService.search.calls.count();
+    component.filterForm.controls.titleContains.setValue('Draft title');
+    component.closeFilters();
+    expect(component.filterForm.controls.titleContains.value).toBe('Draft title');
+    expect(component.hasDraftChanges).toBeTrue();
+    expect(listingService.search.calls.count()).toBe(calls);
+  });
+  it('keeps invalid filters open and dismisses only a valid submission', () => {
+    spyOn(component, 'closeFilters');
+    component.filterForm.patchValue({ minPrice: 20, maxPrice: 10 });
+    component.applyFilters();
+    expect(component.closeFilters).not.toHaveBeenCalled();
+    component.filterForm.controls.maxPrice.setValue(30);
+    component.applyFilters();
+    expect(component.closeFilters).toHaveBeenCalled();
+    expect(component.hasDraftChanges).toBeFalse();
+    expect(listingService.search.calls.mostRecent().args[0].minPrice).toBe(20);
+  });
+  it('resets draft and applied criteria together', () => {
+    component.filterForm.controls.titleContains.setValue('Draft title');
+    component.resetFilters();
+    expect(component.filterForm.controls.titleContains.value).toBe('');
+    expect(component.hasDraftChanges).toBeFalse();
+    expect(component.hasFilters).toBeFalse();
+  });
+
+  it('marks a same-label geographic change as an unapplied draft', () => {
+    component.choosePlace({ label: 'Current location', latitude: 44.43, longitude: 26.1 });
+    component.applyFilters();
+    expect(component.hasDraftChanges).toBeFalse();
+    component.choosePlace({ label: 'Current location', latitude: 44.44, longitude: 26.1 });
+    expect(component.hasDraftChanges).toBeTrue();
+  });
+
+  it('keeps empty API errors visible for list and map retry', () => {
+    const error = new HttpErrorResponse({ status: 503, error: [] });
+    listingService.search.and.returnValue(throwError(() => error));
+    component.loadPage(1);
+    expect(component.errorMessages.length).toBeGreaterThan(0);
+    listingService.searchAll.and.returnValue(throwError(() => error));
+    component.setViewMode('map');
+    expect(component.mapErrorMessages.length).toBeGreaterThan(0);
+  });
+
   /** Completes the most recent controlled browser location request. */
   const locateSuccess = (latitude = 44.43, longitude = 26.1): void =>
     location.locate.calls.mostRecent().args[0]({ coords: { latitude, longitude } });

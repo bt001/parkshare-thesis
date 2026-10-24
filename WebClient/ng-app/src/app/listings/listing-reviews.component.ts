@@ -22,10 +22,10 @@ import { ListingRatings } from '../api/ratings/rating.models';
         } @else { <p>No reviews yet.</p> }
       }
     </section>`,
-  styles: [`section { margin-top: 2rem; padding: 1.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 1rem; }
-    article { border-top: 1px solid #e2e8f0; padding: 1rem 0; } time { margin-left: 1rem; color: #475569; }
+  styles: [`section { margin-top: 1rem; padding: 1rem; background: white; border: 1px solid var(--line); border-radius: var(--radius); }
+    h2 { margin-top: 0; font-size: 1.2rem; } article { border-top: 1px solid #e2e8f0; padding: 1rem 0; } time { margin-left: 1rem; color: #475569; }
     article p { white-space: pre-wrap; overflow-wrap: anywhere; } nav { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
-    button { padding: .6rem .85rem; border: 1px solid #b9c8d5; border-radius: 999px; background: #fff; color: #16324f; font: inherit; font-weight: 700; cursor: pointer; }
+    button { padding: .6rem .85rem; border: 1px solid #b9c8d5; border-radius: .45rem; background: #fff; color: #16324f; font: inherit; font-weight: 700; cursor: pointer; }
     button:disabled { opacity: .55; cursor: not-allowed; } .aggregate { font-weight: 600; }`]
 })
 export class ListingReviewsComponent implements OnChanges, OnDestroy {

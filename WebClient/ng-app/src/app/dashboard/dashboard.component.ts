@@ -1,10 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-
 import { AuthService } from '../api/auth/auth.service';
-import { UserService } from '../services/user.service';
-import { TestService } from '../api/test/test.service';
 
+/** Provides shortcuts to the signed-in user's parking workflows. */
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -13,21 +11,6 @@ import { TestService } from '../api/test/test.service';
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent {
-  pong?: string;
-  error?: string;
-
-  constructor(
-    public user: UserService,
-    public auth: AuthService,
-    private testService: TestService
-  ) {}
-
-  pingApi(): void {
-    this.pong = undefined;
-    this.error = undefined;
-    this.testService.ping().subscribe({
-      next: (result) => (this.pong = result),
-      error: (err) => (this.error = err.message || 'API call failed')
-    });
-  }
+  /** Current account used for the welcome and owner-aware actions. */
+  readonly auth = inject(AuthService);
 }

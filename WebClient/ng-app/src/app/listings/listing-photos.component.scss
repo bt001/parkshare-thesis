@@ -12,3 +12,12 @@ img, .image-fallback { display: block; width: 100%; aspect-ratio: 4 / 3; object-
 figcaption { margin-top: .5rem; }
 [role=alert] { color: #a12525; }
 @media (max-width: 480px) { section { padding: 1rem; } }
+
+.public-gallery { margin: 0; padding: 1rem; border-color: var(--line); border-radius: var(--radius); }
+.public-gallery h2 { font-size: 1.2rem; margin-bottom: .5rem; }
+.public-gallery button { border-radius: .45rem; padding: .4rem .65rem; font-size: .85rem; }
+.public-gallery .photo-grid { display: flex; overflow-x: auto; gap: .75rem; padding-bottom: .5rem; }
+.public-gallery figure { flex: 0 0 85%; }
+.public-gallery figure:only-child { flex-basis: 100%; }
+.public-gallery img, .public-gallery .image-fallback { height: 18rem; aspect-ratio: auto; border-radius: .5rem; }
+@media (max-width: 560px) { .public-gallery img, .public-gallery .image-fallback { height: 13rem; } }

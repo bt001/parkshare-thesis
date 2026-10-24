@@ -1,48 +1,13 @@
 <section class="dashboard">
-  <div class="hero-card">
-    <p class="eyebrow">Authenticated landing page</p>
+  <div class="welcome">
+    <p class="eyebrow">YOUR PARKING, SIMPLIFIED</p>
     <h1>Welcome back, {{ auth.session?.name || auth.session?.userName || 'ParkShare user' }}</h1>
-    <p class="summary">
-      The Angular shell is now using the stored ParkShare JWT session to protect routes and expose user context for upcoming owner listing and booking flows.
-    </p>
+    <p>Find a convenient place to park, keep track of your bookings, or share a space of your own.</p>
+    <a class="primary-link" routerLink="/listings">Find parking</a>
   </div>
-
   <div class="details-grid">
-    <article class="detail-card">
-      <h2>{{ auth.hasRole('Owner') ? 'Manage your spaces' : 'Become an owner' }}</h2>
-      <p>{{ auth.hasRole('Owner') ? 'Update listings, publish availability, and review booking requests.' : 'Publish your first parking space and ParkShare will add the owner role to your account.' }}</p>
-      <a class="dashboard-link" routerLink="/owner/listings">{{ auth.hasRole('Owner') ? 'Open owner workspace' : 'List your space' }}</a>
-    </article>
-    <article class="detail-card">
-      <h2>Session snapshot</h2>
-      <dl>
-        <div>
-          <dt>Email</dt>
-          <dd>{{ auth.session?.email || 'Unavailable' }}</dd>
-        </div>
-        <div>
-          <dt>Role</dt>
-          <dd>{{ auth.session?.role || 'Unavailable' }}</dd>
-        </div>
-        <div>
-          <dt>Authenticated</dt>
-          <dd>{{ user.isAuthenticated ? 'Yes' : 'No' }}</dd>
-        </div>
-      </dl>
-    </article>
-
-    <article class="detail-card">
-      <h2>Developer verification</h2>
-      <p>Keep the API ping here while the frontend grows beyond scaffold state.</p>
-      <button type="button" (click)="pingApi()">Ping API</button>
-
-      @if (pong) {
-        <p class="response success"><strong>Response:</strong> {{ pong }}</p>
-      }
-
-      @if (error) {
-        <p class="response error"><strong>Error:</strong> {{ error }}</p>
-      }
-    </article>
+    <article><span class="step">01</span><h2>Find your next space</h2><p>Explore parking on the map and choose a space for the time you need.</p><a routerLink="/listings">Explore spaces &rarr;</a></article>
+    <article><span class="step">02</span><h2>Your bookings</h2><p>Check requests, message your host and review your completed stays.</p><a routerLink="/bookings">My bookings &rarr;</a></article>
+    <article><span class="step">03</span><h2>{{ auth.hasRole('Owner') ? 'Manage your spaces' : 'Share your space' }}</h2><p>{{ auth.hasRole('Owner') ? 'Update availability and respond to parking requests in your workspace.' : 'Have a parking space to spare? Create your first listing and welcome drivers.' }}</p><a routerLink="/owner/listings">{{ auth.hasRole('Owner') ? 'Open owner workspace' : 'List your space' }} &rarr;</a></article>
   </div>
 </section>

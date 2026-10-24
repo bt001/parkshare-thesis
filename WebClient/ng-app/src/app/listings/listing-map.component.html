@@ -1,5 +1,6 @@
-<button class="map-area-action" type="button" (click)="searchBounds()">Search this area</button>
-<button class="map-area-action" type="button" (click)="searchCentre()">Search within {{ radiusKm }} km of map centre</button>
+<div class="map-actions"><button class="map-area-action" type="button" (click)="searchBounds()">Search this area</button>
+<button class="map-area-action secondary" type="button" (click)="searchCentre()">Search within {{ radiusKm }} km of map centre</button>
+</div>
 <div class="map-frame" role="region" aria-label="Active parking listings map">
   <div #mapContainer class="map-container"></div>
   @if (isTileUnavailable) {

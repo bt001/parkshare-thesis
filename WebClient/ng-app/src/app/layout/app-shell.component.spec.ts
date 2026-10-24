@@ -61,4 +61,30 @@ describe('AppShellComponent', () => {
     expect(element.textContent).toContain('Owner workspace');
     expect(element.querySelector('a[href="/notifications"]')?.textContent).toContain('Notifications (3)');
   });
+  it('dismisses compact navigation and restores focus on Escape', () => {
+    const trigger = fixture.nativeElement.querySelector('.menu-toggle') as HTMLButtonElement;
+    spyOn(trigger, 'focus');
+    component.navigationOpen = true;
+    component.closeNavigation(trigger);
+    expect(component.navigationOpen).toBeFalse();
+    expect(trigger.focus).toHaveBeenCalled();
+  });
+  it('closes compact navigation after selecting a destination', () => {
+    component.navigationOpen = true;
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('.shell-nav').click();
+    expect(component.navigationOpen).toBeFalse();
+  });
+
+  it('returns Escape focus to the account disclosure', () => {
+    const account = fixture.nativeElement.querySelector('details') as HTMLDetailsElement;
+    const summary = account.querySelector('summary')!;
+    const menu = fixture.nativeElement.querySelector('.menu-toggle') as HTMLButtonElement;
+    spyOn(summary, 'focus');
+    account.open = true;
+    component.dismissHeader(menu, account, summary);
+    expect(account.open).toBeFalse();
+    expect(summary.focus).toHaveBeenCalled();
+  });
+
 });

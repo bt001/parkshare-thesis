@@ -9,7 +9,7 @@
 .map-frame {
   position: relative;
   overflow: hidden;
-  border-radius: 1.25rem;
+  border-radius: .75rem;
   background: #dce8ed;
 }
 
@@ -43,12 +43,16 @@
 
 .map-area-action {
   display: block;
-  margin: 0.75rem auto;
+  margin: 0;
   padding: 0.6rem 1rem;
   border: 0;
-  border-radius: 999px;
+  border-radius: .45rem;
   background: #16324f;
   color: white;
   font: inherit;
   cursor: pointer;
 }
+
+.map-actions { display: flex; flex-wrap: wrap; gap: .5rem; padding: 0 0 .75rem; }
+.map-area-action { font-size: .8rem; background: var(--accent); min-height: 2.5rem; }
+.map-area-action.secondary { background: white; color: var(--ink); border: 1px solid var(--line); }

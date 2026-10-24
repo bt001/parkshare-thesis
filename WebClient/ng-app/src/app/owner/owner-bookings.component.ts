@@ -13,7 +13,8 @@ import { ListingService } from '../api/listings/listing.service';
 /** Owner decisions with server-refreshed results and applied-filter paging. */
 @Component({
   selector: 'app-owner-bookings', standalone: true, imports: [DatePipe, ReactiveFormsModule, RouterLink],
-  templateUrl: './owner-bookings.component.html', styleUrl: './owner-workspace.scss'
+  templateUrl: './owner-bookings.component.html', styleUrl: '../bookings/booking-list.scss',
+  host: { class: 'ui-controls' }
 })
 export class OwnerBookingsComponent implements OnInit, OnDestroy {
   private readonly bookingService = inject(BookingService);
@@ -120,7 +121,7 @@ export class OwnerBookingsComponent implements OnInit, OnDestroy {
   /** Extracts safe API messages while retaining a useful retry fallback. */
   private getErrors(error: unknown, fallback: string): string[] {
     if (error instanceof HttpErrorResponse) {
-      if (Array.isArray(error.error) && error.error.every((item) => typeof item === 'string')) return error.error;
+      if (Array.isArray(error.error) && error.error.length && error.error.every((item) => typeof item === 'string')) return error.error;
       if (typeof error.error === 'string' && error.error.trim()) return [error.error];
     }
     return [fallback];

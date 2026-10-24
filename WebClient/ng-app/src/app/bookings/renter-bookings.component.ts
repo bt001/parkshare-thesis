@@ -15,7 +15,8 @@ import { BookingService } from '../api/bookings/booking.service';
   selector: 'app-renter-bookings', standalone: true,
   imports: [DatePipe, ReactiveFormsModule, RouterLink],
   templateUrl: './renter-bookings.component.html',
-  styleUrl: './renter-bookings.component.scss'
+  styleUrl: './renter-bookings.component.scss',
+  host: { class: 'ui-controls' }
 })
 export class RenterBookingsComponent implements OnInit, OnDestroy {
   private readonly ratingService = inject(RatingService);

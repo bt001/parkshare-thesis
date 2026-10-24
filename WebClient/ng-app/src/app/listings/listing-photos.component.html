@@ -1,4 +1,4 @@
-<section aria-labelledby="photos-heading">
+<section [class.public-gallery]="!editable" aria-labelledby="photos-heading">
   <h2 id="photos-heading">Photos</h2>
   @if (editable) {
     <p>Upload JPEG or PNG images, up to 5 MiB each. Maximum 8 photos. Photo changes save separately.</p>
@@ -15,7 +15,8 @@
   @if (error) { <p role="alert">{{ error }}</p> }
   @if (!sessionChanged) { <button type="button" (click)="load()" [disabled]="loading || !!busy">{{ error ? 'Retry photos' : 'Refresh photos' }}</button> }
   @if (ready && !photos.length) { <p>No photos yet.</p> }
-  <div class="photo-grid">
+  <div class="photo-grid" [attr.tabindex]="!editable && photos.length > 1 ? 0 : null"
+    [attr.role]="!editable && photos.length > 1 ? 'region' : null" [attr.aria-label]="!editable && photos.length > 1 ? 'Parking space photos; scroll for more' : null">
     @for (photo of photos; track photo.id; let index = $index) {
       <figure>
         @if (broken.has(photo.id)) { <div class="image-fallback" role="img" [attr.aria-label]="'Photo ' + (index + 1) + ' unavailable'">Photo unavailable. Refresh photos to retry.</div> }

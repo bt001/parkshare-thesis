@@ -2,92 +2,78 @@
   display: block;
 }
 
-.dashboard {
-  display: grid;
-  gap: 1.5rem;
+.welcome {
+  max-width: 48rem;
+  padding: 2rem 0 3rem;
 }
 
-.hero-card,
-.detail-card {
-  padding: 1.5rem;
-  border-radius: 1.5rem;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(95, 124, 163, 0.16);
-  box-shadow: 0 1rem 2rem rgba(20, 38, 67, 0.08);
+h1 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  line-height: 1.2;
+  margin: .75rem 0 1rem;
+  letter-spacing: -.03em;
+}
+
+p {
+  color: var(--muted);
 }
 
 .eyebrow {
-  margin: 0 0 0.75rem;
-  font-size: 0.78rem;
+  font-size: .75rem;
+  color: var(--accent);
   font-weight: 700;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: #567896;
+  letter-spacing: .1em;
 }
 
-h1,
-h2,
-p {
-  margin-top: 0;
-}
-
-.summary,
-.detail-card p,
-dd {
-  color: #4d6379;
-  line-height: 1.6;
+.primary-link {
+  display: inline-block;
+  margin-top: .75rem;
+  padding: .8rem 1.2rem;
+  background: var(--accent);
+  color: white;
+  border-radius: .5rem;
+  text-decoration: none;
+  font-weight: 600;
 }
 
 .details-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
 }
 
-dl {
-  display: grid;
-  gap: 0.9rem;
-  margin: 0;
+article {
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
 }
 
-dt {
+.step {
+  color: var(--accent);
+  font-size: .8rem;
   font-weight: 700;
-  color: #16324f;
 }
 
-dd {
-  margin: 0.25rem 0 0;
+h2 {
+  font-size: 1.2rem;
+  margin: .75rem 0 0;
 }
 
-button {
-  padding: 0.85rem 1rem;
-  border: none;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #165482, #2a9d8f);
-  color: #fff;
-  font: inherit;
+article a {
+  margin-top: auto;
+  padding-top: 1rem;
+  color: var(--accent);
   font-weight: 700;
-  cursor: pointer;
 }
 
-.response {
-  margin-bottom: 0;
-}
-
-.response.success {
-  color: #1c6a53;
-}
-
-.response.error {
-  color: #b03539;
-}
-
-.dashboard-link {
-  display: inline-block;
-  padding: .75rem 1rem;
-  border-radius: 999px;
-  background: #16324f;
-  color: #fff;
-  font-weight: 700;
-  text-decoration: none;
+@media (max-width: 767px) {
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+  .welcome {
+    padding: 1rem 0 2rem;
+  }
 }
