@@ -7,11 +7,11 @@
     <button type="button" [attr.aria-pressed]="!unreadOnly" (click)="filter(false)">All</button>
     <button type="button" [attr.aria-pressed]="unreadOnly" (click)="filter(true)">Unread</button>
   </div>
-  @if (readError) { <p role="alert">{{ readError }}</p> }
-  @if (loading) { <p role="status">Loading notifications…</p> }
-  @else if (error) { <div role="alert"><p>{{ error }}</p><button type="button" (click)="refresh()">Retry</button></div> }
+  @if (readError) { <p class="feedback" role="alert">{{ readError }}</p> }
+  @if (loading) { <p class="feedback" role="status">Loading notifications…</p> }
+  @else if (error) { <div class="feedback" role="alert"><p>{{ error }}</p><button type="button" (click)="refresh()">Retry</button></div> }
   @else {
-    @if (!items.length) { <p>{{ unreadOnly ? 'No unread notifications.' : 'No notifications yet.' }}</p> }
+    @if (!items.length) { <p class="feedback">{{ unreadOnly ? 'No unread notifications.' : 'No notifications yet.' }}</p> }
     @for (item of items; track item.id) {
       <article [class.unread]="!item.isRead">
         <div class="event-meta"><strong>{{ item.isRead ? 'Read' : 'Unread' }}</strong><time [attr.datetime]="item.createdAt">{{ item.createdAt | date:'medium' }}</time></div>

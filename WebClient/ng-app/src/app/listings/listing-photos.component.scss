@@ -21,3 +21,10 @@ figcaption { margin-top: .5rem; }
 .public-gallery figure:only-child { flex-basis: 100%; }
 .public-gallery img, .public-gallery .image-fallback { height: 18rem; aspect-ratio: auto; border-radius: .5rem; }
 @media (max-width: 560px) { .public-gallery img, .public-gallery .image-fallback { height: 13rem; } }
+
+section:not(.public-gallery) { max-width: 54rem; margin: 1rem auto 0; padding: 1rem; border-color: var(--line); border-radius: var(--radius); }
+section:not(.public-gallery) h2 { font-size: 1.15rem; }
+section:not(.public-gallery) p { color: var(--muted); font-size: .9rem; }
+section:not(.public-gallery) button { border-radius: .45rem; min-height: 2.5rem; font-weight: 600; }
+section:not(.public-gallery) button:hover { background: var(--soft); }
+section:not(.public-gallery) [role=alert] { color: var(--danger); }

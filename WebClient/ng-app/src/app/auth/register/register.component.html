@@ -2,60 +2,60 @@
   <div class="login-card">
     <p class="eyebrow">ParkShare</p>
     <h1>Create account</h1>
-    <p class="support-copy">Start with a renter account, then continue straight into the protected MVP workspace after registration.</p>
+    <p class="support-copy">Book a parking space or share your own with the same account.</p>
 
     <p role="status" [hidden]="!isRecovering">Restoring your session...</p>
     <form [formGroup]="form" (ngSubmit)="submit()" class="login-form">
       <label class="field">
         <span>First name</span>
-        <input type="text" formControlName="firstName" autocomplete="given-name" placeholder="First name" />
+        <input type="text" formControlName="firstName" [attr.aria-invalid]="form.controls.firstName.touched && form.controls.firstName.invalid" aria-describedby="firstName-required firstName-maxlength" autocomplete="given-name" placeholder="First name" />
       </label>
       @if (hasError('firstName', 'required')) {
-        <p class="field-error">First name is required.</p>
+        <p id="firstName-required" class="field-error">First name is required.</p>
       }
       @if (hasError('firstName', 'maxlength')) {
-        <p class="field-error">First name must be 100 characters or fewer.</p>
+        <p id="firstName-maxlength" class="field-error">First name must be 100 characters or fewer.</p>
       }
 
       <label class="field">
         <span>Last name</span>
-        <input type="text" formControlName="lastName" autocomplete="family-name" placeholder="Last name" />
+        <input type="text" formControlName="lastName" [attr.aria-invalid]="form.controls.lastName.touched && form.controls.lastName.invalid" aria-describedby="lastName-required lastName-maxlength" autocomplete="family-name" placeholder="Last name" />
       </label>
       @if (hasError('lastName', 'required')) {
-        <p class="field-error">Last name is required.</p>
+        <p id="lastName-required" class="field-error">Last name is required.</p>
       }
       @if (hasError('lastName', 'maxlength')) {
-        <p class="field-error">Last name must be 100 characters or fewer.</p>
+        <p id="lastName-maxlength" class="field-error">Last name must be 100 characters or fewer.</p>
       }
 
       <label class="field">
         <span>Username</span>
-        <input type="text" formControlName="userName" autocomplete="username" placeholder="Username" />
+        <input type="text" formControlName="userName" [attr.aria-invalid]="form.controls.userName.touched && form.controls.userName.invalid" aria-describedby="userName-required userName-maxlength" autocomplete="username" placeholder="Username" />
       </label>
       @if (hasError('userName', 'required')) {
-        <p class="field-error">Username is required.</p>
+        <p id="userName-required" class="field-error">Username is required.</p>
       }
       @if (hasError('userName', 'maxlength')) {
-        <p class="field-error">Username must be 100 characters or fewer.</p>
+        <p id="userName-maxlength" class="field-error">Username must be 100 characters or fewer.</p>
       }
 
       <label class="field">
         <span>Email</span>
-        <input type="email" formControlName="email" autocomplete="email" placeholder="name@example.com" />
+        <input type="email" formControlName="email" [attr.aria-invalid]="form.controls.email.touched && form.controls.email.invalid" aria-describedby="email-required email-email" autocomplete="email" placeholder="name@example.com" />
       </label>
       @if (hasError('email', 'required')) {
-        <p class="field-error">Email is required.</p>
+        <p id="email-required" class="field-error">Email is required.</p>
       }
       @if (hasError('email', 'email')) {
-        <p class="field-error">Enter a valid email address.</p>
+        <p id="email-email" class="field-error">Enter a valid email address.</p>
       }
 
       <label class="field">
         <span>Password</span>
-        <input type="password" formControlName="password" autocomplete="new-password" placeholder="Password" />
+        <input type="password" formControlName="password" [attr.aria-invalid]="form.controls.password.touched && form.controls.password.invalid" aria-describedby="password-required" autocomplete="new-password" placeholder="Password" />
       </label>
       @if (hasError('password', 'required')) {
-        <p class="field-error">Password is required.</p>
+        <p id="password-required" class="field-error">Password is required.</p>
       }
 
       @if (errorMessages.length) {

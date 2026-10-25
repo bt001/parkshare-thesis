@@ -1,6 +1,7 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 
 import { ListingService } from '../api/listings/listing.service';
 import { OwnerListingsComponent } from './owner-listings.component';
@@ -30,4 +31,23 @@ describe('OwnerListingsComponent', () => {
     component.setActive(component.listings[0], true);
     expect(component.errorMessages.length).toBe(1);
   });
+
+  it('distinguishes retrieval failure from empty results and retries', () => {
+    listingService.getOwnerListings.and.returnValue(throwError(() => new HttpErrorResponse({ status: 503, error: [] })));
+    component.load(); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Your listings could not be loaded.');
+    expect(fixture.nativeElement.textContent).not.toContain('No listings yet');
+    listingService.getOwnerListings.and.returnValue(of({ items: [] }));
+    component.load(); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('No listings yet');
+  });
+  it('blocks duplicate publishing requests', () => {
+    const pending = new Subject<any>(); listingService.deactivate.calls.reset();
+    listingService.deactivate.and.returnValue(pending);
+    component.setActive(component.listings[0], false); component.setActive(component.listings[0], false);
+    expect(listingService.deactivate).toHaveBeenCalledTimes(1);
+    pending.error(new HttpErrorResponse({ status: 503, error: [] }));
+    expect(component.errorMessages).toEqual(['The listing status could not be changed.']);
+  });
+
 });

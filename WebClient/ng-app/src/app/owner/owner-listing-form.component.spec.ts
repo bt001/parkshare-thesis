@@ -1,6 +1,7 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 
 import { AuthService } from '../api/auth/auth.service';
 import { ListingService } from '../api/listings/listing.service';
@@ -68,4 +69,29 @@ describe('OwnerListingFormComponent', () => {
     expect(authService.refresh).toHaveBeenCalled();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/owner/listings');
   });
+
+  it('hides the form and blocks mutations on invalid edit routes', () => {
+    spyOn(TestBed.inject(ActivatedRoute).snapshot.paramMap, 'get').and.returnValue('invalid');
+    component.isReady = false; component.ngOnInit(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('form')).toBeNull();
+    component.submit(); expect(listingService.create).not.toHaveBeenCalled(); expect(component.isEditing).toBeTrue();
+  });
+  it('retries edit retrieval without exposing a blank form or resetting a loaded draft', () => {
+    spyOn(TestBed.inject(ActivatedRoute).snapshot.paramMap, 'get').and.returnValue('7'); component.isReady = false;
+    listingService.getById.and.returnValue(throwError(() => new HttpErrorResponse({ status: 503, error: [] })));
+    component.ngOnInit(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('form')).toBeNull();
+    expect(component.loadErrors).toEqual(['The listing could not be loaded.']);
+    listingService.getById.and.returnValue(of({ id: 7, ownerId: 1, title: 'Saved', description: 'Space', latitude: 44, longitude: 26, pricePerHour: 12, isActive: true, isAlwaysAvailable: true, createdAt: '', amenities: [] }));
+    component.loadListing(); expect(component.form.controls.title.value).toBe('Saved');
+    component.form.controls.title.setValue('Draft'); component.loadListing(); expect(component.form.controls.title.value).toBe('Draft');
+  });
+  it('shows associated coordinate and price validation', () => {
+    component.submit(); fixture.detectChanges();
+    for (const id of ['latitude', 'longitude', 'price']) {
+      expect(fixture.nativeElement.querySelector('#' + id).getAttribute('aria-invalid')).toBe('true');
+      expect(fixture.nativeElement.querySelector('#' + id + '-error')).not.toBeNull();
+    }
+  });
+
 });

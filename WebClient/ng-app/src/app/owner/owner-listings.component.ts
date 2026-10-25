@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DecimalPipe, DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -10,7 +10,7 @@ import { ListingService } from '../api/listings/listing.service';
 @Component({
   selector: 'app-owner-listings',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, RouterLink],
+  imports: [DecimalPipe, DatePipe, RouterLink],
   templateUrl: './owner-listings.component.html',
   styleUrl: './owner-workspace.scss'
 })
@@ -22,23 +22,27 @@ export class OwnerListingsComponent implements OnInit {
   changingId?: number;
   errorMessages: string[] = [];
 
+  /** Retrieval feedback, separate from publishing failures. */
+  loadErrors: string[] = [];
+
   ngOnInit(): void {
     this.load();
   }
 
   load(): void {
+    if (this.isLoading || this.changingId) return;
     this.isLoading = true;
-    this.errorMessages = [];
+    this.loadErrors = [];
     this.listingService.getOwnerListings()
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
         next: (result) => (this.listings = result.items),
-        error: (error) => (this.errorMessages = this.getErrors(error, 'Your listings could not be loaded.'))
+        error: (error) => (this.loadErrors = this.getErrors(error, 'Your listings could not be loaded.'))
       });
   }
 
   setActive(listing: OwnerListingItem, active: boolean): void {
-    if (this.changingId) return;
+    if (this.changingId || this.isLoading || this.loadErrors.length) return;
     this.changingId = listing.id;
     this.errorMessages = [];
     const operation = active ? this.listingService.activate(listing.id) : this.listingService.deactivate(listing.id);
@@ -50,9 +54,11 @@ export class OwnerListingsComponent implements OnInit {
 
   private getErrors(error: unknown, fallback: string): string[] {
     if (error instanceof HttpErrorResponse) {
-      if (Array.isArray(error.error)) return error.error;
+      if (Array.isArray(error.error)) {
+        const messages = error.error.filter((message): message is string => typeof message === 'string' && !!message.trim());
+        return messages.length ? messages : [fallback];
+      }
       if (typeof error.error === 'string' && error.error.trim()) return [error.error];
-      if (error.message) return [error.message];
     }
     return [fallback];
   }

@@ -1,22 +1,30 @@
 <a class="back-link" routerLink="/owner/listings">← Back to owner listings</a>
 <section class="form-panel">
   <p class="eyebrow">Owner workspace</p><h1>{{ isEditing ? 'Edit parking space' : 'Create a parking space' }}</h1>
+  @if (loadErrors.length) { <div class="message error" role="alert">@for (message of loadErrors; track message) { <p>{{ message }}</p> }@if (listingId) { <button type="button" (click)="loadListing()">Retry listing</button> }</div> }
   @if (errorMessages.length) { <div class="message error" role="alert">@for (message of errorMessages; track message) { <p>{{ message }}</p> }</div> }
-  @if (isLoading) { <div class="message">Loading listing…</div> } @else {
+  @if (isLoading) { <div class="message" role="status">Loading listing…</div> } @else if (isReady) {
     <form [formGroup]="form" (ngSubmit)="submit()">
-      <label for="title">Title</label><input id="title" formControlName="title" />
-      @if (form.controls.title.touched && form.controls.title.invalid) { <p class="field-error">Enter a title up to 120 characters.</p> }
-      <label for="description">Description</label><textarea id="description" rows="5" formControlName="description"></textarea>
-      @if (form.controls.description.touched && form.controls.description.invalid) { <p class="field-error">Enter a description up to 2,000 characters.</p> }
-      <label for="address">Address</label><input id="address" formControlName="address" />
+      <fieldset [disabled]="isSubmitting"><legend>Space details</legend>
+      <label for="title">Title</label><input id="title" formControlName="title" [attr.aria-invalid]="form.controls.title.touched && form.controls.title.invalid" aria-describedby="title-error" />
+      @if (form.controls.title.touched && form.controls.title.invalid) { <p id="title-error" class="field-error">Enter a title up to 120 characters.</p> }
+      <label for="description">Description</label><textarea id="description" rows="5" formControlName="description" [attr.aria-invalid]="form.controls.description.touched && form.controls.description.invalid" aria-describedby="description-error"></textarea>
+      @if (form.controls.description.touched && form.controls.description.invalid) { <p id="description-error" class="field-error">Enter a description up to 2,000 characters.</p> }
+      </fieldset>
+      <fieldset [disabled]="isSubmitting"><legend>Location</legend>
+      <label for="address">Address</label><input id="address" formControlName="address" [attr.aria-invalid]="form.controls.address.touched && form.controls.address.invalid" aria-describedby="address-error" />
+      @if (form.controls.address.touched && form.controls.address.invalid) { <p id="address-error" class="field-error">Use up to 200 characters for the address.</p> }
       <div class="form-grid">
-        <div><label for="latitude">Latitude</label><input id="latitude" type="number" step="any" formControlName="latitude" /></div>
-        <div><label for="longitude">Longitude</label><input id="longitude" type="number" step="any" formControlName="longitude" /></div>
-        <div><label for="price">Price per hour (RON)</label><input id="price" type="number" min="0.01" step="0.01" formControlName="pricePerHour" /></div>
+        <div><label for="latitude">Latitude</label><input id="latitude" type="number" step="any" formControlName="latitude" [attr.aria-invalid]="form.controls.latitude.touched && form.controls.latitude.invalid" aria-describedby="latitude-error" />@if (form.controls.latitude.touched && form.controls.latitude.invalid) { <p id="latitude-error" class="field-error">Enter a latitude between -90 and 90.</p> }</div>
+        <div><label for="longitude">Longitude</label><input id="longitude" type="number" step="any" formControlName="longitude" [attr.aria-invalid]="form.controls.longitude.touched && form.controls.longitude.invalid" aria-describedby="longitude-error" />@if (form.controls.longitude.touched && form.controls.longitude.invalid) { <p id="longitude-error" class="field-error">Enter a longitude between -180 and 180.</p> }</div>
+      </div></fieldset>
+      <fieldset [disabled]="isSubmitting"><legend>Pricing and schedule</legend><div class="form-grid">
+        <div><label for="price">Price per hour (RON)</label><input id="price" type="number" min="0.01" step="0.01" formControlName="pricePerHour" [attr.aria-invalid]="form.controls.pricePerHour.touched && form.controls.pricePerHour.invalid" aria-describedby="price-error" />@if (form.controls.pricePerHour.touched && form.controls.pricePerHour.invalid) { <p id="price-error" class="field-error">Enter a price of at least 0.01 RON.</p> }</div>
         <div><label for="size">Space size or type</label><input id="size" formControlName="size" /></div>
       </div>
       <label class="check-row"><input type="checkbox" formControlName="isAlwaysAvailable" /> Always available except for blocked periods</label>
       <p class="hint">Turn this off to publish explicit open availability windows.</p>
+      </fieldset>
       <fieldset class="amenity-options" [disabled]="isSubmitting || isCatalogLoading">
         <legend>Amenities</legend>
         @if (isCatalogLoading) { <p role="status">Loading amenities…</p> }
@@ -38,6 +46,6 @@
   }
 </section>
 
-@if (listingId && !isLoading && !errorMessages.length) {
+@if (listingId && isReady) {
   @defer (on immediate) { <app-listing-photos [listingId]="listingId" [editable]="true" /> }
 } @else if (!isEditing) { <p>After creating your listing, open Edit to add photos.</p> }

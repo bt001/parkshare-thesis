@@ -3,18 +3,19 @@
   <a [routerLink]="backLink">Back to bookings</a>
 </section>
 <button type="button" [disabled]="loading || sending" (click)="refresh()">Refresh / retry</button>
+<p class="refresh-hint">Use Refresh to check for new messages.</p>
 @if (loading) {
-  <p role="status">Loading messages…</p>
+  <p class="feedback" role="status">Loading messages…</p>
 } @else if (error) {
-  <p class="message error" role="alert">{{ error }}</p>
+  <p class="message error feedback" role="alert">{{ error }}</p>
 } @else if (!items.length) {
-  <p>No messages on this page. Start the conversation below.</p>
+  <p class="feedback">No messages on this page. Start the conversation below.</p>
 } @else {
   <section class="conversation" aria-label="Booking messages">
     @for (message of items; track message.id) {
-      <article class="workspace-card">
+      <article class="workspace-card" [class.sent]="senderLabel(message) === 'You'">
         <strong>{{ senderLabel(message) }}</strong>
-        <time>{{ message.sentAt | date:'medium' }}</time>
+        <time [attr.datetime]="message.sentAt">{{ message.sentAt | date:'medium' }}</time>
         <p class="message-text">{{ message.messageText }}</p>
       </article>
     }

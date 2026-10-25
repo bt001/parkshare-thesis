@@ -4,29 +4,33 @@
 </section>
 
 <nav class="workspace-nav" aria-label="Owner workspace">
-  <a routerLink="/owner/listings" class="active">Listings</a>
+  <a routerLink="/owner/listings" class="active" aria-current="page">Listings</a>
   <a routerLink="/owner/bookings">Booking requests</a>
 </nav>
 
+@if (loadErrors.length) {
+  <div class="message error" role="alert">@for (message of loadErrors; track message) { <p>{{ message }}</p> }<button type="button" (click)="load()">Retry listings</button></div>
+}
 @if (errorMessages.length) {
   <div class="message error" role="alert">@for (message of errorMessages; track message) { <p>{{ message }}</p> }</div>
 }
 @if (isLoading) {
   <div class="message" aria-live="polite">Loading your listings…</div>
+} @else if (loadErrors.length) {
 } @else if (!listings.length) {
   <div class="message"><h2>No listings yet</h2><p>Create your first space to become a ParkShare owner.</p></div>
 } @else {
   <div class="card-grid">
     @for (listing of listings; track listing.id) {
       <article class="workspace-card">
-        <div class="card-heading"><span class="badge" [class.inactive]="!listing.isActive">{{ listing.isActive ? 'Active' : 'Inactive' }}</span><strong>{{ listing.pricePerHour | currency:'RON':'symbol-narrow':'1.0-2' }}/h</strong></div>
+        <div class="card-heading"><span class="badge" [class.inactive]="!listing.isActive">{{ listing.isActive ? 'Active' : 'Inactive' }}</span><strong>{{ listing.pricePerHour | number:'1.0-2' }} RON/h</strong></div>
         <h2>{{ listing.title }}</h2>
         <p>{{ listing.address || 'No address provided' }}</p>
         <small>Created {{ listing.createdAt | date:'mediumDate' }}</small>
         <div class="actions">
           <a [routerLink]="['/owner/listings', listing.id, 'edit']">Edit</a>
           <a [routerLink]="['/owner/listings', listing.id, 'availability']">Availability</a>
-          <button type="button" [disabled]="changingId === listing.id" (click)="setActive(listing, !listing.isActive)">{{ listing.isActive ? 'Deactivate' : 'Activate' }}</button>
+          <button type="button" [disabled]="!!changingId" (click)="setActive(listing, !listing.isActive)">{{ changingId === listing.id ? 'Updating…' : (listing.isActive ? 'Deactivate' : 'Activate') }}</button>
         </div>
       </article>
     }

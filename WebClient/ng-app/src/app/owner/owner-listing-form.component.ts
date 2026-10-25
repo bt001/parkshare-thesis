@@ -74,30 +74,45 @@ export class OwnerListingFormComponent implements OnInit {
   isSubmitting = false;
   errorMessages: string[] = [];
 
-  get isEditing(): boolean { return this.listingId !== undefined; }
+  /** Whether an edit route was requested, including an invalid identifier. */
+  isEditing = false;
+  /** Whether listing data is ready for editing. */
+  isReady = false;
+  /** Retrieval feedback, separate from failed saves. */
+  loadErrors: string[] = [];
 
   ngOnInit(): void {
     this.loadAmenities();
     const rawId = this.route.snapshot.paramMap.get('id');
-    if (!rawId) return;
+    this.isEditing = rawId !== null;
+    if (!this.isEditing) { this.isReady = true; return; }
+    this.isReady = false;
     const id = Number(rawId);
-    if (!Number.isSafeInteger(id) || id <= 0) { this.errorMessages = ['This listing address is invalid.']; return; }
+    if (!Number.isSafeInteger(id) || id <= 0) { this.loadErrors = ['This listing address is invalid.']; return; }
     this.listingId = id;
+    this.loadListing();
+  }
+
+  /** Retries initial listing retrieval without resetting a loaded draft. */
+  loadListing(): void {
+    if (!this.listingId || this.isLoading || this.isReady) return;
     this.isLoading = true;
-    this.listingService.getById(id).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => (this.isLoading = false))).subscribe({
+    this.loadErrors = [];
+    this.listingService.getById(this.listingId).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => (this.isLoading = false))).subscribe({
       next: (listing) => {
+        this.isReady = true;
         this.selectedAmenityIds = listing.amenities.map(amenity => amenity.id);
         this.form.setValue({
         title: listing.title, description: listing.description, address: listing.address ?? '', latitude: listing.latitude,
         longitude: listing.longitude, pricePerHour: listing.pricePerHour, size: listing.size ?? '', isAlwaysAvailable: listing.isAlwaysAvailable
       });
       },
-      error: (error) => (this.errorMessages = this.getErrors(error, 'The listing could not be loaded.'))
+      error: (error) => (this.loadErrors = this.getErrors(error, 'The listing could not be loaded.'))
     });
   }
 
   submit(): void {
-    if (this.form.invalid || this.isSubmitting || this.isLoading || !this.isCatalogReady) { this.form.markAllAsTouched(); return; }
+    if (!this.isReady || this.form.invalid || this.isSubmitting || this.isLoading || !this.isCatalogReady) { this.form.markAllAsTouched(); return; }
     const value = this.form.getRawValue();
     const request: CreateListingRequest = {
       ...value, amenityIds: [...this.selectedAmenityIds], latitude: value.latitude!, longitude: value.longitude!, pricePerHour: value.pricePerHour!,
@@ -118,9 +133,11 @@ export class OwnerListingFormComponent implements OnInit {
 
   private getErrors(error: unknown, fallback: string): string[] {
     if (error instanceof HttpErrorResponse) {
-      if (Array.isArray(error.error)) return error.error;
+      if (Array.isArray(error.error)) {
+        const messages = error.error.filter((message): message is string => typeof message === 'string' && !!message.trim());
+        return messages.length ? messages : [fallback];
+      }
       if (typeof error.error === 'string' && error.error.trim()) return [error.error];
-      if (error.message) return [error.message];
     }
     return [fallback];
   }

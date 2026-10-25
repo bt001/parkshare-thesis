@@ -1,16 +1,20 @@
-:host { display: block; color: #16324f; }
-.inbox { max-width: 960px; margin: auto; }
-header, .actions, .event-meta, .pagination, .filters { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+:host { display: block; min-width: 0; color: var(--ink); }
+.inbox { max-width: 60rem; margin: auto; }
+header, .actions, .event-meta, .pagination, .filters { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
 header, .event-meta { justify-content: space-between; }
-h1 { margin: .25rem 0; font-size: 2rem; }
-.eyebrow { margin: 0; text-transform: uppercase; letter-spacing: .12em; font-size: .8rem; }
-.filters { margin: 1.25rem 0; }
-button { cursor: pointer; font: inherit; border: 1px solid #a8bac9; border-radius: 999px; padding: .6rem 1rem; color: #16324f; background: white; }
-button[aria-pressed="true"] { background: #16324f; color: white; }
-button:disabled { cursor: default; opacity: .55; }
-article { margin: .75rem 0; padding: 1.25rem; background: white; border: 1px solid #d4dfe7; border-radius: 1rem; overflow-wrap: anywhere; }
-article.unread { border-left: 4px solid #226f9c; }
-.event-meta { color: #4d6379; font-size: .875rem; }
-a { color: #165482; font-weight: 600; }
-.pagination { justify-content: center; margin: 1.25rem 0; }
-[role="alert"] { color: #8e2727; }
+h1 { margin: .25rem 0; font-size: 1.6rem; }
+header p { margin: .25rem 0; color: var(--muted); font-size: .9rem; }
+.eyebrow { text-transform: uppercase; letter-spacing: .1em; font-size: .75rem; }
+.filters { margin: 1rem 0; }
+button { cursor: pointer; min-height: 2.5rem; border: 1px solid var(--line); border-radius: .45rem; padding: .55rem .8rem; color: var(--ink); background: var(--surface); font-weight: 600; }
+button:hover { background: var(--soft); }
+button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: white; }
+article { margin: .5rem 0; padding: 1rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow-wrap: anywhere; }
+article.unread { border-left: 4px solid var(--accent); }
+article p { margin: .65rem 0; }
+.event-meta { color: var(--muted); font-size: .8rem; }
+a { color: var(--accent); font-weight: 600; }
+.actions { font-size: .85rem; }
+.pagination { justify-content: center; margin: 1rem 0; font-size: .85rem; }
+.feedback { padding: 1rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+[role="alert"] { color: var(--danger); }

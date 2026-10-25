@@ -13,7 +13,7 @@ import { safeReturnUrl, SessionNavigationService } from './session-navigation.se
     <p class="eyebrow">ParkShare</p><h1>Reconnect to your session</h1>
     <p class="support-copy" role="status">We could not restore your session right now. Check your connection and try again.</p>
     <div class="login-form"><button type="button" [disabled]="isRecovering" (click)="retry()">{{ isRecovering ? 'Reconnecting...' : 'Retry' }}</button>
-    <button type="button" (click)="signIn()">Sign in</button>
+    <button class="secondary" type="button" (click)="signIn()">Sign in</button>
   </div></div></section>`,
   styleUrl: './login/login.component.scss'
 })

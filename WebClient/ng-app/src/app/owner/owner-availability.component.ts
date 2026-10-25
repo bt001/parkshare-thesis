@@ -42,6 +42,15 @@ export class OwnerAvailabilityComponent implements OnInit {
   isSubmitting = false;
   errorMessages: string[] = [];
 
+  /** Listing identifier retained for retrieval retries. */
+  listingId?: number;
+  /** Retrieval feedback, separate from window mutation failures. */
+  loadErrors: string[] = [];
+  /** Window currently being deleted. */
+  deletingId?: number;
+  /** Prevents conflicting actions while data is changing or unavailable. */
+  get isBusy(): boolean { return this.isLoading || this.isSubmitting || this.deletingId !== undefined || this.loadErrors.length > 0; }
+
   get invalidRange(): boolean {
     const value = this.form.getRawValue();
     return !!value.startDateTime && !!value.endDateTime && value.startDateTime >= value.endDateTime;
@@ -49,11 +58,13 @@ export class OwnerAvailabilityComponent implements OnInit {
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
-    if (!Number.isSafeInteger(id) || id <= 0) { this.errorMessages = ['This listing address is invalid.']; return; }
-    this.load(id);
+    if (!Number.isSafeInteger(id) || id <= 0) { this.loadErrors = ['This listing address is invalid.']; return; }
+    this.listingId = id;
+    this.load();
   }
 
   edit(window: AvailabilityWindow): void {
+    if (this.isBusy) return;
     this.editingId = window.availabilityWindowId;
     this.confirmingDeleteId = undefined;
     this.form.setValue({
@@ -64,12 +75,13 @@ export class OwnerAvailabilityComponent implements OnInit {
   }
 
   cancelEdit(): void {
+    if (this.isBusy) return;
     this.editingId = undefined;
     this.resetForm();
   }
 
   submit(): void {
-    if (!this.listing || this.form.invalid || this.invalidRange || this.isSubmitting) { this.form.markAllAsTouched(); return; }
+    if (!this.listing || this.form.invalid || this.invalidRange || this.isBusy) { this.form.markAllAsTouched(); return; }
     const value = this.form.getRawValue();
     const request = { ...value, note: value.note.trim() || null };
     this.isSubmitting = true;
@@ -78,29 +90,35 @@ export class OwnerAvailabilityComponent implements OnInit {
       ? this.availabilityService.update(this.editingId, request)
       : this.availabilityService.create({ listingId: this.listing.id, ...request });
     operation.pipe(finalize(() => (this.isSubmitting = false))).subscribe({
-      next: () => { this.editingId = undefined; this.resetForm(); this.load(this.listing!.id); },
+      next: () => { this.editingId = undefined; this.resetForm(); this.load(); },
       error: (error) => (this.errorMessages = this.getErrors(error, 'The availability window could not be saved.'))
     });
   }
 
-  requestDelete(id: number): void { this.confirmingDeleteId = id; }
-  cancelDelete(): void { this.confirmingDeleteId = undefined; }
+  requestDelete(id: number): void { if (!this.isBusy) this.confirmingDeleteId = id; }
+  cancelDelete(): void { if (!this.isBusy) this.confirmingDeleteId = undefined; }
 
   delete(id: number): void {
-    this.availabilityService.delete(id).subscribe({
-      next: () => { this.confirmingDeleteId = undefined; this.load(this.listing!.id); },
+    if (this.isBusy || this.confirmingDeleteId !== id) return;
+    this.deletingId = id;
+    this.errorMessages = [];
+    this.availabilityService.delete(id).pipe(finalize(() => (this.deletingId = undefined))).subscribe({
+      next: () => { this.confirmingDeleteId = undefined; if (this.editingId === id) { this.editingId = undefined; this.resetForm(); } this.load(); },
       error: (error) => (this.errorMessages = this.getErrors(error, 'The availability window could not be deleted.'))
     });
   }
 
-  private load(id: number): void {
+  /** Loads current windows; retries retain any existing form draft. */
+  load(): void {
+    if (!this.listingId || this.isLoading) return;
+    const id = this.listingId;
     this.isLoading = true;
-    this.errorMessages = [];
+    this.loadErrors = [];
     forkJoin({ listing: this.listingService.getById(id), availability: this.availabilityService.getForOwner({ listingId: id }) })
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
-        next: ({ listing, availability }) => { this.listing = listing; this.windows = availability.items; this.resetForm(); },
-        error: (error) => (this.errorMessages = this.getErrors(error, 'Availability could not be loaded.'))
+        next: ({ listing, availability }) => { const initial = !this.listing; this.listing = listing; this.windows = availability.items; if (initial) this.resetForm(); },
+        error: (error) => (this.loadErrors = this.getErrors(error, 'Availability could not be loaded.'))
       });
   }
 
@@ -112,9 +130,11 @@ export class OwnerAvailabilityComponent implements OnInit {
   private toLocalValue(value: string): string { return value.slice(0, 16); }
   private getErrors(error: unknown, fallback: string): string[] {
     if (error instanceof HttpErrorResponse) {
-      if (Array.isArray(error.error)) return error.error;
+      if (Array.isArray(error.error)) {
+        const messages = error.error.filter((message): message is string => typeof message === 'string' && !!message.trim());
+        return messages.length ? messages : [fallback];
+      }
       if (typeof error.error === 'string' && error.error.trim()) return [error.error];
-      if (error.message) return [error.message];
     }
     return [fallback];
   }
