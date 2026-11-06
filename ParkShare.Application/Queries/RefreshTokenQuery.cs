@@ -36,7 +36,7 @@ namespace ParkShare.Application.Queries
             var result = await _authService.RefreshTokens(request.RefreshToken, cancellationToken);
 
             if (!result.IsSuccessful)
-                return ServiceResult<LoginResponse>.WithErrors(result.Errors);
+                return ServiceResult<LoginResponse>.WithErrors(result);
 
             return ServiceResult<LoginResponse>.Success(result.Payload);
         }

@@ -25,7 +25,7 @@ namespace ParkShare.Application.Queries
         {
             var result = await _bookingService.GetByIdAsync(request.Id, cancellationToken);
             if (!result.IsSuccessful)
-                return ServiceResult<GetBookingByIdResponse>.WithErrors(result.Errors);
+                return ServiceResult<GetBookingByIdResponse>.WithErrors(result);
 
             if (result.Payload.OwnerId != request.RequesterId && result.Payload.RenterId != request.RequesterId)
                 return ServiceResult<GetBookingByIdResponse>.WithError("Not authorized to view this booking.");

@@ -62,7 +62,7 @@ namespace ParkShare.Application.Commands
                 cancellationToken);
 
             if (!result.IsSuccessful)
-                return ServiceResult<LoginResponse>.WithErrors(result.Errors);
+                return ServiceResult<LoginResponse>.WithErrors(result);
 
             return ServiceResult<LoginResponse>.Success(result.Payload);
         }

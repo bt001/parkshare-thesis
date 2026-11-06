@@ -41,7 +41,7 @@ namespace ParkShare.Application.Queries
             var result = await _authService.AuthenticateUser(request.Email, request.Password, cancellationToken);
 
             if (!result.IsSuccessful)
-                return ServiceResult<LoginResponse>.WithErrors(result.Errors);
+                return ServiceResult<LoginResponse>.WithErrors(result);
 
             return ServiceResult<LoginResponse>.Success(result.Payload);
         }

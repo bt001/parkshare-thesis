@@ -44,7 +44,7 @@ namespace ParkShare.Application.Queries
         {
             var response = await _availabilityService.GetListingAvailabilityAsync(request.ListingId, request.StartDateTime, request.EndDateTime, cancellationToken);
             if (!response.IsSuccessful)
-                return ServiceResult<GetAvailabilityWindowsResponse>.WithErrors(response.Errors);
+                return ServiceResult<GetAvailabilityWindowsResponse>.WithErrors(response);
 
             return ServiceResult<GetAvailabilityWindowsResponse>.Success(response.Payload);
         }

@@ -35,6 +35,9 @@ namespace ParkShare.Domain.Entities
         /// </summary>
         public string PasswordHash { get; set; } = null!;
 
+        /// <summary>Whether the stored credential uses the supported password hash format.</summary>
+        public bool IsPasswordHashed { get; set; }
+
         /// <summary>
         /// Account creation date.
         /// </summary>

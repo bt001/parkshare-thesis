@@ -1,0 +1,15 @@
+:host { display: block; min-width: 0; margin-bottom: 1rem; }
+section { padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+header, nav { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; justify-content: space-between; }
+h2 { font-size: 1.15rem; margin: 0; } h3 { font-size: 1rem; }
+p { overflow-wrap: anywhere; } .hint { color: var(--muted); font-size: .85rem; }
+button { min-height: 2.5rem; padding: .5rem; border: 1px solid var(--line); border-radius: .4rem; color: var(--ink); background: var(--surface); cursor: pointer; }
+button:hover { background: var(--soft); } button:disabled { opacity: .55; cursor: not-allowed; }
+.month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .25rem; margin-top: 1rem; }
+.weekday { text-align: center; font-size: .75rem; color: var(--muted); }
+.day { min-width: 0; min-height: 5rem; display: flex; flex-direction: column; align-items: center; gap: .35rem; padding: .25rem; }
+.day[aria-pressed=true] { border: 2px solid var(--accent); background: var(--soft); font-weight: 700; }
+small { font-size: .7rem; overflow-wrap: anywhere; }
+article { border-top: 1px solid var(--line); padding-top: .75rem; margin-top: .75rem; } article p { margin: .4rem 0; }
+@media(max-width:480px) { section { padding: .5rem; } .month { gap: .15rem; } small { font-size: .6rem; } }
+.short-label, .mobile-key { display: none; } @media(max-width:480px) { .full-label { display: none; } .short-label, .mobile-key { display: block; font-size: .75rem; } .day { min-height: 3.5rem; } }

@@ -37,6 +37,11 @@ namespace ParkShare.Infrastructure.Repositories
         }
 
         /// <inheritdoc/>
+        public async Task UpdatePasswordHashAsync(long userId, string passwordHash, CancellationToken cancellationToken)
+            => await _db.Users.Where(user => user.Id == userId && user.IsPasswordHashed)
+                .ExecuteUpdateAsync(update => update.SetProperty(user => user.PasswordHash, passwordHash), cancellationToken);
+
+        /// <inheritdoc/>
         public Task<User?> GetByEmailWithRolesAsync(string email, CancellationToken cancellationToken)
             => _db.Users
                 .Include(user => user.UserRoles)

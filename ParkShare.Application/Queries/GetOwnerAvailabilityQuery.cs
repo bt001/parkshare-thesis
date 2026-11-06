@@ -53,7 +53,7 @@ namespace ParkShare.Application.Queries
             {
                 var listingRes = await _listingReadService.GetCoreAsync(request.ListingId.Value, cancellationToken);
                 if (!listingRes.IsSuccessful)
-                    return ServiceResult<GetAvailabilityWindowsResponse>.WithErrors(listingRes.Errors);
+                    return ServiceResult<GetAvailabilityWindowsResponse>.WithErrors(listingRes);
 
                 if (listingRes.Payload.OwnerId != request.OwnerId)
                     return ServiceResult<GetAvailabilityWindowsResponse>.WithError("Listing does not belong to the specified owner.");
@@ -61,7 +61,7 @@ namespace ParkShare.Application.Queries
 
             var response = await _availabilityService.GetOwnerAvailabilityAsync(request.OwnerId, request.ListingId, request.StartDateTime, request.EndDateTime, cancellationToken);
             if (!response.IsSuccessful)
-                return ServiceResult<GetAvailabilityWindowsResponse>.WithErrors(response.Errors);
+                return ServiceResult<GetAvailabilityWindowsResponse>.WithErrors(response);
 
             return ServiceResult<GetAvailabilityWindowsResponse>.Success(response.Payload);
         }

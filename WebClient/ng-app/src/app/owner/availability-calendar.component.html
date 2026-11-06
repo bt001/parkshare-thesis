@@ -1,0 +1,24 @@
+<section aria-label="Availability calendar">
+  <header><h2>Availability calendar</h2><button type="button" (click)="refresh.emit()" [disabled]="unavailable || loading">Refresh calendar</button></header>
+  <p>{{ alwaysAvailable ? 'Available by default, except blocked periods and confirmed bookings.' : 'Available only within published open windows, except blocked periods and confirmed bookings.' }}</p>
+  <p class="hint">Romanian local time. Indicators mark periods touching a day, not whole-day availability. Booking validation remains authoritative.</p>
+  <nav aria-label="Calendar month"><button type="button" (click)="moveMonth(-1)">Previous month</button><strong aria-live="polite">{{ month | date:'MMMM yyyy' }}</strong><button type="button" (click)="moveMonth(1)">Next month</button><button type="button" (click)="today()">Today</button></nav>
+  @if (unavailable) { <p role="status">Calendar windows are unavailable while availability is loading or needs retry.</p> }
+  @if (loading) { <p role="status">Loading confirmed bookings…</p> }
+  @if (error) { <p role="alert">{{ error }} <button type="button" (click)="loadBookings()">Retry bookings</button></p> }
+  <p class="mobile-key">O: Open · B: Blocked · C: Confirmed</p>
+  <div class="month">
+    @for (weekday of weekdays; track weekday) { <span class="weekday">{{ weekday }}</span> }
+    @for (day of days; track $index) {
+      @if (day) { <button class="day" type="button" [attr.aria-label]="day + (labels(day) ? ': ' + labels(day) : '')" [attr.aria-pressed]="selected === day" (click)="selected = day"><span>{{ +day.slice(8) }}</span><small class="full-label">{{ labels(day) }}</small><small class="short-label" aria-hidden="true">{{ labels(day).replaceAll('Open', 'O').replaceAll('Blocked', 'B').replaceAll('Confirmed', 'C') }}</small></button> }
+      @else { <span></span> }
+    }
+  </div>
+  <h3>{{ selected | date:'fullDate' }}</h3>
+  @if (!unavailable) {
+    @for (period of periods(selected); track $index) {
+      <article><strong>{{ period.label }}</strong><p><time>{{ period.start | date:'medium' }}</time> – <time>{{ period.end | date:'medium' }}</time></p>@if (period.note) { <p>{{ period.note }}</p> }</article>
+    } @empty { <p>{{ loading || error ? 'Booking information is incomplete.' : 'No published windows or confirmed bookings touch this day.' }}</p> }
+  }
+</section>
+

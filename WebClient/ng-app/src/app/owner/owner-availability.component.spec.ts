@@ -1,3 +1,4 @@
+import { BookingService } from '../api/bookings/booking.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
@@ -21,7 +22,7 @@ describe('OwnerAvailabilityComponent', () => {
     availabilityService.create.and.returnValue(of(window));
     availabilityService.update.and.returnValue(of(window));
     availabilityService.delete.and.returnValue(of({ availabilityWindowId: 4 }));
-    await TestBed.configureTestingModule({ imports: [OwnerAvailabilityComponent], providers: [provideRouter([]), { provide: ListingService, useValue: listingService }, { provide: AvailabilityService, useValue: availabilityService }, { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => '3' } } } }] }).compileComponents();
+    await TestBed.configureTestingModule({ imports: [OwnerAvailabilityComponent], providers: [provideRouter([]), { provide: BookingService, useValue: { getForOwner: () => of({ page: 1, pageSize: 100, totalCount: 0, items: [] }) } }, { provide: ListingService, useValue: listingService }, { provide: AvailabilityService, useValue: availabilityService }, { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => '3' } } } }] }).compileComponents();
     fixture = TestBed.createComponent(OwnerAvailabilityComponent); component = fixture.componentInstance; fixture.detectChanges();
   });
 

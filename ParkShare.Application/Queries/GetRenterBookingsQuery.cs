@@ -33,7 +33,7 @@ namespace ParkShare.Application.Queries
         {
             var response = await _bookingService.GetRenterByStatusesAsync(request.RenterId, request.Statuses, request.Page, request.PageSize, cancellationToken);
             if (!response.IsSuccessful)
-                return ServiceResult<GetRenterBookingsResponse>.WithErrors(response.Errors);
+                return ServiceResult<GetRenterBookingsResponse>.WithErrors(response);
 
             return ServiceResult<GetRenterBookingsResponse>.Success(response.Payload);
         }

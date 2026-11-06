@@ -48,6 +48,11 @@ internal static partial class Program
                 db.Users.AddRange(owner, renter); await db.SaveChangesAsync();
                 _owner = owner.Id; _renter = renter.Id;
             }
+            await Test("credential migration, rollback, concurrency and restart", CredentialConversion);
+            await Test("registration, password verification and rehash", AuthenticationWorkflow);
+            await Test("authentication safe errors, rollback and cancellation", AuthenticationFailures);
+            await Test("current-user lookup isolation", UserLookupIsolation);
+            await Test("authentication handler error classification", AuthenticationHandlerErrors);
             await Test("transitions, ownership, timestamps, handler conflict propagation", Transitions);
             await Test("past create and expired approval", PastPeriods);
             await Test("clock advances while waiting for listing lock", TimeAfterLock);

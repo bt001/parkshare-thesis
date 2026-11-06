@@ -29,7 +29,7 @@ namespace ParkShare.Application.Queries
             {
                 var core = await _listingReadService.GetCoreAsync(request.ListingId.Value, cancellationToken);
                 if (!core.IsSuccessful)
-                    return ServiceResult<GetOwnerBookingsResponse>.WithErrors(core.Errors);
+                    return ServiceResult<GetOwnerBookingsResponse>.WithErrors(core);
 
                 if (core.Payload.OwnerId != request.OwnerId)
                     return ServiceResult<GetOwnerBookingsResponse>.WithError("Listing does not belong to the specified owner.");
@@ -37,7 +37,7 @@ namespace ParkShare.Application.Queries
 
             var response = await _bookingService.GetOwnerByStatusesAsync(request.OwnerId, request.ListingId, request.Statuses, request.Page, request.PageSize, cancellationToken);
             if (!response.IsSuccessful)
-                return ServiceResult<GetOwnerBookingsResponse>.WithErrors(response.Errors);
+                return ServiceResult<GetOwnerBookingsResponse>.WithErrors(response);
 
             return ServiceResult<GetOwnerBookingsResponse>.Success(response.Payload);
         }

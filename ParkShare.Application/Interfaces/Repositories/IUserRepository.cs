@@ -39,6 +39,9 @@ namespace ParkShare.Application.Interfaces.Repositories
         /// <returns>Completion task.</returns>
         Task AddAsync(User user, CancellationToken cancellationToken);
 
+        /// <summary>Persists a replacement hash for an already converted account.</summary>
+        Task UpdatePasswordHashAsync(long userId, string passwordHash, CancellationToken cancellationToken);
+
         /// <summary>
         /// Returns a user by email with assigned roles loaded.
         /// </summary>

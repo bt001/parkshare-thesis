@@ -36,6 +36,8 @@ namespace ParkShare.Infrastructure
             });
 
             services.AddSingleton<IPlaceSearchProvider, GeoapifyPlaceSearchProvider>();
+            services.AddScoped<IPasswordService, PasswordService>();
+            services.AddScoped<PasswordMigrationInitializer>();
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IUserRoleRepository, UserRoleRepository>();

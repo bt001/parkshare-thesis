@@ -5,6 +5,7 @@
 @if (listing) {
   <section class="page-heading"><div><p class="eyebrow">Availability</p><h1>{{ listing.title }}</h1><p>{{ listing.isAlwaysAvailable ? 'Add blocked periods when the space cannot be booked.' : 'Publish open windows and optional blocked periods.' }}</p></div></section>
   <p class="hint">Parking start and end times use Romanian local time.</p>
+  <app-availability-calendar [listingId]="listing.id" [alwaysAvailable]="listing.isAlwaysAvailable" [windows]="windows" [unavailable]="isLoading || loadErrors.length > 0" (refresh)="load()" />
   <div class="two-column">
     <section class="form-panel compact-panel">
       <h2>{{ editingId ? 'Edit window' : 'Add availability window' }}</h2>

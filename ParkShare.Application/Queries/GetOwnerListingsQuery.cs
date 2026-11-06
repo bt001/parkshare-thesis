@@ -19,7 +19,7 @@ namespace ParkShare.Application.Queries
         {
             var response = await _listingService.GetByOwnerAsync(request.OwnerId, cancellationToken);
             if (!response.IsSuccessful)
-                return ServiceResult<GetOwnerListingsResponse>.WithErrors(response.Errors);
+                return ServiceResult<GetOwnerListingsResponse>.WithErrors(response);
 
             return ServiceResult<GetOwnerListingsResponse>.Success(response.Payload);
         }

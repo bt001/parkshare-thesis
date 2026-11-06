@@ -6,7 +6,7 @@ using ParkShare.Application.Interfaces;
 namespace ParkShare.Application.Queries
 {
     /// <summary>
-    /// Returns a user profile by email.
+    /// Returns the authenticated user profile for a matching email.
     /// </summary>
     public class GetUserByEmailQuery : IRequest<ServiceResult<GetUserByEmailResponse>>
     {
@@ -36,7 +36,7 @@ namespace ParkShare.Application.Queries
             var response = await _userService.GetUserByEmail(request.Email, cancellationToken);
 
             if (!response.IsSuccessful)
-                return ServiceResult<GetUserByEmailResponse>.WithErrors(response.Errors);
+                return ServiceResult<GetUserByEmailResponse>.WithErrors(response);
 
             return ServiceResult<GetUserByEmailResponse>.Success(response.Payload);
         }

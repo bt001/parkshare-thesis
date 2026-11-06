@@ -19,7 +19,8 @@ internal static partial class Program
     {
         await db.GetService<IMigrator>().MigrateAsync("20260502190000_InitialCreate");
         var legacyUser = User("legacy");
-        db.Users.Add(legacyUser); await db.SaveChangesAsync();
+        await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO Users (UserName, Email, FirstName, LastName, PasswordHash, CreatedAt, IsActive) VALUES ({legacyUser.UserName}, {legacyUser.Email}, {legacyUser.FirstName}, {legacyUser.LastName}, {legacyUser.PasswordHash}, {legacyUser.CreatedAt}, {legacyUser.IsActive})");
+        legacyUser.Id = await db.Database.SqlQuery<long>($"SELECT Id AS Value FROM Users WHERE Email = {legacyUser.Email}").SingleAsync();
         await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO Notifications (UserId, Type, Message, IsRead, CreatedAt) VALUES ({legacyUser.Id}, {"legacy-event"}, {"Keep this message"}, {true}, {new DateTime(2026, 1, 1)})");
         var preservedAmenity = new Amenity { Name = "Lighting", Description = "Existing description" };
         var preservedListing = new Listing { OwnerId = legacyUser.Id, Title = "Legacy amenity listing", Description = "Preserve", PricePerHour = 1 };

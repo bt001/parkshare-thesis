@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 
 internal class Program
 {
-    private static void Main(string[] args)
+    private static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
 
@@ -114,7 +114,9 @@ internal class Program
         using (var scope = app.Services.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<ParkShareDbContext>();
-            dbContext.Database.Migrate();
+            await dbContext.Database.MigrateAsync();
+            await scope.ServiceProvider.GetRequiredService<ParkShare.Infrastructure.Services.PasswordMigrationInitializer>()
+                .InitializeAsync(app.Lifetime.ApplicationStopping);
         }
 
         // ---- MIDDLEWARE PIPELINE ----
