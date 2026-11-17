@@ -88,20 +88,25 @@ internal static partial class Program
         }
     }
 
-    /// <summary>Checks Romanian wall-clock boundaries without relying on the host time zone.</summary>
+    /// <summary>Checks Athens wall-clock boundaries without relying on the host time zone.</summary>
     private static void TestTimePolicy()
     {
         var policy = new BookingTimePolicy(Clock);
         var boundary = new DateTime(2026, 9, 12, 15, 0, 0);
         Check(policy.Validate(boundary, boundary.AddHours(1)) != null, "exact now rejected");
         Check(policy.Validate(boundary.AddTicks(1), boundary.AddHours(1)) == null, "future tick accepted");
+        Check(policy.HasEnded(boundary), "Athens exact end is complete");
+        Check(!policy.HasEnded(boundary.AddTicks(1)), "Athens future end is not complete");
+        var athens = TimeZoneInfo.FindSystemTimeZoneById("Europe/Athens");
+        Check(TimeZoneInfo.ConvertTimeFromUtc(new DateTime(2026, 1, 12, 12, 0, 0, DateTimeKind.Utc), athens).Hour == 14, "Athens winter UTC+2");
+        Check(TimeZoneInfo.ConvertTimeFromUtc(new DateTime(2026, 7, 12, 12, 0, 0, DateTimeKind.Utc), athens).Hour == 15, "Athens summer UTC+3");
         Check(policy.Validate(boundary.AddHours(-1), boundary) != null, "past rejected");
         Check(policy.Validate(Future, Future) != null, "empty period rejected");
         Check(policy.Validate(new(2030, 3, 31, 3, 30, 0), new(2030, 3, 31, 5, 0, 0)) != null, "DST gap rejected");
         Check(policy.Validate(new(2030, 10, 27, 3, 30, 0), new(2030, 10, 27, 5, 0, 0)) != null, "DST repetition rejected");
         Check(policy.Validate(new(2030, 3, 31, 2, 30, 0), new(2030, 3, 31, 4, 30, 0)) == null, "valid DST crossing accepted");
         Check(policy.Validate(DateTime.SpecifyKind(Future, DateTimeKind.Utc), Future.AddHours(1)) != null, "UTC payload rejected");
-        _passed++; Console.WriteLine("PASS Romanian time boundaries and DST");
+        _passed++; Console.WriteLine("PASS Athens time boundaries and DST");
     }
 
     /// <summary>Checks allowed states, identity isolation, and repeat decisions.</summary>

@@ -168,7 +168,7 @@ describe('ListingDetailComponent', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('You own this listing');
   });
 
-  it('clips an ongoing window to the next future Romanian minute', () => {
+  it('clips an ongoing window to the next future Athens minute', () => {
     jasmine.clock().install(); jasmine.clock().mockDate(new Date('2026-09-12T12:00:30Z'));
     try {
       component.selectWindow({ ...openWindow, startDateTime: '2026-09-12T14:00:00', endDateTime: '2026-09-12T16:00:00' });

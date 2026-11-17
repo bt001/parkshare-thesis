@@ -23,7 +23,7 @@
   <div class="card-grid">
     @for (listing of listings; track listing.id) {
       <article class="workspace-card">
-        <div class="card-heading"><span class="badge" [class.inactive]="!listing.isActive">{{ listing.isActive ? 'Active' : 'Inactive' }}</span><strong>{{ listing.pricePerHour | number:'1.0-2' }} RON/h</strong></div>
+        <div class="card-heading"><span class="badge" [class.inactive]="!listing.isActive">{{ listing.isActive ? 'Active' : 'Inactive' }}</span><strong>{{ listing.pricePerHour | number:'1.0-2' }} €/h</strong></div>
         <h2>{{ listing.title }}</h2>
         <p>{{ listing.address || 'No address provided' }}</p>
         <small>Created {{ listing.createdAt | date:'mediumDate' }}</small>

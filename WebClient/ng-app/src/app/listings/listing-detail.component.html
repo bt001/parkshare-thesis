@@ -17,7 +17,7 @@
       <p class="address">{{ listing.address || 'Address not provided' }}</p>
     </div>
     <div class="price">
-      <strong>{{ listing.pricePerHour | number:'1.0-2' }} RON</strong>
+      <strong>{{ listing.pricePerHour | number:'1.0-2' }} €</strong>
       <span>per hour</span>
     </div>
   </section>
@@ -26,7 +26,7 @@
     <aside class="panel booking-panel ui-controls" aria-labelledby="booking-heading">
       <p class="eyebrow">Request parking</p>
       <h2 id="booking-heading">Choose your time</h2>
-      <p id="booking-time-note" class="muted">All booking times are Romanian local time.</p>
+      <p id="booking-time-note" class="muted">All booking times are Athens local time.</p>
 
       @if (isOwnListing) {
         <div class="message compact">You own this listing, so you cannot request a booking for it.</div>

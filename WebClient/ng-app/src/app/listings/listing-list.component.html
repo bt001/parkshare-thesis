@@ -44,7 +44,7 @@
       <input id="search-departure" type="datetime-local" formControlName="endDateTime" [min]="minimumDateTime" />
     </div>
   </div>
-  <p>Times are in Romania (Europe/Bucharest). Availability is checked again when you request a booking.</p>
+  <p>Times are in Greece (Europe/Athens). Availability is checked again when you request a booking.</p>
   @if (periodError) { <p class="field-error" role="alert">{{ periodError }}</p> }
     <div class="filter-actions"><button type="submit">Search</button><button type="button" (click)="resetFilters()">Reset</button></div>
   </details>
@@ -68,14 +68,14 @@
       }
     </div>
     <div>
-      <label for="filter-min">Minimum price (RON/hour)</label>
+      <label for="filter-min">Minimum price (EUR/hour)</label>
       <input id="filter-min" type="number" min="0" step="any" formControlName="minPrice" aria-describedby="min-error price-range-error" />
       @if (filterForm.controls.minPrice.touched && filterForm.controls.minPrice.invalid) {
         <p id="min-error" class="field-error">Minimum price must be zero or greater.</p>
       }
     </div>
     <div>
-      <label for="filter-max">Maximum price (RON/hour)</label>
+      <label for="filter-max">Maximum price (EUR/hour)</label>
       <input id="filter-max" type="number" min="0" step="any" formControlName="maxPrice" aria-describedby="max-error price-range-error" />
       @if (filterForm.controls.maxPrice.touched && filterForm.controls.maxPrice.invalid) {
         <p id="max-error" class="field-error">Maximum price must be zero or greater.</p>
@@ -203,11 +203,11 @@
             } @else { <div class="card-map-placeholder">No photo available</div> }
             <h2>{{ listing.title }}</h2>
             <p>{{ listing.address || 'Address available in listing details' }}</p>
-            <strong>{{ listing.pricePerHour | number:'1.0-2' }} RON/h</strong>
+            <strong>{{ listing.pricePerHour | number:'1.0-2' }} €/h</strong>
             <p class="review-summary">@if (listing.ratingCount && listing.averageRating != null) {
                 {{ listing.averageRating | number:'1.1-1' }} / 5 &middot; {{ listing.ratingCount }} reviews
               } @else { No reviews yet }</p>
-              @if (listing.estimatedPeriodCost != null) { <p>Estimated period cost: <strong>{{ listing.estimatedPeriodCost | number:'1.2-2' }} RON</strong></p> }
+              @if (listing.estimatedPeriodCost != null) { <p>Estimated period cost: <strong>{{ listing.estimatedPeriodCost | number:'1.2-2' }} €</strong></p> }
               <a [routerLink]="['/listings', listing.id]" [queryParams]="detailParams">View space</a>
           </article>
         }
@@ -229,14 +229,14 @@
         <span class="availability-badge">
           {{ listing.isAlwaysAvailable ? 'Always available' : 'Scheduled availability' }}
         </span>
-        <strong>{{ listing.pricePerHour | number:'1.0-2' }} RON/h</strong>
+        <strong>{{ listing.pricePerHour | number:'1.0-2' }} €/h</strong>
       </div>
       <h2>{{ listing.title }}</h2>
       <p>{{ listing.address || 'Address available in listing details' }}</p>
       <p class="review-summary">@if (listing.ratingCount && listing.averageRating != null) {
         {{ listing.averageRating | number:'1.1-1' }} / 5 &middot; {{ listing.ratingCount }} reviews
       } @else { No reviews yet }</p>
-      @if (listing.estimatedPeriodCost != null) { <p>Estimated period cost: <strong>{{ listing.estimatedPeriodCost | number:'1.2-2' }} RON</strong></p> }
+      @if (listing.estimatedPeriodCost != null) { <p>Estimated period cost: <strong>{{ listing.estimatedPeriodCost | number:'1.2-2' }} €</strong></p> }
       <button class="show-on-map" type="button" [attr.aria-pressed]="selectedMapListing?.id === listing.id" (click)="showOnMap(listing)">Show on map</button>
       <a [routerLink]="['/listings', listing.id]" [queryParams]="detailParams">View space</a>
     </div>

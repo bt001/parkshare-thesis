@@ -13,7 +13,7 @@ public class ListingSearchRow
     public decimal Latitude { get; set; }
     /// <summary>Persisted WGS84 longitude.</summary>
     public decimal Longitude { get; set; }
-    /// <summary>Hourly price in RON.</summary>
+    /// <summary>Hourly price in EUR.</summary>
     public decimal PricePerHour { get; set; }
     /// <summary>Whether the listing is active.</summary>
     public bool IsActive { get; set; }

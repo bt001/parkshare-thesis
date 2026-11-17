@@ -5,15 +5,15 @@ import { EMPTY, Subscription, expand, reduce, throwError } from 'rxjs';
 import { AvailabilityWindow } from '../api/availability/availability.models';
 import { BookingStatus, OwnerBookingItem } from '../api/bookings/booking.models';
 import { BookingService } from '../api/bookings/booking.service';
-import { romanianDateTime } from '../services/booking-time';
+import { athensDateTime } from '../services/booking-time';
 
 /** A wall-clock period touching a calendar day. */
 interface CalendarPeriod {
   /** Human-readable category. */
   label: string;
-  /** Romanian wall-clock start. */
+  /** Athens wall-clock start. */
   start: string;
-  /** Exclusive Romanian wall-clock end. */
+  /** Exclusive Athens wall-clock end. */
   end: string;
   /** Optional owner note. */
   note?: string | null;
@@ -35,8 +35,8 @@ export class AvailabilityCalendarComponent implements OnChanges {
   @Input() unavailable = false;
   /** Requests a fresh window snapshot from the parent. */
   @Output() refresh = new EventEmitter<void>();
-  /** Selected Romanian calendar date. */
-  selected = romanianDateTime().slice(0, 10);
+  /** Selected Athens calendar date. */
+  selected = athensDateTime().slice(0, 10);
   /** First date of the visible month. */
   month = this.selected.slice(0, 7) + '-01';
   /** Monday-first weekday labels. */
@@ -81,8 +81,8 @@ export class AvailabilityCalendarComponent implements OnChanges {
     this.month = date.toISOString().slice(0, 10); this.selected = this.month;
   }
 
-  /** Returns to the current Romanian day. */
-  today(): void { this.selected = romanianDateTime().slice(0, 10); this.month = this.selected.slice(0, 7) + '-01'; }
+  /** Returns to the current Athens day. */
+  today(): void { this.selected = athensDateTime().slice(0, 10); this.month = this.selected.slice(0, 7) + '-01'; }
 
   /** Monday-aligned cells, with empty padding outside this month. */
   get days(): string[] {

@@ -1,4 +1,4 @@
-import { bookingTimeError, nextRomanianMinute } from '../services/booking-time';
+import { bookingTimeError, nextAthensMinute } from '../services/booking-time';
 import { isPlatformBrowser, DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, ElementRef, HostListener, OnDestroy, OnInit, PLATFORM_ID, ViewChild, inject } from '@angular/core';
@@ -113,8 +113,8 @@ export class ListingListComponent implements OnInit, OnDestroy {
 
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  /** Earliest selectable Romanian minute. */
-  minimumDateTime = nextRomanianMinute();
+  /** Earliest selectable Athens minute. */
+  minimumDateTime = nextAthensMinute();
   /** Applied criteria carried into detail and restored on return. */
   detailParams: Record<string, string | number | boolean | number[]> = {};
   /** Explains an invalid requested period. */
@@ -347,7 +347,7 @@ export class ListingListComponent implements OnInit, OnDestroy {
     }
 
     const values = this.filterForm.getRawValue();
-    this.minimumDateTime = nextRomanianMinute();
+    this.minimumDateTime = nextAthensMinute();
     this.periodError = values.startDateTime || values.endDateTime
       ? bookingTimeError(values.startDateTime, values.endDateTime) : null;
     if (this.periodError) return false;

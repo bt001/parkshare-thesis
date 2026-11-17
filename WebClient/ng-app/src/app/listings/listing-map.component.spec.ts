@@ -43,7 +43,8 @@ describe('ListingMapComponent', () => {
     const marker = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('[data-listing-id="7"]');
 
     expect(marker).not.toBeNull();
-    expect(marker?.textContent).toContain('12 RON');
+    expect(marker?.textContent).toContain('12 €/h');
+    expect(marker?.closest('.leaflet-marker-icon')?.getAttribute('aria-label')).toBe('<Central parking>, 12 EUR per hour');
     expect(marker?.innerHTML).not.toContain('<central parking>');
     marker?.closest<HTMLElement>('.leaflet-marker-icon')?.click();
     expect(selectionSpy).toHaveBeenCalledWith(listing);

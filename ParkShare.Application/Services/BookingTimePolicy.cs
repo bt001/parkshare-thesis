@@ -1,15 +1,15 @@
 namespace ParkShare.Application.Services
 {
-    /// <summary>Validates Romanian booking wall-clock values without relying on the server time zone.</summary>
+    /// <summary>Validates Athens booking wall-clock values without relying on the server time zone.</summary>
     public sealed class BookingTimePolicy
     {
-        private static readonly TimeZoneInfo Zone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Bucharest");
+        private static readonly TimeZoneInfo Zone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Athens");
         private readonly TimeProvider _clock;
 
         /// <summary>Creates the time policy with an injectable UTC clock.</summary>
         public BookingTimePolicy(TimeProvider clock) => _clock = clock;
 
-        /// <summary>Returns whether a valid Romanian booking end has been reached by the server clock.</summary>
+        /// <summary>Returns whether a valid Athens booking end has been reached by the server clock.</summary>
         public bool HasEnded(DateTime end)
             => end.Kind == DateTimeKind.Unspecified && !Zone.IsInvalidTime(end) && !Zone.IsAmbiguousTime(end)
                 && TimeZoneInfo.ConvertTimeToUtc(end, Zone) <= _clock.GetUtcNow().UtcDateTime;
@@ -18,14 +18,14 @@ namespace ParkShare.Application.Services
         public string? Validate(DateTime start, DateTime end)
         {
             if (start.Kind != DateTimeKind.Unspecified || end.Kind != DateTimeKind.Unspecified)
-                return "Use Romanian local times without a UTC suffix or offset.";
+                return "Use Athens local times without a UTC suffix or offset.";
             if (start >= end)
                 return "End time must be after start time.";
             if (Zone.IsInvalidTime(start) || Zone.IsInvalidTime(end)
                 || Zone.IsAmbiguousTime(start) || Zone.IsAmbiguousTime(end))
-                return "Choose times outside the daylight-saving clock change in Romania.";
+                return "Choose times outside the daylight-saving clock change in Greece.";
             if (TimeZoneInfo.ConvertTimeToUtc(start, Zone) <= _clock.GetUtcNow().UtcDateTime)
-                return "Booking start time must be in the future (Romanian time).";
+                return "Booking start time must be in the future (Athens time).";
             return null;
         }
     }

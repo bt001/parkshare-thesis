@@ -15,7 +15,7 @@ import { BookingService } from '../api/bookings/booking.service';
 import { ListingDetails } from '../api/listings/listing.models';
 import { ListingService } from '../api/listings/listing.service';
 
-import { bookingTimeError, nextRomanianMinute } from '../services/booking-time';
+import { bookingTimeError, nextAthensMinute } from '../services/booking-time';
 
 interface BookingForm {
   startDateTime: FormControl<string>;
@@ -36,8 +36,8 @@ export class ListingDetailComponent implements OnInit {
   private readonly bookingService = inject(BookingService);
   readonly authService = inject(AuthService);
 
-  /** Earliest selectable Romanian minute, refreshed on selection and submission. */
-  minimumDateTime = nextRomanianMinute();
+  /** Earliest selectable Athens minute, refreshed on selection and submission. */
+  minimumDateTime = nextAthensMinute();
   readonly bookingForm = new FormGroup<BookingForm>({
     startDateTime: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     endDateTime: new FormControl('', { nonNullable: true, validators: [Validators.required] })
@@ -99,7 +99,7 @@ export class ListingDetailComponent implements OnInit {
       return;
     }
 
-    this.minimumDateTime = nextRomanianMinute();
+    this.minimumDateTime = nextAthensMinute();
     this.selectedWindowId = window.availabilityWindowId;
     this.bookingResult = undefined;
     this.bookingErrorMessages = [];
@@ -119,7 +119,7 @@ export class ListingDetailComponent implements OnInit {
       return;
     }
 
-    this.minimumDateTime = nextRomanianMinute();
+    this.minimumDateTime = nextAthensMinute();
     const period = this.bookingForm.getRawValue();
     const timeError = bookingTimeError(period.startDateTime, period.endDateTime);
     if (timeError) {
@@ -176,9 +176,9 @@ export class ListingDetailComponent implements OnInit {
     return !window.isBlocked && bookingTimeError(this.windowStart(window), window.endDateTime.slice(0, 16)) === null;
   }
 
-  /** Clips an ongoing window to the next Romanian minute. */
+  /** Clips an ongoing window to the next Athens minute. */
   private windowStart(window: AvailabilityWindow): string {
-    const minimum = nextRomanianMinute();
+    const minimum = nextAthensMinute();
     const start = window.startDateTime.slice(0, 16);
     return start > minimum ? start : minimum;
   }

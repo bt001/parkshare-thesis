@@ -14,7 +14,7 @@
   </div>
   <button type="submit" [disabled]="!!changingId">Apply filters</button>
 </form>
-<p class="time-note">Parking start and end times are shown in Romanian local time.</p>
+<p class="time-note">Parking start and end times are shown in Athens local time.</p>
 @if (successMessage) { <div class="message" role="status">{{ successMessage }}</div> }
 @if (errorMessages.length) { <div class="message error" role="alert">@for (message of errorMessages; track message) { <p>{{ message }}</p> }</div> }
 @if (isLoading) {

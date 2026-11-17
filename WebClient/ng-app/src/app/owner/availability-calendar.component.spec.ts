@@ -20,7 +20,7 @@ describe('AvailabilityCalendarComponent', () => {
     component.month = '2030-12-01'; component.moveMonth(1); expect(component.month).toBe('2031-01-01');
     component.moveMonth(-1); expect(component.selected).toBe('2030-12-01');
   });
-  it('selects today in Romania even when the UTC date differs', () => {
+  it('selects today in Greece even when the UTC date differs', () => {
     jasmine.clock().install();
     try { jasmine.clock().mockDate(new Date('2030-01-01T22:30:00Z')); component.today(); expect(component.selected).toBe('2030-01-02'); }
     finally { jasmine.clock().uninstall(); }

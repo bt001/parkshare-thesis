@@ -1,7 +1,7 @@
 <section aria-label="Availability calendar">
   <header><h2>Availability calendar</h2><button type="button" (click)="refresh.emit()" [disabled]="unavailable || loading">Refresh calendar</button></header>
   <p>{{ alwaysAvailable ? 'Available by default, except blocked periods and confirmed bookings.' : 'Available only within published open windows, except blocked periods and confirmed bookings.' }}</p>
-  <p class="hint">Romanian local time. Indicators mark periods touching a day, not whole-day availability. Booking validation remains authoritative.</p>
+  <p class="hint">Athens local time. Indicators mark periods touching a day, not whole-day availability. Booking validation remains authoritative.</p>
   <nav aria-label="Calendar month"><button type="button" (click)="moveMonth(-1)">Previous month</button><strong aria-live="polite">{{ month | date:'MMMM yyyy' }}</strong><button type="button" (click)="moveMonth(1)">Next month</button><button type="button" (click)="today()">Today</button></nav>
   @if (unavailable) { <p role="status">Calendar windows are unavailable while availability is loading or needs retry.</p> }
   @if (loading) { <p role="status">Loading confirmed bookings…</p> }

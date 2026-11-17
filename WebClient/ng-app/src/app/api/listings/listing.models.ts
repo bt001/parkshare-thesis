@@ -19,7 +19,7 @@ export interface SearchListingsRequest {
   lat?: number;
   lng?: number;
   radiusKm?: number;
-  /** Requested Romanian wall-clock period. */
+  /** Requested Athens wall-clock period. */
   startDateTime?: string;
   endDateTime?: string;
   page: number;
@@ -29,9 +29,9 @@ export interface SearchListingsRequest {
   titleContains?: string;
   /** Matches addresses containing this text. */
   addressContains?: string;
-  /** Inclusive minimum hourly price in RON. */
+  /** Inclusive minimum hourly price in EUR. */
   minPrice?: number;
-  /** Inclusive maximum hourly price in RON. */
+  /** Inclusive maximum hourly price in EUR. */
   maxPrice?: number;
   /** Restricts results to listings with an always-available schedule. */
   onlyAlwaysAvailable?: boolean;
@@ -41,7 +41,7 @@ export interface SearchListingItem {
   /** Public cover image endpoint. */ coverPhotoUrl?: string | null;
   /** Unrounded review average. */ averageRating?: number | null;
   /** Saved review count. */ ratingCount?: number;
-  /** Estimated RON cost for the applied period. */ estimatedPeriodCost?: number | null;
+  /** Estimated EUR cost for the applied period. */ estimatedPeriodCost?: number | null;
   id: number;
   title: string;
   address?: string | null;

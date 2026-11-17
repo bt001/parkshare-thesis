@@ -1,4 +1,4 @@
-﻿namespace ParkShare.Shared.Results.Listings
+namespace ParkShare.Shared.Results.Listings
 {
     public class SearchListingsResult : IApiResult
     {
@@ -16,7 +16,7 @@
         public double? AverageRating { get; set; }
         /// <summary>Number of saved reviews.</summary>
         public int RatingCount { get; set; }
-        /// <summary>Estimated RON cost for the requested wall-clock period.</summary>
+        /// <summary>Estimated EUR cost for the requested wall-clock period.</summary>
         public decimal? EstimatedPeriodCost { get; set; }
         public long Id { get; set; }
         public string Title { get; set; } = string.Empty;

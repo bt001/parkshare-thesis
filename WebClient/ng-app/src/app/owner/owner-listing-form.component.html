@@ -19,7 +19,7 @@
         <div><label for="longitude">Longitude</label><input id="longitude" type="number" step="any" formControlName="longitude" [attr.aria-invalid]="form.controls.longitude.touched && form.controls.longitude.invalid" aria-describedby="longitude-error" />@if (form.controls.longitude.touched && form.controls.longitude.invalid) { <p id="longitude-error" class="field-error">Enter a longitude between -180 and 180.</p> }</div>
       </div></fieldset>
       <fieldset [disabled]="isSubmitting"><legend>Pricing and schedule</legend><div class="form-grid">
-        <div><label for="price">Price per hour (RON)</label><input id="price" type="number" min="0.01" step="0.01" formControlName="pricePerHour" [attr.aria-invalid]="form.controls.pricePerHour.touched && form.controls.pricePerHour.invalid" aria-describedby="price-error" />@if (form.controls.pricePerHour.touched && form.controls.pricePerHour.invalid) { <p id="price-error" class="field-error">Enter a price of at least 0.01 RON.</p> }</div>
+        <div><label for="price">Price per hour (EUR/hour)</label><input id="price" type="number" min="0.01" step="0.01" formControlName="pricePerHour" [attr.aria-invalid]="form.controls.pricePerHour.touched && form.controls.pricePerHour.invalid" aria-describedby="price-error" />@if (form.controls.pricePerHour.touched && form.controls.pricePerHour.invalid) { <p id="price-error" class="field-error">Enter a price of at least 0.01 €.</p> }</div>
         <div><label for="size">Space size or type</label><input id="size" formControlName="size" /></div>
       </div>
       <label class="check-row"><input type="checkbox" formControlName="isAlwaysAvailable" /> Always available except for blocked periods</label>

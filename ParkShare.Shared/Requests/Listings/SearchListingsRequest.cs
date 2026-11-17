@@ -4,9 +4,9 @@ namespace ParkShare.Shared.Requests.Listings
 {
     public class SearchListingsRequest : IApiRequest
     {
-        /// <summary>Requested arrival in Romanian local time, paired with departure.</summary>
+        /// <summary>Requested arrival in Athens local time, paired with departure.</summary>
         public DateTime? StartDateTime { get; set; }
-        /// <summary>Requested departure in Romanian local time.</summary>
+        /// <summary>Requested departure in Athens local time.</summary>
         public DateTime? EndDateTime { get; set; }
         /// <summary>All selected amenity identifiers must match.</summary>
         public long[]? AmenityIds { get; set; }

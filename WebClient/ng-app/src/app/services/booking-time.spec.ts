@@ -1,11 +1,11 @@
-import { bookingTimeError, nextRomanianMinute, romanianDateTime } from './booking-time';
+import { bookingTimeError, nextAthensMinute, athensDateTime } from './booking-time';
 
-describe('Romanian booking time', () => {
+describe('Athens booking time', () => {
   const now = new Date('2026-09-12T12:00:00Z');
-  it('formats Romanian time and advances to the next future minute', () => {
-    expect(romanianDateTime(now)).toBe('2026-09-12T15:00');
-    expect(nextRomanianMinute(now)).toBe('2026-09-12T15:01');
-    expect(romanianDateTime(new Date('2026-01-12T12:00:00Z'))).toBe('2026-01-12T14:00');
+  it('formats Athens time and advances to the next future minute', () => {
+    expect(athensDateTime(now)).toBe('2026-09-12T15:00');
+    expect(nextAthensMinute(now)).toBe('2026-09-12T15:01');
+    expect(athensDateTime(new Date('2026-01-12T12:00:00Z'))).toBe('2026-01-12T14:00');
   });
   it('rejects exact-now and past periods but accepts future periods', () => {
     expect(bookingTimeError('2026-09-12T15:00', '2026-09-12T16:00', now)).not.toBeNull();

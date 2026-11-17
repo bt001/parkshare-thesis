@@ -62,7 +62,7 @@ Chat belongs to a booking and checks participation, so communication begins only
 
 The implementation uses Angular 21 and .NET 10; the original brief named .NET 8. This is a framework-baseline update within the same C#/ASP.NET Core architecture. Marker clicks select a preview with a **View space** link, rather than navigating immediately as described in the brief.
 
-Place search targets Greece with an Athens bias, while prices use RON and booking periods follow Romanian local time. These are explicit demonstration conventions, not a multi-country currency or timezone model. Period-filtered discovery checks availability for the requested interval; undated results represent active listings rather than a guarantee of immediate availability.
+Place search targets Greece with an Athens bias, while prices use EUR and booking periods follow Athens local time. These are explicit demonstration conventions, not a multi-country currency or timezone model. Period-filtered discovery checks availability for the requested interval; undated results represent active listings rather than a guarantee of immediate availability.
 
 The prototype retains manual chat/calendar refresh, local photo storage, stateless refresh tokens, browser storage and per-tab refresh coordination. Booking history displays current listing details rather than historical snapshots. Maps and calendars aggregate matching pages; this is not evidence of large-scale performance. Token revocation, cloud storage, historical snapshots and bounded geographic/calendar loading are possible future improvements.
 
