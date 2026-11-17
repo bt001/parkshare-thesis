@@ -68,7 +68,7 @@ The prototype retains manual chat/calendar refresh, local photo storage, statele
 
 Real payments, email/push delivery, verification/2FA, a support centre and owner-to-renter reviews were excluded from the brief. Cancellation and profile editing are not required workflows. Existing richer search controls extend the basic brief without making further commercial features necessary.
 
-AutoMapper is used for concise mapping in this non-commercial academic project. License keys must remain outside source control and may be supplied through `AutoMapper__LicenseKey`. Any production evolution should revisit mapping and licensing requirements rather than assume the thesis configuration is a production baseline.
+AutoMapper is used for concise mapping in this non-commercial academic project.
 
 ## Verification approach
 
