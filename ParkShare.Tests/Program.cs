@@ -64,6 +64,7 @@ internal static partial class Program
             await Test("notification recipients, pagination and idempotency", Notifications);
             await Test("notification write failure rolls back every booking mutation", NotificationRollback);
             await Test("concurrent repeated decisions emit one event", NotificationConcurrency);
+            await Test("activity counts and exact message read state", Activity);
             await Test("chat participation, persistence, statuses, validation and paging", ChatMessages);
             await Test("completion time, ownership, concurrency and atomic notifications", Completion);
             await Test("editable ratings, isolation, concurrency, aggregates and paging", RatingWorkflow);
@@ -167,7 +168,7 @@ internal static partial class Program
         var signal = new LockSignal();
         await using var request = Context(signal);
         var service = new BookingService(new BookingRepository(request), new ListingRepository(request), Availability(request),
-            new RepositoryTransactionCoordinator(request), new BookingTimePolicy(clock), NullLogger<BookingService>.Instance, new NotificationRepository(request));
+            new RepositoryTransactionCoordinator(request), new BookingTimePolicy(clock), NullLogger<BookingService>.Instance, new NotificationRepository(request), new ActivityRepository(request));
         var start = new DateTime(2026, 9, 12, 15, 1, 0);
         var pending = service.CreateAsync(new() { ListingId = listing, RenterId = _renter, StartDateTime = start, EndDateTime = start.AddHours(1) }, Ct);
         await signal.Started.Task.WaitAsync(TimeSpan.FromSeconds(15));
@@ -266,7 +267,7 @@ internal static partial class Program
 
     /// <summary>Creates the real booking service and SQL repositories.</summary>
     private static BookingService BookingService(ParkShareDbContext db)
-        => new(new BookingRepository(db), new ListingRepository(db), Availability(db), new RepositoryTransactionCoordinator(db), new BookingTimePolicy(Clock), NullLogger<BookingService>.Instance, new NotificationRepository(db));
+        => new(new BookingRepository(db), new ListingRepository(db), Availability(db), new RepositoryTransactionCoordinator(db), new BookingTimePolicy(Clock), NullLogger<BookingService>.Instance, new NotificationRepository(db), new ActivityRepository(db));
 
     /// <summary>Creates a test account.</summary>
     private static User User(string name) => new() { UserName = name, Email = name + "@test.invalid", FirstName = name, LastName = "Test", PasswordHash = "fixture", IsActive = true };

@@ -49,6 +49,17 @@ namespace ParkShare.Application.Services
                 return ServiceResult<ChatMessageResponse>.Success(ToResponse(message));
             }, bookingId, ct);
 
+        /// <inheritdoc/>
+        public Task<ServiceResult<ReadMessagesResponse>> MarkReadAsync(long bookingId, long userId, IReadOnlyCollection<long>? ids, CancellationToken ct)
+            => ExecuteAsync(async () =>
+            {
+                var booking = await FindParticipantBookingAsync(bookingId, userId, ct);
+                if (booking is null) return ServiceResult<ReadMessagesResponse>.WithError("Booking not found.");
+                if (ids is null || ids.Count < 1 || ids.Count > 100 || ids.Any(id => id <= 0) || ids.Distinct().Count() != ids.Count)
+                    return ServiceResult<ReadMessagesResponse>.WithError("Select 1 to 100 unique positive message IDs.");
+                return ServiceResult<ReadMessagesResponse>.Success(new() { UpdatedCount = await _messages.MarkReadAsync(bookingId, userId, ids, _clock.GetUtcNow().UtcDateTime, ct) });
+            }, bookingId, ct);
+
         /// <summary>Checks participation without exposing inaccessible booking existence.</summary>
         private async Task<Booking?> FindParticipantBookingAsync(long bookingId, long userId, CancellationToken ct)
         {

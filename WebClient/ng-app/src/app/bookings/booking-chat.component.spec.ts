@@ -1,3 +1,4 @@
+import { NotificationStateService } from '../notifications/notification-state.service';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
@@ -9,6 +10,7 @@ import { ChatService } from '../api/chat/chat.service';
 import { BookingChatComponent } from './booking-chat.component';
 
 describe('BookingChatComponent', () => {
+  const pulse = new Subject<void>();
   let fixture: ComponentFixture<BookingChatComponent>;
   let component: BookingChatComponent;
   let api: jasmine.SpyObj<ChatService>;
@@ -22,7 +24,7 @@ describe('BookingChatComponent', () => {
     api.get.and.returnValue(of(result)); api.send.and.returnValue(of(message));
     session = new BehaviorSubject<AuthSession | null>(testSession());
     params = new BehaviorSubject(convertToParamMap({ id: '9' }));
-    await TestBed.configureTestingModule({ imports: [BookingChatComponent], providers: [
+    await TestBed.configureTestingModule({ imports: [BookingChatComponent], providers: [{ provide: NotificationStateService, useValue: { pulse, canAcknowledge: false, refresh: () => {} } },
       provideRouter([]), { provide: ActivatedRoute, useValue: { paramMap: params } },
       { provide: ChatService, useValue: api },
       { provide: AuthService, useValue: { session$: session } }
@@ -91,4 +93,25 @@ describe('BookingChatComponent', () => {
     const pending = new Subject<ChatPage>(); api.get.and.returnValue(pending);
     component.refresh(); fixture.destroy(); expect(pending.observed).toBeFalse();
   });
+  it('polls newest messages without clearing draft or existing content during transport', () => {
+    fixture.detectChanges(); component.draft.setValue('Keep typing');
+    const transport = new Subject<ChatPage>(); api.get.and.returnValue(transport);
+    const previous = component.items; pulse.next();
+    expect(component.items).toBe(previous); expect(component.loading).toBeFalse();
+    transport.next({ ...result, items: [{ ...message, id: 8, messageText: 'New' }, ...result.items] }); transport.complete();
+    expect(component.items.some(m => m.id === 8)).toBeTrue(); expect(component.draft.value).toBe('Keep typing');
+  });
+  it('probes newer messages without replacing an older page', () => {
+    fixture.detectChanges(); api.get.and.returnValue(of({ ...result, page: 2 })); component.load(2);
+    const previous = component.items; api.get.and.returnValue(of({ ...result, totalCount: 52 })); pulse.next();
+    expect(component.items).toBe(previous); expect(component.page).toBe(2); expect(component.newMessages).toBeTrue();
+    fixture.destroy(); const calls = api.get.calls.count(); pulse.next(); expect(api.get.calls.count()).toBe(calls);
+  });
+  it('retains messages during failed polling and recovers automatically', () => {
+    fixture.detectChanges(); const previous = component.items;
+    api.get.and.returnValue(throwError(() => new Error('offline'))); pulse.next();
+    expect(component.items).toBe(previous); expect(component.error).toBe(''); expect(component.refreshError).toContain('unavailable');
+    api.get.and.returnValue(of(result)); pulse.next(); expect(component.refreshError).toBe('');
+  });
+
 });

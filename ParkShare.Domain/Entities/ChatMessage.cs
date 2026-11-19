@@ -1,4 +1,4 @@
-﻿namespace ParkShare.Domain.Entities
+namespace ParkShare.Domain.Entities
 {
     /// <summary>
     /// Chat message for a booking.
@@ -36,9 +36,10 @@
         /// </summary>
         public string MessageText { get; set; } = string.Empty;
 
-        /// <summary>
-        /// ChatMessage timestamp.
-        /// </summary>
+        /// <summary>UTC time when the receiving participant acknowledged this message.</summary>
+        public DateTime? ReadAt { get; set; }
+
+        /// <summary>UTC send timestamp.</summary>
         public DateTime SentAt { get; set; } = DateTime.UtcNow;
     }
 }

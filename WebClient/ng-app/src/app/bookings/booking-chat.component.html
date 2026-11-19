@@ -3,7 +3,9 @@
   <a [routerLink]="backLink">Back to bookings</a>
 </section>
 <button type="button" [disabled]="loading || sending" (click)="refresh()">Refresh / retry</button>
-<p class="refresh-hint">Use Refresh to check for new messages.</p>
+<p class="refresh-hint">Messages update automatically every few seconds.</p>
+@if (refreshError) { <p role="status">{{ refreshError }}</p> }
+@if (newMessages) { <button type="button" (click)="load(1)">New messages</button> }
 @if (loading) {
   <p class="feedback" role="status">Loading messages…</p>
 } @else if (error) {
@@ -13,7 +15,7 @@
 } @else {
   <section class="conversation" aria-label="Booking messages">
     @for (message of items; track message.id) {
-      <article class="workspace-card" [class.sent]="senderLabel(message) === 'You'">
+      <article [appAcknowledgeVisible]="[]" [readBookingId]="bookingId" [readMessageId]="incomingId(message)" class="workspace-card" [class.sent]="senderLabel(message) === 'You'">
         <strong>{{ senderLabel(message) }}</strong>
         <time [attr.datetime]="message.sentAt">{{ message.sentAt | date:'medium' }}</time>
         <p class="message-text">{{ message.messageText }}</p>

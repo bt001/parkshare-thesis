@@ -92,6 +92,16 @@ summary, button {
   display: none;
 }
 
+.activity-dot {
+  display: inline-block;
+  width: .5rem;
+  height: .5rem;
+  margin-left: .35rem;
+  border-radius: 50%;
+  background: #b42318;
+  vertical-align: middle;
+}
+
 @media (max-width: 999px) {
   .shell-header {
     flex-wrap: wrap;

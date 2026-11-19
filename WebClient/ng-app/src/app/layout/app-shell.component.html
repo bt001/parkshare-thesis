@@ -1,13 +1,13 @@
 <div class="shell">
   <header class="shell-header" (keydown.escape)="dismissHeader(menuButton, account, accountTrigger)">
     <a routerLink="/dashboard" class="brand-link">ParkShare<span>Find your space.</span></a>
-    <button #menuButton class="menu-toggle" type="button" [attr.aria-expanded]="navigationOpen" aria-controls="primary-navigation" (click)="navigationOpen = !navigationOpen">Menu</button>
+    <button #menuButton class="menu-toggle" type="button" [attr.aria-expanded]="navigationOpen" [attr.aria-label]="hasMenuActivity ? 'Menu, outstanding activity' : 'Menu'" aria-controls="primary-navigation" (click)="navigationOpen = !navigationOpen">Menu @if (hasMenuActivity) { <span class="activity-dot" aria-hidden="true"></span> }</button>
     <nav id="primary-navigation" class="shell-nav" [class.expanded]="navigationOpen" aria-label="Primary navigation" (click)="closeNavigation()">
       <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" ariaCurrentWhenActive="page">Dashboard</a>
       <a routerLink="/listings" routerLinkActive="active" ariaCurrentWhenActive="page">Browse parking</a>
-      <a routerLink="/bookings" routerLinkActive="active" ariaCurrentWhenActive="page">My bookings</a>
-      <a routerLink="/owner/listings" routerLinkActive="active" ariaCurrentWhenActive="page">{{ authService.hasRole('Owner') ? 'Owner workspace' : 'List your space' }}</a>
-      <a routerLink="/notifications" routerLinkActive="active" ariaCurrentWhenActive="page">Notifications @if (notifications.unavailable()) { <span title="Unread count unavailable; open inbox to refresh">(?)</span> } @else if (notifications.count() !== null) { <span>({{ notifications.count() }})</span> }</a>
+      <a routerLink="/bookings" routerLinkActive="active" ariaCurrentWhenActive="page">My bookings <app-activity-badge [count]="notifications.renterCount()" [stale]="notifications.unavailable()" /></a>
+      <a routerLink="/owner/listings" routerLinkActive="active" ariaCurrentWhenActive="page">{{ authService.hasRole('Owner') ? 'Owner workspace' : 'List your space' }} <app-activity-badge [count]="notifications.ownerCount()" [stale]="notifications.unavailable()" /></a>
+      <a routerLink="/notifications" routerLinkActive="active" ariaCurrentWhenActive="page">Notifications <app-activity-badge [count]="notifications.count()" [stale]="notifications.unavailable()" description="unread notifications" /></a>
     </nav>
     <details #account class="account-controls">
       <summary #accountTrigger>Account</summary>

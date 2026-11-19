@@ -1,5 +1,6 @@
-import { bookingTimeError, nextAthensMinute } from '../services/booking-time';
-import { isPlatformBrowser, DecimalPipe, NgTemplateOutlet } from '@angular/common';
+import { BookingPeriodComponent, BookingPeriodEdit } from '../shared/booking-period.component';
+import { bookingTimeError, nextAthensMinute, stayMinutes } from '../services/booking-time';
+import { isPlatformBrowser, DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, ElementRef, HostListener, OnDestroy, OnInit, PLATFORM_ID, ViewChild, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -19,9 +20,9 @@ type ListingViewMode = 'list' | 'map';
 @Component({
   selector: 'app-listing-list',
   standalone: true,
-  imports: [NgTemplateOutlet, DecimalPipe, RouterLink, ListingMapComponent, ReactiveFormsModule],
+  imports: [BookingPeriodComponent, DatePipe, NgTemplateOutlet, DecimalPipe, RouterLink, ListingMapComponent, ReactiveFormsModule],
   templateUrl: './listing-list.component.html',
-  styleUrl: './listing-list.component.scss'
+  styleUrls: ['./listing-list.component.scss', './listing-search-bar.scss']
 })
 export class ListingListComponent implements OnInit, OnDestroy {
   /** Single filter panel, presented inline only when there is sufficient room. */
@@ -35,9 +36,6 @@ export class ListingListComponent implements OnInit, OnDestroy {
   /** Last applied form snapshot, separate from URL and API criteria. */
   private appliedDraft = '';
 
-  /** Keeps the primary search compact on small screens until explicitly expanded. */
-  get searchExpanded(): boolean { return this.layoutWidth >= 768; }
-
   /** Whether filters fit alongside this results layout. */
   get filtersInline(): boolean { return this.layoutWidth >= (this.viewMode === 'map' ? 1440 : 1000); }
 
@@ -46,13 +44,23 @@ export class ListingListComponent implements OnInit, OnDestroy {
     return this.appliedDraft !== '' && this.appliedDraft !== this.draftSnapshot();
   }
 
+  /** Shows Apply feedback only for secondary drafts, not ordinary autocomplete typing. */
+  get hasSecondaryDraftChanges(): boolean {
+    if (!this.appliedDraft) return false;
+    const applied = JSON.parse(this.appliedDraft).values;
+    const values = this.filterForm.getRawValue();
+    return (['radiusKm', 'titleContains', 'addressContains', 'minPrice', 'maxPrice', 'minRating', 'amenityIds', 'sortBy', 'onlyAlwaysAvailable'] as const)
+      .some(key => JSON.stringify(applied[key]) !== JSON.stringify(values[key]));
+  }
+
   /** Includes geographic intent even when a new location has the same display label. */
   private draftSnapshot(): string {
-    return JSON.stringify({ values: this.filterForm.getRawValue(), place: this.selectedPlace, bounds: this.bounds });
+    return JSON.stringify({ values: this.filterForm.getRawValue(), incompletePeriod: this.incompletePeriod, place: this.selectedPlace, bounds: this.bounds });
   }
 
   /** Preserves drafts while reconciling a modal during viewport changes. */
   @HostListener('window:resize')
+  @HostListener('window:scroll')
   updateFilterLayout(): void {
     const dialog = this.filterDialog?.nativeElement;
     this.layoutWidth = window.innerWidth;
@@ -117,6 +125,22 @@ export class ListingListComponent implements OnInit, OnDestroy {
   minimumDateTime = nextAthensMinute();
   /** Applied criteria carried into detail and restored on return. */
   detailParams: Record<string, string | number | boolean | number[]> = {};
+  /** Resets local period drafts even when the restored API values stay blank. */
+  periodRevision = 0;
+  /** Retains duration-only edits for period validation. */
+  private incompletePeriod = false;
+  /** Updates a period draft without changing applied search criteria. */
+  editPeriod(period: BookingPeriodEdit): void {
+    this.incompletePeriod = period.incomplete;
+    this.filterForm.patchValue({ startDateTime: period.startDateTime, endDateTime: period.endDateTime });
+    this.periodError = null;
+    this.schedulePrimarySearch();
+  }
+  /** Formats only structurally valid saved periods in the compact departure summary. */
+  get draftDeparture(): string {
+    const { startDateTime, endDateTime } = this.filterForm.getRawValue();
+    return stayMinutes(startDateTime, endDateTime) === null ? '' : endDateTime;
+  }
   /** Explains an invalid requested period. */
   periodError: string | null = null;
   private readonly listingService = inject(ListingService);
@@ -134,7 +158,150 @@ export class ListingListComponent implements OnInit, OnDestroy {
   /** Whether any valid criteria have been applied. */
   private hasApplied = false;
 
-  /** Candidate places from the latest explicit lookup. */
+  /** Valid secondary state retained while an expired saved period is corrected. */
+  private restoredSecondary?: { criteria: Omit<SearchListingsRequest, 'page' | 'pageSize'>; radius: number; draft: string };
+  /** Fits the suggestions above or below the field without leaving the visible screen. */
+  get placePanelStyle(): Record<string, string> {
+    if (!isPlatformBrowser(this.platformId)) return {};
+    const field = this.element.nativeElement.querySelector('.place-field')?.getBoundingClientRect();
+    if (!field) return {};
+    const viewport = window.visualViewport;
+    const left = viewport?.offsetLeft ?? 0, top = viewport?.offsetTop ?? 0;
+    const width = viewport?.width ?? window.innerWidth, height = viewport?.height ?? window.innerHeight;
+    const below = top + height - field.bottom - 20, above = field.top - top - 20;
+    const upwards = below < 180 && above > below;
+    const panelWidth = Math.min(Math.max(field.width, 280), width - 24);
+    return { width: `${panelWidth}px`, left: `${Math.max(left + 12, Math.min(field.left, left + width - panelWidth - 12))}px`,
+      top: upwards ? 'auto' : `${Math.max(top + 12, field.bottom + 8)}px`,
+      bottom: upwards ? `${window.innerHeight - field.top + 8}px` : 'auto',
+      'max-height': `${Math.max(0, Math.min(352, upwards ? above : below))}px` };
+  }
+  /** Prevents primary text/number inputs from submitting secondary filter drafts on Enter. */
+  preventPrimarySubmit(event: Event): void {
+    if ((event.target as HTMLElement).matches('input')) event.preventDefault();
+  }
+  /** Whether the location suggestions panel is open. */
+  placePanelOpen = false;
+  /** Keyboard-highlighted location candidate. */
+  activePlaceIndex = -1;
+  /** Debounces name lookup independently of result refresh. */
+  private placeTimer?: ReturnType<typeof setTimeout>;
+  /** Debounces primary result updates. */
+  private primaryTimer?: ReturnType<typeof setTimeout>;
+  /** Invalidates late lookup responses even when a provider cannot cancel. */
+  private placeGeneration = 0;
+
+  /** Cancels pending lookup work without changing applied location criteria. */
+  private cancelPlaceLookup(): void {
+    clearTimeout(this.placeTimer);
+    this.placeGeneration++;
+    this.placeRequest?.unsubscribe();
+    this.isPlaceLoading = false;
+    this.activePlaceIndex = -1;
+  }
+  /** Opens suggestions and starts a debounced lookup for unresolved text. */
+  openPlaces(): void {
+    this.placePanelOpen = true;
+    const text = this.filterForm.controls.where.value.trim();
+    if (!this.selectedPlace && !this.places.length && !this.isPlaceLoading && text.length >= 2 && text.length <= 200) {
+      clearTimeout(this.placeTimer);
+      this.placeTimer = setTimeout(() => this.findPlaces(), 350);
+    }
+  }
+  /** Edits destination text without applying unresolved geographic input. */
+  typePlace(): void {
+    this.editPlace();
+    this.placePanelOpen = true;
+    const text = this.filterForm.controls.where.value.trim();
+    clearTimeout(this.primaryTimer);
+    if (!text) this.schedulePrimarySearch();
+    else if (text.length >= 2 && text.length <= 200) this.placeTimer = setTimeout(() => this.findPlaces(), 350);
+    else if (text.length > 200) this.placeError = 'Use a place name of at most 200 characters.';
+  }
+  /** Explicitly clears geographic intent and refreshes the valid primary search. */
+  clearPlace(): void {
+    this.filterForm.controls.where.setValue('');
+    this.typePlace();
+    this.element.nativeElement.querySelector<HTMLInputElement>('#search-where')?.focus();
+  }
+  /** Selects a suggestion as a user action, separate from route restoration. */
+  selectPlace(place: SearchPlace): void {
+    this.choosePlace(place);
+    this.placePanelOpen = false;
+    this.schedulePrimarySearch();
+  }
+  /** Supports listbox navigation while focus remains in the destination input. */
+  navigatePlaces(event: KeyboardEvent): void {
+    if (event.key === 'Escape') { event.preventDefault(); this.dismissPlaces(); return; }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault(); this.placePanelOpen = true;
+      if (this.places.length) {
+        this.activePlaceIndex = this.activePlaceIndex < 0 ? (event.key === 'ArrowDown' ? 0 : this.places.length - 1)
+          : (this.activePlaceIndex + (event.key === 'ArrowDown' ? 1 : this.places.length - 1)) % this.places.length;
+        this.element.nativeElement.querySelector<HTMLElement>('#place-option-' + this.activePlaceIndex)?.scrollIntoView({ block: 'nearest' });
+      }
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      if (this.activePlaceIndex >= 0 && this.places[this.activePlaceIndex]) this.selectPlace(this.places[this.activePlaceIndex]);
+      else if (!this.selectedPlace && this.filterForm.controls.where.value.trim().length >= 2) this.findPlaces();
+    }
+  }
+  /** Dismisses suggestions and prevents a pending lookup from reopening them. */
+  dismissPlaces(): void { this.placePanelOpen = false; this.cancelPlaceLookup(); }
+  /** Closes location suggestions when focus moves elsewhere. */
+  placeFocusOut(event: FocusEvent): void {
+    if (!(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node | null)) this.dismissPlaces();
+  }
+  /** Dismisses suggestions on a pointer action outside their field. */
+  @HostListener('document:pointerdown', ['$event'])
+  outsidePlaces(event: PointerEvent): void {
+    if (!(event.target as Element).closest('.place-field')) this.dismissPlaces();
+  }
+  /** Coalesces primary edits while retaining focused date and duration controls. */
+  private schedulePrimarySearch(): void {
+    clearTimeout(this.primaryTimer);
+    this.primaryTimer = setTimeout(() => this.applyPrimarySearch(), 250);
+  }
+  /** Compares criteria independently of object insertion order. */
+  private criteriaKey(criteria: Omit<SearchListingsRequest, 'page' | 'pageSize'>): string {
+    return JSON.stringify(Object.keys(criteria).sort().map(key => [key, criteria[key as keyof typeof criteria]]));
+  }
+  /** Applies only primary fields, preserving every unsubmitted secondary draft. */
+  private applyPrimarySearch(): void {
+    const values = this.filterForm.getRawValue();
+    this.periodError = this.incompletePeriod ? 'Choose an arrival and a valid length of stay.'
+      : values.startDateTime || values.endDateTime ? bookingTimeError(values.startDateTime, values.endDateTime) : null;
+    if (this.periodError) return;
+    if (values.where.trim() && !this.selectedPlace) {
+      this.placeError = 'Select a suggested place or clear Where. Results still show your previous search.';
+      return;
+    }
+    if (this.restorationError && !this.restoredSecondary) return;
+    if (this.restoredSecondary) {
+      this.appliedRadius = this.restoredSecondary.radius;
+      this.appliedDraft = this.restoredSecondary.draft;
+    }
+    const criteria = { ...(this.restoredSecondary?.criteria ?? this.appliedFilters) };
+    for (const key of ['lat', 'lng', 'radiusKm', 'south', 'north', 'west', 'east', 'startDateTime', 'endDateTime'] as const) delete criteria[key];
+    Object.assign(criteria, this.bounds ?? {}, this.selectedPlace ? {
+      lat: this.selectedPlace.latitude, lng: this.selectedPlace.longitude, radiusKm: this.appliedRadius
+    } : {}, values.startDateTime ? { startDateTime: values.startDateTime, endDateTime: values.endDateTime } : {});
+    const changed = !!this.restorationError || this.criteriaKey(criteria) !== this.criteriaKey(this.appliedFilters);
+    this.appliedFilters = criteria;
+    this.hasApplied = true;
+    this.searchArea = this.selectedPlace;
+    this.placeError = '';
+    if (this.appliedDraft) {
+      const snapshot = JSON.parse(this.appliedDraft);
+      Object.assign(snapshot.values, { where: values.where, startDateTime: values.startDateTime, endDateTime: values.endDateTime });
+      Object.assign(snapshot, { incompletePeriod: false, place: this.selectedPlace, bounds: this.bounds });
+      this.appliedDraft = JSON.stringify(snapshot);
+    }
+    if (changed) this.refreshResults();
+    else this.syncNavigation();
+  }
+
+  /** Candidate places from the latest destination lookup. */
   places: SearchPlace[] = [];
   /** Chosen geographic centre, distinct from unsubmitted text. */
   selectedPlace: SearchPlace | null = null;
@@ -172,11 +339,12 @@ export class ListingListComponent implements OnInit, OnDestroy {
     this.locationError = '';
   }
 
-  /** Selects device coordinates as a draft; Search remains the apply boundary. */
+  /** Selects device coordinates and schedules an automatic primary refresh. */
   useMyLocation(): void {
     if (this.isLocationLoading) return;
     this.invalidateLocation();
-    this.placeRequest?.unsubscribe();
+    this.cancelPlaceLookup();
+    clearTimeout(this.primaryTimer);
     this.places = [];
     this.placeError = '';
     const fallback = ' Try again, find a place, or search around the map centre.';
@@ -202,8 +370,8 @@ export class ListingListComponent implements OnInit, OnDestroy {
           fail('Your location is unavailable.');
           return;
         }
-        this.choosePlace({ latitude, longitude, label: 'Current location' });
-        this.locationStatus = 'Location selected. Search to apply your distance and filters.';
+        this.selectPlace({ latitude, longitude, label: 'Current location' });
+        this.locationStatus = 'Searching around your current location.';
       }, error => fail(error.code === 1
         ? 'Location permission was denied. Allow location in your browser settings to retry.'
         : error.code === 3 ? 'Location request timed out.' : 'Your location is unavailable.'));
@@ -212,11 +380,13 @@ export class ListingListComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** Resolves names only on explicit submission, cancelling superseded requests. */
+  /** Resolves the current name, cancelling superseded suggestion requests. */
   findPlaces(): void {
     this.invalidateLocation();
     const text = this.filterForm.controls.where.value.trim();
-    this.placeRequest?.unsubscribe();
+    this.cancelPlaceLookup();
+    this.placePanelOpen = true;
+    const generation = this.placeGeneration;
     this.places = [];
     this.placeError = '';
     if (text.length < 2 || text.length > 200) {
@@ -224,20 +394,22 @@ export class ListingListComponent implements OnInit, OnDestroy {
       return;
     }
     this.isPlaceLoading = true;
-    this.placeRequest = this.listingService.searchPlaces(text).pipe(finalize(() => this.isPlaceLoading = false))
+    this.placeRequest = this.listingService.searchPlaces(text).pipe(finalize(() => { if (generation === this.placeGeneration) this.isPlaceLoading = false; }))
       .subscribe({
         next: result => {
+          if (generation !== this.placeGeneration) return;
           this.places = result.items;
           if (!result.items.length) this.placeError = 'No places found. Try a fuller name or use the map.';
         },
-        error: () => this.placeError = 'Place lookup is unavailable. Retry Find place, or browse the map and search around its centre.'
+        error: () => { if (generation === this.placeGeneration) this.placeError = 'Place lookup is unavailable. Try again or search around the map centre.'; }
       });
   }
 
   /** Invalidates a selected name and any in-flight lookup when the text changes. */
   editPlace(): void {
     this.invalidateLocation();
-    this.placeRequest?.unsubscribe();
+    this.cancelPlaceLookup();
+    clearTimeout(this.primaryTimer);
     this.selectedPlace = null;
     this.bounds = null;
     this.filterForm.controls.radiusKm.enable();
@@ -248,7 +420,8 @@ export class ListingListComponent implements OnInit, OnDestroy {
   /** Selects an explicit geographic candidate without changing applied results yet. */
   choosePlace(place: SearchPlace): void {
     this.invalidateLocation();
-    this.placeRequest?.unsubscribe();
+    this.cancelPlaceLookup();
+    clearTimeout(this.primaryTimer);
     this.bounds = null;
     this.filterForm.controls.radiusKm.enable();
     this.selectedPlace = { ...place, label: place.label.slice(0, 200) };
@@ -305,12 +478,20 @@ export class ListingListComponent implements OnInit, OnDestroy {
 
   /** Applies valid draft values without retaining blank text or an unchecked toggle. */
   applyFilters(): void {
+    this.dismissPlaces();
+    clearTimeout(this.primaryTimer);
     this.invalidateLocation();
     if (!this.applyDraft()) {
       this.revealInvalidFilters();
       return;
     }
     this.closeFilters();
+    this.refreshResults();
+  }
+
+  /** Refreshes applied criteria without dismissing primary controls or stealing focus. */
+  private refreshResults(): void {
+    this.restoredSecondary = undefined;
     this.restorationError = '';
     this.selectedId = null;
     if (!this.bounds) this.viewport = null;
@@ -323,14 +504,12 @@ export class ListingListComponent implements OnInit, OnDestroy {
   private revealInvalidFilters(): void {
     const host = this.element.nativeElement;
     const dialog = this.filterDialog?.nativeElement;
-    const secondaryInvalid = ['titleContains', 'addressContains', 'minPrice', 'maxPrice', 'minRating']
+    const secondaryInvalid = ['titleContains', 'addressContains', 'minPrice', 'maxPrice', 'minRating', 'radiusKm']
       .some(key => this.filterForm.get(key)?.invalid) || this.filterForm.hasError('priceRange');
     if (secondaryInvalid && !this.filtersInline && dialog && !dialog.open) dialog.showModal();
     if (dialog?.matches(':modal')) {
       dialog.querySelector<HTMLElement>('input.ng-invalid, select.ng-invalid')?.focus();
     } else {
-      const primary = host.querySelector<HTMLDetailsElement>('.primary-search');
-      if (primary && !secondaryInvalid) primary.open = true;
       host.querySelector<HTMLElement>('input.ng-invalid, select.ng-invalid')?.focus();
     }
   }
@@ -348,32 +527,40 @@ export class ListingListComponent implements OnInit, OnDestroy {
 
     const values = this.filterForm.getRawValue();
     this.minimumDateTime = nextAthensMinute();
-    this.periodError = values.startDateTime || values.endDateTime
+    this.periodError = this.incompletePeriod ? 'Choose an arrival and a valid length of stay.' : values.startDateTime || values.endDateTime
       ? bookingTimeError(values.startDateTime, values.endDateTime) : null;
     if (this.periodError) return false;
     if (values.where.trim() && !this.selectedPlace) {
-      this.placeError = 'Use Find place and select a result, or clear Where to browse all parking.';
+      this.placeError = 'Select a suggested place or clear Where to browse all parking.';
       return false;
     }
     this.searchArea = this.selectedPlace;
     this.appliedRadius = values.radiusKm;
     this.appliedFilters = {
-      onlyActive: true,
+      ...this.secondaryCriteria(),
       ...(this.bounds ?? {}),
+      ...(this.selectedPlace ? { lat: this.selectedPlace.latitude, lng: this.selectedPlace.longitude, radiusKm: values.radiusKm } : {}),
+      ...(values.startDateTime ? { startDateTime: values.startDateTime, endDateTime: values.endDateTime } : {})
+    };
+    this.appliedDraft = this.draftSnapshot();
+    this.hasApplied = true;
+    return true;
+  }
+
+  /** Reads secondary criteria independently of pending location and period edits. */
+  private secondaryCriteria(): Omit<SearchListingsRequest, 'page' | 'pageSize'> {
+    const values = this.filterForm.getRawValue();
+    return {
+      onlyActive: true,
       ...(values.amenityIds.length ? { amenityIds: [...new Set(values.amenityIds)] } : {}),
       ...(values.minRating !== null ? { minRating: values.minRating } : {}),
       ...(values.sortBy !== 'newest' ? { sortBy: values.sortBy } : {}),
-      ...(this.selectedPlace ? { lat: this.selectedPlace.latitude, lng: this.selectedPlace.longitude, radiusKm: values.radiusKm } : {}),
-      ...(values.startDateTime ? { startDateTime: values.startDateTime, endDateTime: values.endDateTime } : {}),
       ...(values.titleContains ? { titleContains: values.titleContains } : {}),
       ...(values.addressContains ? { addressContains: values.addressContains } : {}),
       ...(values.minPrice !== null ? { minPrice: values.minPrice } : {}),
       ...(values.maxPrice !== null ? { maxPrice: values.maxPrice } : {}),
       ...(values.onlyAlwaysAvailable ? { onlyAlwaysAvailable: true } : {})
     };
-    this.appliedDraft = this.draftSnapshot();
-    this.hasApplied = true;
-    return true;
   }
 
   /** Discards results tied to previous search criteria. */
@@ -405,8 +592,11 @@ export class ListingListComponent implements OnInit, OnDestroy {
 
   /** Clears the draft and immediately restores active discovery results. */
   resetFilters(): void {
+    this.placePanelOpen = false;
     this.editPlace();
     this.filterForm.reset();
+    this.periodRevision++;
+    this.incompletePeriod = false;
     this.applyFilters();
   }
 
@@ -418,6 +608,8 @@ export class ListingListComponent implements OnInit, OnDestroy {
     this.placeRequest?.unsubscribe();
     this.amenityRequest?.unsubscribe();
     this.routeRequest?.unsubscribe();
+    this.cancelPlaceLookup();
+    clearTimeout(this.primaryTimer);
   }
 
   readonly pageSize = 12;
@@ -452,12 +644,17 @@ export class ListingListComponent implements OnInit, OnDestroy {
 
   /** Restores route state without submitting a new search or discarding pagination. */
   private restoreNavigation(params: ParamMap): void {
+    clearTimeout(this.primaryTimer);
+    this.restoredSecondary = undefined;
+    this.placePanelOpen = false;
     this.writtenKey = discoveryParamsKey(params);
     const previous = JSON.stringify(this.appliedFilters);
     const previousPage = this.page;
     const wasApplied = this.hasApplied && !this.restorationError;
     this.editPlace();
     this.filterForm.reset();
+    this.periodRevision++;
+    this.incompletePeriod = false;
     this.restorationError = '';
     const navigation = readDiscoveryNavigation(params);
     this.viewMode = navigation.view;
@@ -504,7 +701,12 @@ export class ListingListComponent implements OnInit, OnDestroy {
       || (params.has('sortBy') && !['newest', 'priceAsc', 'priceDesc', 'ratingDesc'].includes(params.get('sortBy')!))
       || (params.has('onlyAlwaysAvailable') && !['true', 'false'].includes(params.get('onlyAlwaysAvailable')!));
     if ((hasBounds && !validBounds) || malformed || !this.applyDraft()) {
-      this.restorationError = 'Saved search criteria are invalid or expired. Correct the filters and Search, or Reset to browse again.';
+      const secondaryValid = !this.filterForm.hasError('priceRange') && ['titleContains', 'addressContains', 'minPrice', 'maxPrice', 'minRating', 'radiusKm']
+        .every(key => this.filterForm.get(key)?.valid || this.filterForm.get(key)?.disabled);
+      if (!(hasBounds && !validBounds) && !malformed && secondaryValid) {
+        this.restoredSecondary = { criteria: this.secondaryCriteria(), radius: this.filterForm.controls.radiusKm.value, draft: this.draftSnapshot() };
+      }
+      this.restorationError = 'Saved search criteria are invalid or expired. Correct your search or apply valid filters, or reset to browse again.';
       this.filterForm.markAllAsTouched();
       this.listRequest?.unsubscribe();
       this.listings = [];

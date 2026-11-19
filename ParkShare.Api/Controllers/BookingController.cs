@@ -114,6 +114,15 @@ namespace ParkShare.Api.Controllers
                 body, _currentUser, (request, userId) => request.UserId = userId);
         }
 
+        /// <summary>Acknowledges only incoming messages explicitly displayed to this participant.</summary>
+        [HttpPost("{id:long}/messages/read")]
+        public Task<IActionResult> ReadMessages([FromRoute] long id, [FromBody] ReadMessagesRequest body)
+        {
+            body.BookingId = id;
+            return ProcessAuthenticatedCommandAsync<ReadMessagesRequest, ReadMessagesResult, ReadBookingMessagesCommand, ReadMessagesResponse>(
+                body, _currentUser, (request, userId) => request.UserId = userId);
+        }
+
         [HttpGet("{id:long}")]
         [ProducesResponseType(typeof(BookingResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

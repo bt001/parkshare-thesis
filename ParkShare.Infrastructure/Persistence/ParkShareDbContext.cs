@@ -148,6 +148,9 @@ namespace ParkShare.Infrastructure.Persistence
                 .HasForeignKey(la => la.AmenityId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<ChatMessage>().HasIndex(m => m.BookingId);
+            modelBuilder.Entity<ChatMessage>().HasIndex(m => new { m.BookingId, m.SenderId }).HasFilter("[ReadAt] IS NULL");
+
             modelBuilder.Entity<ChatMessage>()
                 .HasOne(cm => cm.Booking)
                 .WithMany(b => b.ChatMessages)

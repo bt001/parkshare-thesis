@@ -1,8 +1,10 @@
+<p class="time-note" aria-live="polite">Updates automatically every few seconds.</p>
+@if (refreshError) { <p class="message" role="status">{{ refreshError }}</p> }
 <section class="page-heading">
   <div><p class="eyebrow">Owner workspace</p><h1>Booking requests</h1><p>Review requests across your parking spaces.</p></div>
   <button type="button" [disabled]="isLoading || !!changingId" (click)="refresh()">Refresh / retry</button>
 </section>
-<nav class="workspace-nav" aria-label="Owner workspace"><a routerLink="/owner/listings">Listings</a><a routerLink="/owner/bookings" class="active" aria-current="page">Booking requests</a></nav>
+<nav class="workspace-nav" aria-label="Owner workspace"><a routerLink="/owner/listings">Listings</a><a routerLink="/owner/bookings" class="active" aria-current="page">Booking requests <app-activity-badge [count]="ownerAttention" /></a></nav>
 <form class="filter-bar" [formGroup]="filters" (ngSubmit)="applyFilters()">
   <div class="filter-field">
     <label for="booking-listing">Listing</label>
@@ -27,8 +29,8 @@
   <p class="results-summary">{{ totalCount }} booking requests · Page {{ page }}</p>
   <div class="card-grid">
     @for (booking of bookings; track booking.bookingId) {
-      <article class="workspace-card booking-card">
-        <div class="card-heading"><span class="badge status-{{ booking.statusText.toLowerCase() }}">{{ booking.statusText }}</span><small>Request #{{ booking.bookingId }}</small></div>
+      <article [appAcknowledgeVisible]="booking.unreadNotificationIds" class="workspace-card booking-card">
+        <div class="card-heading"><span class="badge status-{{ booking.statusText.toLowerCase() }}">{{ booking.statusText }}</span><small>Request #{{ booking.bookingId }}</small>@if (booking.unreadNotificationIds?.length) { <span class="badge">New update</span> }</div>
         <div class="booking-details"><h2>{{ booking.listingTitle }}</h2><small>Requested {{ booking.createdAt | date:'medium' }}</small></div>
         <dl class="booking-period"><dt>Start</dt><dd>{{ booking.startUtc | date:'medium' }}</dd><dt>End</dt><dd>{{ booking.endUtc | date:'medium' }}</dd></dl>
         <div class="actions">
@@ -37,7 +39,7 @@
             <button class="danger" type="button" [disabled]="isLoading || !!changingId" (click)="decide(booking, false)">Reject</button>
           }
           @if (booking.canComplete) { <button class="primary-button" type="button" [disabled]="isLoading || !!changingId" (click)="complete(booking)">{{ changingId === booking.bookingId ? 'Completing…' : 'Complete' }}</button> }
-          <a [routerLink]="['/bookings', booking.bookingId, 'chat']">Chat</a>
+          <a [routerLink]="['/bookings', booking.bookingId, 'chat']">Chat <app-activity-badge [count]="booking.unreadMessageCount" description="unread messages" /></a>
         </div>
       </article>
     }

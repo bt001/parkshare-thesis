@@ -12,6 +12,11 @@ namespace ParkShare.Shared.Results.Bookings
 
     public class OwnerBookingItemResult
     {
+        /// <summary>Incoming unread chat messages for this participant.</summary>
+        public int UnreadMessageCount { get; set; }
+        /// <summary>Exact unread notification identities represented by this row.</summary>
+        public List<long> UnreadNotificationIds { get; set; } = [];
+
         public long BookingId { get; set; }
         public long ListingId { get; set; }
         public string ListingTitle { get; set; } = string.Empty;

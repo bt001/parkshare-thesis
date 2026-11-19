@@ -1,3 +1,5 @@
+import { NotificationStateService } from '../notifications/notification-state.service';
+import { ActivityBadgeComponent } from '../shared/activity-badge.component';
 import { DecimalPipe, DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject } from '@angular/core';
@@ -10,11 +12,18 @@ import { ListingService } from '../api/listings/listing.service';
 @Component({
   selector: 'app-owner-listings',
   standalone: true,
-  imports: [DecimalPipe, DatePipe, RouterLink],
+  imports: [ActivityBadgeComponent, DecimalPipe, DatePipe, RouterLink],
   templateUrl: './owner-listings.component.html',
   styleUrl: './owner-workspace.scss'
 })
 export class OwnerListingsComponent implements OnInit {
+  /** Activity state inherited from the authenticated shell. */
+  readonly activity = inject(NotificationStateService, { optional: true });
+  /** Distinct owned bookings requiring attention. */
+  get ownerAttention(): number | null { return this.activity?.ownerCount?.() ?? null; }
+  /** Distinct rented bookings requiring attention. */
+  get renterAttention(): number | null { return this.activity?.renterCount?.() ?? null; }
+
   private readonly listingService = inject(ListingService);
 
   listings: OwnerListingItem[] = [];

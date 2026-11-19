@@ -18,6 +18,11 @@ namespace ParkShare.Shared.Results.Bookings
     /// <summary>A booking with current listing details.</summary>
     public class RenterBookingItemResult
     {
+        /// <summary>Incoming unread chat messages for this participant.</summary>
+        public int UnreadMessageCount { get; set; }
+        /// <summary>Exact unread notification identities represented by this row.</summary>
+        public List<long> UnreadNotificationIds { get; set; } = [];
+
         /// <summary>Booking identifier.</summary>
         public long BookingId { get; set; }
         /// <summary>Listing identifier.</summary>

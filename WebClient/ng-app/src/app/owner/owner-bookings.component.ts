@@ -1,3 +1,6 @@
+import { NotificationStateService } from '../notifications/notification-state.service';
+import { ActivityBadgeComponent } from '../shared/activity-badge.component';
+import { AcknowledgeVisibleDirective } from '../shared/acknowledge-visible.directive';
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
@@ -12,14 +15,24 @@ import { ListingService } from '../api/listings/listing.service';
 
 /** Owner decisions with server-refreshed results and applied-filter paging. */
 @Component({
-  selector: 'app-owner-bookings', standalone: true, imports: [DatePipe, ReactiveFormsModule, RouterLink],
+  selector: 'app-owner-bookings', standalone: true, imports: [ActivityBadgeComponent, AcknowledgeVisibleDirective, DatePipe, ReactiveFormsModule, RouterLink],
   templateUrl: './owner-bookings.component.html', styleUrl: '../bookings/booking-list.scss',
   host: { class: 'ui-controls' }
 })
 export class OwnerBookingsComponent implements OnInit, OnDestroy {
+  /** Activity state inherited from the authenticated shell. */
+  readonly activity = inject(NotificationStateService, { optional: true });
+  /** Distinct owned bookings requiring attention. */
+  get ownerAttention(): number | null { return this.activity?.ownerCount?.() ?? null; }
+  /** Distinct rented bookings requiring attention. */
+  get renterAttention(): number | null { return this.activity?.renterCount?.() ?? null; }
+
   private readonly bookingService = inject(BookingService);
   private readonly listingService = inject(ListingService);
   private request?: Subscription;
+  private polling?: Subscription;
+  private account?: Subscription;
+  /** Non-blocking background refresh feedback. */ refreshError = '';
   private decision?: Subscription;
   private appliedFilters: Omit<GetOwnerBookingsRequest, 'page' | 'pageSize'> = {};
   private requestedPage = 1;
@@ -40,10 +53,17 @@ export class OwnerBookingsComponent implements OnInit, OnDestroy {
   get canGoForward(): boolean { return this.page * this.pageSize < this.totalCount && !this.isLoading && !this.changingId; }
 
   /** Loads the initial page through the same cancellable retrieval path. */
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.account = this.activity?.accountChanged?.subscribe(id => {
+      this.request?.unsubscribe(); this.decision?.unsubscribe(); this.listingsLoaded = false;
+      this.listings = []; this.bookings = []; this.totalCount = 0; this.page = 1; this.requestedPage = 1;
+      this.appliedFilters = {}; this.filters.reset({ listingId: '', status: '' }); this.successMessage = ''; this.refreshError = ''; this.errorMessages = [];
+      if (id) this.load();
+    });
+    this.load(); this.polling = this.activity?.pulse?.subscribe(() => { if (!this.changingId && (!this.request || this.request.closed)) this.load(this.page, true); }); }
 
   /** Cancels outstanding subscriptions when navigating away. */
-  ngOnDestroy(): void { this.request?.unsubscribe(); this.decision?.unsubscribe(); }
+  ngOnDestroy(): void { this.polling?.unsubscribe(); this.account?.unsubscribe(); this.request?.unsubscribe(); this.decision?.unsubscribe(); }
 
   /** Applies draft filters and resets paging. */
   applyFilters(): void {
@@ -61,13 +81,11 @@ export class OwnerBookingsComponent implements OnInit, OnDestroy {
   refresh(): void { if (!this.changingId) this.load(this.requestedPage); }
 
   /** Retrieves current server state and falls back when the last page disappears. */
-  load(page = 1): void {
+  load(page = 1, background = false): void {
     if (page < 1) return;
     this.request?.unsubscribe();
     this.requestedPage = page;
-    this.isLoading = true;
-    this.errorMessages = [];
-    this.bookings = [];
+    if (!background) { this.isLoading = true; this.errorMessages = []; this.bookings = []; }
     const filters = { ...this.appliedFilters, pageSize: this.pageSize };
     const bookings = this.bookingService.getForOwner({ ...filters, page }).pipe(
       switchMap((result) => {
@@ -82,13 +100,14 @@ export class OwnerBookingsComponent implements OnInit, OnDestroy {
       listings: this.listingsLoaded ? of({ items: this.listings }) : this.listingService.getOwnerListings()
     }).pipe(finalize(() => (this.isLoading = false))).subscribe({
       next: ({ bookings, listings }) => {
+        this.refreshError = ''; this.errorMessages = [];
         this.listings = listings.items;
         this.listingsLoaded = true;
         this.page = bookings.page;
         this.totalCount = bookings.totalCount;
         this.bookings = bookings.items;
       },
-      error: (error) => { this.errorMessages = this.getErrors(error, 'Booking requests could not be loaded. Please retry.'); }
+      error: (error) => { if (background) this.refreshError = 'Updates temporarily unavailable. Retrying automatically.'; else this.errorMessages = this.getErrors(error, 'Booking requests could not be loaded. Please retry.'); }
     });
   }
 
@@ -102,7 +121,7 @@ export class OwnerBookingsComponent implements OnInit, OnDestroy {
     this.decision = operation.pipe(finalize(() => (this.changingId = undefined))).subscribe({
       next: () => {
         this.successMessage = `Booking #${booking.bookingId} ${approve ? 'approved' : 'rejected'}.`;
-        this.load(this.page);
+        this.activity?.refresh(); this.load(this.page);
       },
       error: (error) => { this.errorMessages = this.getErrors(error, 'The booking decision could not be saved.'); }
     });
@@ -113,7 +132,7 @@ export class OwnerBookingsComponent implements OnInit, OnDestroy {
     if (!booking.canComplete || this.changingId || this.isLoading) return;
     this.changingId = booking.bookingId; this.errorMessages = []; this.successMessage = '';
     this.decision = this.bookingService.complete(booking.bookingId).pipe(finalize(() => this.changingId = undefined)).subscribe({
-      next: () => { this.successMessage = `Booking #${booking.bookingId} completed.`; this.load(this.page); },
+      next: () => { this.successMessage = `Booking #${booking.bookingId} completed.`; this.activity?.refresh(); this.load(this.page); },
       error: error => { this.errorMessages = this.getErrors(error, 'The booking could not be completed.'); }
     });
   }

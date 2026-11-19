@@ -1,3 +1,4 @@
+import { NotificationStateService } from '../notifications/notification-state.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -10,6 +11,7 @@ import { GetRenterBookingsResult } from '../api/bookings/booking.models';
 import { RenterBookingsComponent } from './renter-bookings.component';
 
  describe('RenterBookingsComponent', () => {
+  const pulse = new Subject<void>();
   let fixture: ComponentFixture<RenterBookingsComponent>;
   let component: RenterBookingsComponent;
   const service = jasmine.createSpyObj<BookingService>('BookingService', ['getForRenter']);
@@ -27,7 +29,7 @@ import { RenterBookingsComponent } from './renter-bookings.component';
     service.getForRenter.calls.reset();
     service.getForRenter.and.returnValue(of(result));
     await TestBed.configureTestingModule({ imports: [RenterBookingsComponent],
-      providers: [provideRouter([]), { provide: AuthService, useValue: { session$: session } }, { provide: RatingService, useValue: ratings }, { provide: BookingService, useValue: service }] }).compileComponents();
+      providers: [{ provide: NotificationStateService, useValue: { pulse, canAcknowledge: false, refresh: () => {} } },provideRouter([]), { provide: AuthService, useValue: { session$: session } }, { provide: RatingService, useValue: ratings }, { provide: BookingService, useValue: service }] }).compileComponents();
     fixture = TestBed.createComponent(RenterBookingsComponent);
     component = fixture.componentInstance;
   });
@@ -143,4 +145,17 @@ import { RenterBookingsComponent } from './renter-bookings.component';
     component.loadPage(2); fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('No bookings on this page'); expect(component.canGoBack).toBeTrue();
   });
+  it('keeps an active rating draft intact across background ticks', () => {
+    fixture.detectChanges(); component.editRating({ ...component.bookings[0], status: 3 });
+    component.review.controls.comment.setValue('Private draft'); const calls = service.getForRenter.calls.count();
+    pulse.next(); expect(service.getForRenter.calls.count()).toBe(calls); expect(component.review.controls.comment.value).toBe('Private draft');
+  });
+  it('retains current rows while background refresh is pending or fails', () => {
+    fixture.detectChanges(); const previous = component.bookings; const transport = new Subject<GetRenterBookingsResult>();
+    service.getForRenter.and.returnValue(transport); pulse.next();
+    expect(component.bookings).toBe(previous); expect(component.isLoading).toBeFalse();
+    transport.error(new Error('offline')); expect(component.bookings).toBe(previous); expect(component.errorMessages).toEqual([]);
+    expect(component.refreshError).toContain('unavailable'); service.getForRenter.and.returnValue(of(result)); pulse.next(); expect(component.refreshError).toBe('');
+  });
+
 });

@@ -56,7 +56,7 @@ The client stores tokens in browser storage and coordinates session recovery. Pr
 
 Leaflet displays OpenStreetMap tiles; server-side Geoapify lookup provides place search without exposing its credential in the client. Search criteria are explicitly applied, and panning retains camera state until the user requests a search of the visible area. Linked cards and marker previews let renters compare results before opening details.
 
-Chat belongs to a booking and checks participation, so communication begins only after a request exists. In-app notifications communicate booking events. Ratings are limited to the renter of a completed booking, tying reviews to recorded use rather than unrestricted submissions.
+Chat belongs to a booking and checks participation, so communication begins only after a request exists. In-app notifications communicate booking events. Navigation and booking chat badges expose pending requests, unseen decisions and incoming messages. Visible pages check for updates every five seconds; read acknowledgements apply only to displayed activity in a focused tab. Ratings are limited to the renter of a completed booking, tying reviews to recorded use rather than unrestricted submissions.
 
 ## Thesis conventions and boundaries
 
@@ -64,7 +64,7 @@ The implementation uses Angular 21 and .NET 10; the original brief named .NET 8.
 
 Place search targets Greece with an Athens bias, while prices use EUR and booking periods follow Athens local time. These are explicit demonstration conventions, not a multi-country currency or timezone model. Period-filtered discovery checks availability for the requested interval; undated results represent active listings rather than a guarantee of immediate availability.
 
-The prototype retains manual chat/calendar refresh, local photo storage, stateless refresh tokens, browser storage and per-tab refresh coordination. Booking history displays current listing details rather than historical snapshots. Maps and calendars aggregate matching pages; this is not evidence of large-scale performance. Token revocation, cloud storage, historical snapshots and bounded geographic/calendar loading are possible future improvements.
+The prototype retains manual calendar refresh, five-second polling for booking/chat/inbox activity, local photo storage, stateless refresh tokens, browser storage and per-tab refresh coordination. Booking history displays current listing details rather than historical snapshots. Maps and calendars aggregate matching pages; this is not evidence of large-scale performance. Token revocation, cloud storage, historical snapshots and bounded geographic/calendar loading are possible future improvements.
 
 Real payments, email/push delivery, verification/2FA, a support centre and owner-to-renter reviews were excluded from the brief. Cancellation and profile editing are not required workflows. Existing richer search controls extend the basic brief without making further commercial features necessary.
 

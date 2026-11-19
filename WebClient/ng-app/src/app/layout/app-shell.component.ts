@@ -1,3 +1,4 @@
+import { ActivityBadgeComponent } from '../shared/activity-badge.component';
 import { Component, ElementRef, ViewChild, inject } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
@@ -10,13 +11,18 @@ import { AuthService } from '../api/auth/auth.service';
   selector: 'app-shell',
   standalone: true,
   providers: [NotificationStateService],
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [ActivityBadgeComponent, RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss'
 })
 export class AppShellComponent {
   /** Unread state owned by this authenticated shell. */
   readonly notifications = inject(NotificationStateService);
+  /** Whether any destination in the menu has outstanding activity. */
+  get hasMenuActivity(): boolean {
+    return [this.notifications.count(), this.notifications.ownerCount(), this.notifications.renterCount()]
+      .some(count => (count ?? 0) > 0);
+  }
   /** Starts notification refresh for the active account. */
   constructor() {
     this.notifications.start();

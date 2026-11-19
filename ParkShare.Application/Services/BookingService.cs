@@ -14,6 +14,7 @@ namespace ParkShare.Application.Services
     public class BookingService : IBookingService
     {
         private readonly IBookingRepository _bookingRepository;
+        private readonly IActivityRepository _activity;
         private readonly INotificationRepository _notificationRepository;
         private readonly IListingRepository _listingRepository;
         private readonly IAvailabilityService _availabilityService;
@@ -31,13 +32,14 @@ namespace ParkShare.Application.Services
             IRepositoryTransactionCoordinator transactions,
             BookingTimePolicy timePolicy,
             ILogger<BookingService> logger,
-            INotificationRepository notificationRepository)
+            INotificationRepository notificationRepository, IActivityRepository activity)
         {
             _availabilityService = availabilityService;
             _transactions = transactions;
             _timePolicy = timePolicy;
             _logger = logger;
             _notificationRepository = notificationRepository;
+            _activity = activity;
             _bookingRepository = bookingRepository ?? throw new ArgumentNullException(nameof(bookingRepository));
             _listingRepository = listingRepository ?? throw new ArgumentNullException(nameof(listingRepository));
         }
@@ -245,26 +247,38 @@ namespace ParkShare.Application.Services
         /// <inheritdoc/>
         public async Task<ServiceResult<GetOwnerBookingsResponse>> GetOwnerByStatusesAsync(long ownerId, long? listingId, List<BookingStatus>? statuses, int page, int pageSize, CancellationToken ct)
         {
-            var results = await _bookingRepository.GetOwnerByStatusesAsync(ownerId, listingId, statuses, page, pageSize, ct);
-
-            return ServiceResult<GetOwnerBookingsResponse>.Success(new GetOwnerBookingsResponse
+            try
             {
-                Page = page,
-                PageSize = pageSize,
-                TotalCount = results.TotalCount,
-                Items = results.Items.Select(booking => new OwnerBookingItem
+                var results = await _bookingRepository.GetOwnerByStatusesAsync(ownerId, listingId, statuses, page, pageSize, ct);
+                var activity = await _activity.GetBookingsAsync(ownerId, results.Items.ToDictionary(b => b.Id, b => b.Status), ct);
+
+                return ServiceResult<GetOwnerBookingsResponse>.Success(new GetOwnerBookingsResponse
                 {
-                    BookingId = booking.Id,
-                    ListingId = booking.ListingId,
-                    ListingTitle = booking.Listing.Title,
-                    RenterId = booking.RenterId,
-                    StartUtc = booking.StartDateTime,
-                    EndUtc = booking.EndDateTime,
-                    CanComplete = booking.Status == BookingStatus.Confirmed && _timePolicy.HasEnded(booking.EndDateTime),
-                    Status = booking.Status,
-                    CreatedAt = booking.CreatedAt
-                }).ToList()
-            });
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalCount = results.TotalCount,
+                    Items = results.Items.Select(booking => new OwnerBookingItem
+                    {
+                        UnreadMessageCount = activity.GetValueOrDefault(booking.Id)?.UnreadMessageCount ?? 0,
+                        UnreadNotificationIds = activity.GetValueOrDefault(booking.Id)?.UnreadNotificationIds ?? [],
+                        BookingId = booking.Id,
+                        ListingId = booking.ListingId,
+                        ListingTitle = booking.Listing.Title,
+                        RenterId = booking.RenterId,
+                        StartUtc = booking.StartDateTime,
+                        EndUtc = booking.EndDateTime,
+                        CanComplete = booking.Status == BookingStatus.Confirmed && _timePolicy.HasEnded(booking.EndDateTime),
+                        Status = booking.Status,
+                        CreatedAt = booking.CreatedAt
+                    }).ToList()
+                });
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Owner booking activity failed for {OwnerId}.", ownerId);
+                return ServiceResult<GetOwnerBookingsResponse>.WithError("Booking requests could not be loaded. Please retry.");
+            }
         }
 
         /// <inheritdoc/>
@@ -273,6 +287,7 @@ namespace ParkShare.Application.Services
             try
             {
                 var results = await _bookingRepository.GetRenterByStatusesAsync(renterId, statuses, page, pageSize, cancellationToken);
+                var activity = await _activity.GetBookingsAsync(renterId, results.Items.ToDictionary(b => b.Id, b => b.Status), cancellationToken);
                 return ServiceResult<GetRenterBookingsResponse>.Success(new GetRenterBookingsResponse
                 {
                     Page = page,
@@ -280,6 +295,8 @@ namespace ParkShare.Application.Services
                     TotalCount = results.TotalCount,
                     Items = results.Items.Select(booking => new RenterBookingItem
                     {
+                        UnreadMessageCount = activity.GetValueOrDefault(booking.Id)?.UnreadMessageCount ?? 0,
+                        UnreadNotificationIds = activity.GetValueOrDefault(booking.Id)?.UnreadNotificationIds ?? [],
                         BookingId = booking.Id,
                         ListingId = booking.ListingId,
                         ListingTitle = booking.Listing.Title,
@@ -296,8 +313,9 @@ namespace ParkShare.Application.Services
             {
                 throw;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Renter booking activity failed for {RenterId}.", renterId);
                 return ServiceResult<GetRenterBookingsResponse>.WithError("Booking history could not be loaded. Please try again.");
             }
         }

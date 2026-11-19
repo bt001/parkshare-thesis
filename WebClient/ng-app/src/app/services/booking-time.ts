@@ -1,4 +1,4 @@
-/** Formats a UTC instant as a Athens wall-clock input, regardless of browser location. */
+/** Formats a UTC instant as an Athens wall-clock input, regardless of browser location. */
 export function athensDateTime(instant = new Date()): string {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Athens', year: 'numeric', month: '2-digit', day: '2-digit',
@@ -31,4 +31,19 @@ export function bookingTimeError(start: string, end: string, now = new Date()): 
   if (startInstant >= endInstant) return 'End time must be after start time.';
   if (startInstant <= now.getTime()) return 'Booking start time must be in the future (Athens time).';
   return null;
+}
+
+/** Adds whole minutes to an offset-free Athens wall clock without using the browser zone. */
+export function departureForStay(start: string, minutes: number | null): string {
+  if (minutes === null || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(start) || !Number.isSafeInteger(minutes) || minutes < 1) return '';
+  const instant = Date.parse(`${start}:00Z`);
+  if (!Number.isFinite(instant) || new Date(instant).toISOString().slice(0, 16) !== start) return '';
+  const end = new Date(instant + minutes * 60_000);
+  return Number.isFinite(end.getTime()) && end.getUTCFullYear() <= 9999 ? end.toISOString().slice(0, 16) : '';
+}
+
+/** Derives whole stay minutes from the existing offset-free period contract. */
+export function stayMinutes(start: string, end: string): number | null {
+  const minutes = (Date.parse(`${end}:00Z`) - Date.parse(`${start}:00Z`)) / 60_000;
+  return Number.isSafeInteger(minutes) && minutes > 0 && departureForStay(start, minutes) === end ? minutes : null;
 }

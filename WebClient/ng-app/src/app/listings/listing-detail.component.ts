@@ -1,3 +1,4 @@
+import { BookingPeriodComponent, BookingPeriodEdit } from '../shared/booking-period.component';
 import { ListingPhotosComponent } from './listing-photos.component';
 import { ListingReviewsComponent } from './listing-reviews.component';
 import { DecimalPipe, DatePipe } from '@angular/common';
@@ -25,7 +26,7 @@ interface BookingForm {
 @Component({
   selector: 'app-listing-detail',
   standalone: true,
-  imports: [DecimalPipe, DatePipe, ReactiveFormsModule, RouterLink, ListingReviewsComponent, ListingPhotosComponent],
+  imports: [BookingPeriodComponent, DecimalPipe, DatePipe, ReactiveFormsModule, RouterLink, ListingReviewsComponent, ListingPhotosComponent],
   templateUrl: './listing-detail.component.html',
   styleUrl: './listing-detail.component.scss'
 })
@@ -43,6 +44,14 @@ export class ListingDetailComponent implements OnInit {
     endDateTime: new FormControl('', { nonNullable: true, validators: [Validators.required] })
   });
 
+  /** Whether the current period edit needs an arrival or valid duration. */
+  private incompletePeriod = false;
+  /** Updates the renter draft while retaining the start/end API contract. */
+  editPeriod(period: BookingPeriodEdit): void {
+    this.incompletePeriod = period.incomplete;
+    this.bookingForm.setValue({ startDateTime: period.startDateTime, endDateTime: period.endDateTime });
+    this.bookingErrorMessages = [];
+  }
   /** Whether the route identifies a listing that can be retried. */
   canRetryListing = false;
   listing?: ListingDetails;
@@ -100,6 +109,7 @@ export class ListingDetailComponent implements OnInit {
     }
 
     this.minimumDateTime = nextAthensMinute();
+    this.incompletePeriod = false;
     this.selectedWindowId = window.availabilityWindowId;
     this.bookingResult = undefined;
     this.bookingErrorMessages = [];
@@ -114,7 +124,8 @@ export class ListingDetailComponent implements OnInit {
       return;
     }
 
-    if (this.bookingForm.invalid || this.hasInvalidRange) {
+    if (this.incompletePeriod || this.bookingForm.invalid || this.hasInvalidRange) {
+      this.bookingErrorMessages = [this.hasInvalidRange ? 'End time must be after start time.' : 'Choose an arrival and a valid length of stay.'];
       this.bookingForm.markAllAsTouched();
       return;
     }

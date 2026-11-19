@@ -26,7 +26,11 @@ internal static partial class Program
         var preservedListing = new Listing { OwnerId = legacyUser.Id, Title = "Legacy amenity listing", Description = "Preserve", PricePerHour = 1 };
         db.Amenities.Add(preservedAmenity); db.Listings.Add(preservedListing); await db.SaveChangesAsync();
         db.ListingAmenities.Add(new() { ListingId = preservedListing.Id, AmenityId = preservedAmenity.Id }); await db.SaveChangesAsync();
+        var legacyBooking = new Booking { ListingId = preservedListing.Id, RenterId = legacyUser.Id, StartDateTime = Future, EndDateTime = Future.AddHours(1) };
+        db.Bookings.Add(legacyBooking); await db.SaveChangesAsync();
+        await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO ChatMessages (BookingId, SenderId, MessageText, SentAt) VALUES ({legacyBooking.Id}, {legacyUser.Id}, {"Historical chat"}, {new DateTime(2026, 1, 1)})");
         await db.Database.MigrateAsync();
+        Check(await db.ChatMessages.AnyAsync(m => m.BookingId == legacyBooking.Id && m.MessageText == "Historical chat" && m.ReadAt != null), "historical chat preserved and marked read");
         Check(await db.Amenities.CountAsync(a => a.Name == "Lighting") == 1, "catalog migration does not duplicate existing names");
         Check(await db.Amenities.CountAsync() == 5, "catalog inserts missing defaults");
         Check((await db.Amenities.AsNoTracking().SingleAsync(a => a.Id == preservedAmenity.Id)).Description == "Existing description", "catalog preserves existing description and ID");

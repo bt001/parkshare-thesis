@@ -32,20 +32,7 @@
         <div class="message compact">You own this listing, so you cannot request a booking for it.</div>
       } @else {
         <form aria-describedby="booking-time-note" [formGroup]="bookingForm" (ngSubmit)="submitBooking()">
-          <label for="booking-start">Start</label>
-          <input id="booking-start" type="datetime-local" formControlName="startDateTime" [min]="minimumDateTime" />
-          @if (bookingForm.controls.startDateTime.touched && bookingForm.controls.startDateTime.hasError('required')) {
-            <p class="field-error">Choose a start time.</p>
-          }
-
-          <label for="booking-end">End</label>
-          <input id="booking-end" type="datetime-local" formControlName="endDateTime" [min]="minimumDateTime" />
-          @if (bookingForm.controls.endDateTime.touched && bookingForm.controls.endDateTime.hasError('required')) {
-            <p class="field-error">Choose an end time.</p>
-          }
-          @if (hasInvalidRange) {
-            <p class="field-error">End time must be after start time.</p>
-          }
+          <app-booking-period prefix="booking" [startDateTime]="bookingForm.controls.startDateTime.value" [endDateTime]="bookingForm.controls.endDateTime.value" [pricePerHour]="listing.pricePerHour" (periodChange)="editPeriod($event)" />
 
           <button type="submit" [disabled]="isSubmitting">
             {{ isSubmitting ? 'Sending request…' : 'Request booking' }}

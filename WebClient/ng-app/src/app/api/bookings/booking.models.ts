@@ -33,6 +33,8 @@ export interface GetOwnerBookingsRequest {
 }
 
 export interface OwnerBookingItem {
+  /** Incoming messages not yet read by this participant. */ unreadMessageCount?: number;
+  /** Exact unseen notification identities represented by this row. */ unreadNotificationIds?: number[];
   bookingId: number;
   listingId: number;
   listingTitle: string;
@@ -62,6 +64,8 @@ export interface GetRenterBookingsRequest {
 
 /** Stored booking details with current listing information. */
 export interface RenterBookingItem {
+  /** Incoming messages not yet read by this participant. */ unreadMessageCount?: number;
+  /** Exact unseen notification identities represented by this row. */ unreadNotificationIds?: number[];
   bookingId: number;
   listingId: number;
   listingTitle: string;

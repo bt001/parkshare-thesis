@@ -24,6 +24,11 @@ namespace ParkShare.Infrastructure.Repositories
             return new PagedResult<ChatMessage>(items, total);
         }
         /// <inheritdoc/>
+        public Task<int> MarkReadAsync(long bookingId, long userId, IReadOnlyCollection<long> ids, DateTime readAt, CancellationToken ct)
+            => _db.ChatMessages.Where(m => m.BookingId == bookingId && ids.Contains(m.Id) && m.SenderId != userId && m.ReadAt == null &&
+                (m.Booking.RenterId == userId || m.Booking.Listing.OwnerId == userId))
+                .ExecuteUpdateAsync(setters => setters.SetProperty(m => m.ReadAt, readAt), ct);
+        /// <inheritdoc/>
         public async Task AddAsync(ChatMessage message, CancellationToken ct)
         {
             _db.ChatMessages.Add(message);

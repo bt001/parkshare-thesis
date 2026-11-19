@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 
@@ -24,7 +25,10 @@ describe('AppShellComponent', () => {
     }
   });
 
+  const activity = { start: () => {}, count: signal<number | null>(3), ownerCount: signal<number | null>(2), renterCount: signal<number | null>(1), unavailable: signal(false) };
+
   beforeEach(async () => {
+    activity.count.set(3); activity.ownerCount.set(2); activity.renterCount.set(1); activity.unavailable.set(false);
     authService.hasRole.and.returnValue(true);
     await TestBed.configureTestingModule({
       imports: [AppShellComponent],
@@ -34,7 +38,7 @@ describe('AppShellComponent', () => {
       ]
     }).overrideComponent(AppShellComponent, { set: { providers: [{
       provide: NotificationStateService,
-      useValue: { start: () => {}, count: () => 3, unavailable: () => false }
+      useValue: activity
     }] } }).compileComponents();
 
     router = TestBed.inject(Router);
@@ -59,7 +63,9 @@ describe('AppShellComponent', () => {
     expect(element.textContent).toContain('Browse parking');
     expect(element.querySelector('a[href="/bookings"]')?.textContent).toContain('My bookings');
     expect(element.textContent).toContain('Owner workspace');
-    expect(element.querySelector('a[href="/notifications"]')?.textContent).toContain('Notifications (3)');
+    expect(element.querySelector('a[href="/notifications"] .activity-badge')?.textContent).toBe('3');
+    expect(element.querySelector('a[href="/bookings"] .activity-badge')?.textContent).toBe('1');
+    expect(element.querySelector('.menu-toggle')?.getAttribute('aria-label')).toBe('Menu, outstanding activity');
   });
   it('dismisses compact navigation and restores focus on Escape', () => {
     const trigger = fixture.nativeElement.querySelector('.menu-toggle') as HTMLButtonElement;
@@ -86,5 +92,29 @@ describe('AppShellComponent', () => {
     expect(account.open).toBeFalse();
     expect(summary.focus).toHaveBeenCalled();
   });
+
+  for (const source of ['count', 'ownerCount', 'renterCount'] as const) {
+    it(`propagates ${source} activity through opening, closing and clearing the menu`, () => {
+      activity.count.set(0); activity.ownerCount.set(0); activity.renterCount.set(0);
+      fixture.detectChanges();
+      const menu = fixture.nativeElement.querySelector('.menu-toggle') as HTMLButtonElement;
+      expect(menu.querySelector('.activity-dot')).toBeNull();
+      expect(menu.getAttribute('aria-label')).toBe('Menu');
+      activity[source].set(1); fixture.detectChanges();
+      expect(menu.querySelector('.activity-dot')).not.toBeNull();
+      expect(menu.getAttribute('aria-label')).toBe('Menu, outstanding activity');
+      menu.click(); fixture.detectChanges();
+      expect(menu.getAttribute('aria-expanded')).toBe('true');
+      expect(menu.querySelector('.activity-dot')).not.toBeNull();
+      activity.unavailable.set(true); fixture.detectChanges();
+      expect(menu.querySelector('.activity-dot')).not.toBeNull();
+      menu.click(); fixture.detectChanges();
+      expect(menu.getAttribute('aria-expanded')).toBe('false');
+      expect(activity[source]()).toBe(1);
+      activity[source].set(0); fixture.detectChanges();
+      expect(menu.querySelector('.activity-dot')).toBeNull();
+      expect(menu.getAttribute('aria-label')).toBe('Menu');
+    });
+  }
 
 });

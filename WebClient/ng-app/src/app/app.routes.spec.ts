@@ -22,10 +22,7 @@ describe('application routes', () => {
       path: 'listings',
       loadComponent: jasmine.any(Function)
     }));
-    expect(shellRoute?.children).toContain(jasmine.objectContaining({
-      path: 'listings/:id',
-      component: ListingDetailComponent
-    }));
+    expect(await shellRoute?.children?.find(route => route.path === 'listings/:id')?.loadComponent?.()).toBe(ListingDetailComponent);
   });
 
   it('keeps the complete owner workspace inside the authenticated shell', async () => {

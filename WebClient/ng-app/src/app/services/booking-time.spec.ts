@@ -1,4 +1,4 @@
-import { bookingTimeError, nextAthensMinute, athensDateTime } from './booking-time';
+import { bookingTimeError, nextAthensMinute, athensDateTime, departureForStay, stayMinutes } from './booking-time';
 
 describe('Athens booking time', () => {
   const now = new Date('2026-09-12T12:00:00Z');
@@ -16,5 +16,25 @@ describe('Athens booking time', () => {
     expect(bookingTimeError('2030-03-31T03:30', '2030-03-31T05:00', now)).not.toBeNull();
     expect(bookingTimeError('2030-10-27T03:30', '2030-10-27T05:00', now)).not.toBeNull();
     expect(bookingTimeError('2030-03-31T02:30', '2030-03-31T04:30', now)).toBeNull();
+  });
+});
+
+
+describe('Stay period conversion', () => {
+  it('adds half-hour and multi-day stays across midnight without the browser timezone', () => {
+    expect(departureForStay('2099-01-15T23:45', 30)).toBe('2099-01-16T00:15');
+    expect(departureForStay('2099-01-15T23:45', 1501)).toBe('2099-01-17T00:46');
+    expect(stayMinutes('2099-01-15T23:45', '2099-01-17T00:46')).toBe(1501);
+  });
+  it('rejects invalid, fractional, empty and overflowing periods', () => {
+    for (const length of [null, 0, -1, 1.5, Number.MAX_SAFE_INTEGER]) expect(departureForStay('2099-01-15T10:00', length)).toBe('');
+    expect(departureForStay('2099-02-30T10:00', 60)).toBe('');
+    expect(stayMinutes('bad', '2099-01-15T10:00')).toBeNull();
+    expect(stayMinutes('2099-01-15T10:00', '2099-01-15T09:00')).toBeNull();
+  });
+  it('retains existing wall-clock DST validation', () => {
+    const start = '2030-03-31T02:30';
+    expect(bookingTimeError(start, departureForStay(start, 60), new Date('2026-01-01'))).not.toBeNull();
+    expect(bookingTimeError(start, departureForStay(start, 120), new Date('2026-01-01'))).toBeNull();
   });
 });

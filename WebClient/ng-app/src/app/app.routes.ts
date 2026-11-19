@@ -7,7 +7,6 @@ import { AuthRedirectComponent } from './auth/auth-redirect.component';
 
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { AppShellComponent } from './layout/app-shell.component';
-import { ListingDetailComponent } from './listings/listing-detail.component';
 
 import { OwnerAvailabilityComponent } from './owner/owner-availability.component';
 import { OwnerBookingsComponent } from './owner/owner-bookings.component';
@@ -40,7 +39,7 @@ export const routes: Routes = [
       { path: 'bookings', loadComponent: () => import('./bookings/renter-bookings.component').then(module => module.RenterBookingsComponent) },
       { path: 'dashboard', component: DashboardComponent },
       { path: 'listings', loadComponent: () => import('./listings/listing-list.component').then(module => module.ListingListComponent) },
-      { path: 'listings/:id', component: ListingDetailComponent },
+      { path: 'listings/:id', loadComponent: () => import('./listings/listing-detail.component').then(module => module.ListingDetailComponent) },
       { path: 'owner/listings', component: OwnerListingsComponent },
       { path: 'owner/listings/new', loadComponent: () => import('./owner/owner-listing-form.component').then(module => module.OwnerListingFormComponent) },
       { path: 'owner/listings/:id/edit', loadComponent: () => import('./owner/owner-listing-form.component').then(module => module.OwnerListingFormComponent) },

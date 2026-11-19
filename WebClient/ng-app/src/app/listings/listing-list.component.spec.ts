@@ -65,8 +65,113 @@ describe('ListingListComponent', () => {
     fixture.detectChanges();
   });
 
+  it('retains malformed saved criteria without passing invalid values to date formatting', () => {
+    (component as any).restoreNavigation(convertToParamMap({ startDateTime: 'bad', endDateTime: 'bad', minPrice: 'bad' }));
+    expect(() => fixture.detectChanges()).not.toThrow();
+    expect(component.draftDeparture).toBe(''); expect(component.restorationError).toBeTruthy();
+  });
+
+  it('corrects an expired saved period without applying secondary drafts typed afterward', fakeAsync(() => {
+    (component as any).restoreNavigation(convertToParamMap({ startDateTime: '2020-01-15T10:00', endDateTime: '2020-01-15T12:00', minPrice: '4' }));
+    expect(component.restorationError).toBeTruthy();
+    component.filterForm.controls.minPrice.setValue(-1);
+    component.editPeriod({ startDateTime: '2099-01-15T10:00', endDateTime: '2099-01-15T12:00', incomplete: false }); tick(250);
+    expect(component.restorationError).toBe('');
+    expect(listingService.search.calls.mostRecent().args[0].minPrice).toBe(4);
+    expect(component.filterForm.controls.minPrice.value).toBe(-1);
+    expect(component.hasDraftChanges).toBeTrue();
+  }));
+
+  it('shows Apply feedback for secondary drafts rather than unresolved location typing', () => {
+    component.filterForm.controls.where.setValue('Ath'); component.editPlace();
+    expect(component.hasSecondaryDraftChanges).toBeFalse();
+    component.filterForm.controls.minPrice.setValue(4);
+    expect(component.hasSecondaryDraftChanges).toBeTrue();
+  });
+
+  it('automatically coalesces period changes and skips identical criteria', fakeAsync(() => {
+    const period = { startDateTime: '2099-01-15T10:00', endDateTime: '2099-01-15T11:00', incomplete: false };
+    component.editPeriod(period); tick(200);
+    component.editPeriod({ ...period, endDateTime: '2099-01-15T12:00' }); tick(249);
+    expect(listingService.search).toHaveBeenCalledTimes(1);
+    tick(1);
+    expect(listingService.search.calls.mostRecent().args[0].endDateTime).toBe('2099-01-15T12:00');
+    expect(component.hasDraftChanges).toBeFalse();
+    component.editPeriod({ ...period, endDateTime: '2099-01-15T12:00' }); tick(250);
+    expect(listingService.search).toHaveBeenCalledTimes(2);
+  }));
+
+  it('preserves applied secondary filters and invalid unsubmitted drafts during automatic updates', fakeAsync(() => {
+    component.choosePlace({ label: 'Athens', latitude: 38, longitude: 24 });
+    component.filterForm.patchValue({ minPrice: 10, maxPrice: 20, radiusKm: 3, amenityIds: [1] }); component.applyFilters();
+    component.filterForm.patchValue({ minPrice: 100, radiusKm: -1, amenityIds: [2], titleContains: 'Draft only' });
+    component.editPeriod({ startDateTime: '2099-01-15T10:00', endDateTime: '2099-01-15T12:00', incomplete: false }); tick(250);
+    expect(listingService.search.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({ minPrice: 10, maxPrice: 20, radiusKm: 3, amenityIds: [1], endDateTime: '2099-01-15T12:00' }));
+    expect(listingService.search.calls.mostRecent().args[0].titleContains).toBeUndefined();
+    expect(component.filterForm.controls.minPrice.value).toBe(100);
+    expect(component.filterForm.controls.radiusKm.value).toBe(-1);
+    expect(component.hasDraftChanges).toBeTrue();
+  }));
+
+  it('keeps the previous search for incomplete primary edits and refreshes after clearing', fakeAsync(() => {
+    component.editPeriod({ startDateTime: '2099-01-15T10:00', endDateTime: '', incomplete: true }); tick(250);
+    expect(listingService.search).toHaveBeenCalledTimes(1);
+    expect(component.periodError).toContain('length of stay');
+    component.editPeriod({ startDateTime: '2099-01-15T10:00', endDateTime: '2099-01-15T11:00', incomplete: false }); tick(250);
+    component.editPeriod({ startDateTime: '', endDateTime: '', incomplete: false }); tick(250);
+    expect(component.detailParams['startDateTime']).toBeUndefined();
+    expect(component.hasDraftChanges).toBeFalse();
+  }));
+
+  it('debounces live suggestions, cancels superseded lookups and applies only a selected candidate', fakeAsync(() => {
+    const old = new Subject<any>(), fresh = new Subject<any>();
+    listingService.searchPlaces.calls.reset(); listingService.searchPlaces.and.returnValues(old, fresh);
+    component.filterForm.controls.where.setValue('At'); component.typePlace(); tick(349);
+    expect(listingService.searchPlaces).not.toHaveBeenCalled(); tick(1); expect(old.observed).toBeTrue();
+    component.filterForm.controls.where.setValue('Athens'); component.typePlace(); expect(old.observed).toBeFalse();
+    old.next({ items: [{ label: 'Old', latitude: 1, longitude: 1 }] }); tick(350);
+    fresh.next({ items: [{ label: 'Athens', latitude: 38, longitude: 24 }] });
+    expect(component.places[0].label).toBe('Athens'); expect(listingService.search).toHaveBeenCalledTimes(1);
+    component.navigatePlaces(new KeyboardEvent('keydown', { key: 'ArrowUp' }));
+    expect(component.activePlaceIndex).toBe(0);
+    component.navigatePlaces(new KeyboardEvent('keydown', { key: 'Enter' })); tick(250);
+    expect(component.detailParams['lat']).toBe(38); expect(component.placePanelOpen).toBeFalse();
+    component.clearPlace(); tick(250); expect(component.detailParams['lat']).toBeUndefined();
+  }));
+
+  it('cancels pending suggestions on Escape, selection, reset and destruction', fakeAsync(() => {
+    listingService.searchPlaces.calls.reset(); listingService.searchPlaces.and.returnValue(of({ items: [] }));
+    component.filterForm.controls.where.setValue('Athens'); component.typePlace();
+    component.navigatePlaces(new KeyboardEvent('keydown', { key: 'Escape' })); tick(350);
+    expect(listingService.searchPlaces).not.toHaveBeenCalled();
+    component.openPlaces(); tick(350); expect(listingService.searchPlaces).toHaveBeenCalledTimes(1);
+    component.typePlace(); component.resetFilters(); tick(350); expect(listingService.searchPlaces).toHaveBeenCalledTimes(1);
+    component.filterForm.controls.where.setValue('Athens'); component.typePlace(); fixture.destroy(); tick(350);
+    expect(listingService.searchPlaces).toHaveBeenCalledTimes(1);
+  }));
+
+  it('automatically applies successful geolocation with the previously applied distance', fakeAsync(() => {
+    component.filterForm.controls.radiusKm.setValue(12);
+    component.useMyLocation();
+    location.locate.calls.mostRecent().args[0]({ coords: { latitude: 38, longitude: 24 } }); tick(250);
+    expect(listingService.search.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({ lat: 38, lng: 24, radiusKm: 5 }));
+    expect(component.filterForm.controls.radiusKm.value).toBe(12); expect(component.hasDraftChanges).toBeTrue();
+  }));
+
+  it('retains the bounds camera during an automatic period update without duplicate route requests', fakeAsync(() => {
+    component.setViewMode('map');
+    component.searchMapBounds({ south: 37, north: 39, west: 23, east: 25 });
+    const camera = { latitude: 38, longitude: 24, zoom: 12 }; component.saveViewport(camera);
+    component.editPeriod({ startDateTime: '2099-01-15T10:00', endDateTime: '2099-01-15T11:00', incomplete: false }); tick(250);
+    expect(component.viewport).toEqual(camera); expect(component.viewMode).toBe('map');
+    expect(listingService.searchAll.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({ south: 37, north: 39, startDateTime: '2099-01-15T10:00' }));
+    const count = listingService.search.calls.count();
+    (component as any).restoreNavigation(convertToParamMap(Object.fromEntries(Object.entries(component.detailParams).map(([key, value]) => [key, Array.isArray(value) ? value.map(String) : String(value)])))); tick(500);
+    expect(listingService.search.calls.count()).toBe(count);
+  }));
+
   it('keeps modal drafts without searching when dismissed', () => {
-    const dialog = fixture.nativeElement.querySelector('dialog') as HTMLDialogElement;
+    const dialog = fixture.nativeElement.querySelector('.filter-panel') as HTMLDialogElement;
     spyOn(dialog, 'showModal');
     component.openFilters();
     expect(dialog.showModal).toHaveBeenCalled();
@@ -430,6 +535,18 @@ describe('ListingListComponent', () => {
     expect(newList.observed).toBeFalse();
     expect(newMap.observed).toBeFalse();
   });
+  it('keeps duration-only intent unapplied and clears it on reset', () => {
+    const params = { ...component.detailParams };
+    component.editPeriod({ startDateTime: '', endDateTime: '', incomplete: true });
+    expect(component.hasDraftChanges).toBeTrue();
+    component.applyFilters();
+    expect(component.periodError).toContain('length of stay');
+    expect(component.detailParams).toEqual(params);
+    component.resetFilters();
+    expect(component.periodError).toBeNull();
+    expect(component.hasDraftChanges).toBeFalse();
+  });
+
   it('shares the requested period between list, map and detail links', () => {
     const period = { startDateTime: '2099-01-15T10:00', endDateTime: '2099-01-15T12:00' };
     component.filterForm.patchValue(period);

@@ -1,0 +1,21 @@
+<button #trigger type="button" class="arrival-trigger" [id]="inputId" [disabled]="disabled" aria-haspopup="dialog" [attr.aria-expanded]="dialog.open" (click)="open()">
+  <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4M17 3v4M3 11h18"/></svg>
+  <span [class.empty]="!value">{{ label }}</span>
+</button>
+<dialog #dialog [attr.aria-labelledby]="inputId + '-heading'" (cancel)="$event.preventDefault(); close()" (keydown)="containFocus($event)" (click)="dismissBackdrop($event)">
+  <div class="picker-heading"><div><strong [id]="inputId + '-heading'">Choose arrival</strong><small>Athens local time</small></div><button type="button" aria-label="Close calendar" (click)="close()">&times;</button></div>
+  <div class="month-heading"><button type="button" aria-label="Previous month" (click)="moveMonth(-1)">&lsaquo;</button><strong aria-live="polite">{{ month | date:'MMMM yyyy':'UTC' }}</strong><button type="button" aria-label="Next month" (click)="moveMonth(1)">&rsaquo;</button></div>
+  <div class="calendar" role="grid" aria-label="Arrival date">
+    <div class="calendar-row" role="row">@for (weekday of weekdays; track weekday) { <span class="weekday" role="columnheader">{{ weekday }}</span> }</div>
+    @for (week of weeks; track $index) {
+      <div class="calendar-row" role="row">
+        @for (date of week; track date) {
+          <button type="button" role="gridcell" [attr.aria-label]="date | date:'fullDate':'UTC'" [attr.aria-selected]="day === date" [attr.aria-current]="date === minimumDay ? 'date' : null" [disabled]="date < minimumDay" [tabIndex]="day === date ? 0 : -1" [class.outside]="date.slice(0,7) !== month.toISOString().slice(0,7)" (click)="chooseDay(date)" (keydown)="navigate($event, date)">{{ +date.slice(8) }}</button>
+        }
+      </div>
+    }
+  </div>
+  <div class="time-fields"><label>Hour<select [value]="hour" (change)="changeTime('hour', $any($event.target).value)">@for (value of hours; track value) { <option [value]="value">{{ value }}</option> }</select></label><span>:</span><label>Minute<select [value]="minute" (change)="changeTime('minute', $any($event.target).value)">@for (value of minutes; track value) { <option [value]="value">{{ value }}</option> }</select></label><button type="button" (click)="today()">Today</button></div>
+  <p class="selection-note">Your selection saves automatically.</p>
+  <div class="picker-actions"><button type="button" (click)="clear()">Clear</button><button type="button" class="done" (click)="close()">Done</button></div>
+</dialog>

@@ -1,3 +1,4 @@
+import { AcknowledgeVisibleDirective } from '../shared/acknowledge-visible.directive';
 import { DatePipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -7,16 +8,25 @@ import { NotificationItem } from '../api/notifications/notification.models';
 import { NotificationService } from '../api/notifications/notification.service';
 import { NotificationStateService } from './notification-state.service';
 
-/** Recipient inbox with explicit refresh and persisted read state. */
+/** Recipient inbox with automatic refresh and persisted read state. */
 @Component({
-  selector: 'app-notifications', standalone: true, imports: [DatePipe, RouterLink],
+  selector: 'app-notifications', standalone: true, imports: [AcknowledgeVisibleDirective, DatePipe, RouterLink],
   templateUrl: './notifications.component.html', styleUrl: './notifications.component.scss'
 })
 export class NotificationsComponent implements OnInit, OnDestroy {
+  /** Activity state inherited from the authenticated shell. */
+  readonly activity = inject(NotificationStateService, { optional: true });
+  /** Distinct owned bookings requiring attention. */
+  get ownerAttention(): number | null { return this.activity?.ownerCount?.() ?? null; }
+  /** Distinct rented bookings requiring attention. */
+  get renterAttention(): number | null { return this.activity?.renterCount?.() ?? null; }
+
   private readonly api = inject(NotificationService);
   private readonly auth = inject(AuthService);
   private readonly state = inject(NotificationStateService);
   private request?: Subscription;
+  private polling?: Subscription;
+  /** Background feedback without hiding existing events. */ refreshError = '';
   private mutation?: Subscription;
   private session?: Subscription;
   private requestedPage = 1;
@@ -38,6 +48,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   readingId: number | null = null;
   /** Loads the inbox and clears data when account identity changes. */
   ngOnInit(): void {
+    this.polling = this.activity?.pulse?.subscribe(() => { if (!this.readingId && (!this.request || this.request.closed)) this.load(this.page, true); });
     this.session = this.auth.session$.pipe(map(session => session?.userId), distinctUntilChanged()).subscribe(userId => {
       this.request?.unsubscribe(); this.mutation?.unsubscribe();
       this.items = []; this.totalCount = 0; this.page = 1; this.unreadOnly = false;
@@ -50,9 +61,9 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   /** Refreshes or retries the last requested page and unread count. */
   refresh(): void { this.state.refresh(); this.load(this.requestedPage); }
   /** Cancels superseded reads and falls back when the last unread page disappears. */
-  load(page: number): void {
+  load(page: number, background = false): void {
     this.request?.unsubscribe();
-    this.requestedPage = page; this.loading = true; this.error = ''; this.items = [];
+    this.requestedPage = page; if (!background) { this.loading = true; this.error = ''; this.items = []; }
     const userId = this.auth.session?.userId;
     const unreadOnly = this.unreadOnly;
     this.request = this.api.get(page, unreadOnly).pipe(
@@ -66,9 +77,9 @@ export class NotificationsComponent implements OnInit, OnDestroy {
     ).subscribe({
       next: result => {
         if (this.auth.session?.userId !== userId) return;
-        this.items = result.items; this.page = result.page; this.totalCount = result.totalCount;
+        this.refreshError = ''; this.error = ''; this.items = result.items; this.page = result.page; this.totalCount = result.totalCount;
       },
-      error: () => { if (this.auth.session?.userId === userId) this.error = 'Notifications could not be loaded. Please retry.'; }
+      error: () => { if (this.auth.session?.userId === userId) { if (background) this.refreshError = 'Updates temporarily unavailable. Retrying automatically.'; else this.error = 'Notifications could not be loaded. Please retry.'; } }
     });
   }
   /** Persists read state, then reconciles inbox pagination and the shell badge. */
@@ -91,5 +102,5 @@ export class NotificationsComponent implements OnInit, OnDestroy {
     return ['booking-approved', 'booking-rejected', 'booking-overlap-rejected', 'booking-completed'].includes(item.type) ? '/bookings' : null;
   }
   /** Cancels all outstanding account work on navigation. */
-  ngOnDestroy(): void { this.request?.unsubscribe(); this.mutation?.unsubscribe(); this.session?.unsubscribe(); }
+  ngOnDestroy(): void { this.polling?.unsubscribe(); this.request?.unsubscribe(); this.mutation?.unsubscribe(); this.session?.unsubscribe(); }
 }

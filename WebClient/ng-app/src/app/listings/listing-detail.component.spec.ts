@@ -220,7 +220,7 @@ describe('ListingDetailComponent', () => {
     fixture.detectChanges();
     expect(component.errorMessages).toEqual([]);
     expect(component.bookingForm.controls.startDateTime.value).toBe('2099-01-15T10:00');
-    expect(fixture.nativeElement.querySelector('#booking-start')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('#booking-arrival')).toBeTruthy();
   });
 
   it('prefills and submits the requested discovery period unchanged', () => {

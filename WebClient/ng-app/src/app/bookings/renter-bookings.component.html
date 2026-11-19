@@ -1,3 +1,5 @@
+<p class="time-note" aria-live="polite">Updates automatically every few seconds.</p>
+@if (refreshError) { <p class="message" role="status">{{ refreshError }}</p> }
 <section class="page-heading">
   <div><p class="eyebrow">Renter workspace</p><h1>My bookings</h1><p>Revisit your requests and check the latest owner decisions.</p></div>
   <button type="button" class="primary-button" [disabled]="isLoading || saving" (click)="refresh()">Refresh</button>
@@ -35,13 +37,13 @@
     <p class="results-summary">{{ totalCount }} bookings · Page {{ page }}</p>
     <div class="card-grid">
       @for (booking of bookings; track booking.bookingId) {
-        <article class="workspace-card booking-card">
-          <div class="card-heading"><span class="badge status-{{ booking.statusText.toLowerCase() }}">{{ booking.statusText }}</span><small>Request #{{ booking.bookingId }}</small></div>
+        <article [appAcknowledgeVisible]="booking.unreadNotificationIds" class="workspace-card booking-card">
+          <div class="card-heading"><span class="badge status-{{ booking.statusText.toLowerCase() }}">{{ booking.statusText }}</span><small>Request #{{ booking.bookingId }}</small>@if (booking.unreadNotificationIds?.length) { <span class="badge">New update</span> }</div>
           <div class="booking-details"><h2>{{ booking.listingTitle }}</h2>
           <p>{{ booking.listingAddress }}</p>
           <small>Requested {{ booking.createdAt | date:'medium' }}</small></div>
           <dl class="booking-period"><dt>Start</dt><dd>{{ booking.startDateTime | date:'medium' }}</dd><dt>End</dt><dd>{{ booking.endDateTime | date:'medium' }}</dd></dl>
-          <div class="actions"><a [routerLink]="['/listings', booking.listingId]">View listing</a><a [routerLink]="['/bookings', booking.bookingId, 'chat']">Chat</a></div>
+          <div class="actions"><a [routerLink]="['/listings', booking.listingId]">View listing</a><a [routerLink]="['/bookings', booking.bookingId, 'chat']">Chat <app-activity-badge [count]="booking.unreadMessageCount" description="unread messages" /></a></div>
           @if (booking.status === BookingStatus.Completed) {
             <div class="rating-section">
             @if (booking.rating; as rating) { <p class="saved-rating">Your rating: {{ rating.stars }} / 5</p><p class="review-comment">{{ rating.comment }}</p> }

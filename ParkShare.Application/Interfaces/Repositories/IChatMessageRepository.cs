@@ -10,5 +10,7 @@ namespace ParkShare.Application.Interfaces.Repositories
         Task<PagedResult<ChatMessage>> GetAsync(long bookingId, int page, int pageSize, CancellationToken ct);
         /// <summary>Saves one message and assigns its identity.</summary>
         Task AddAsync(ChatMessage message, CancellationToken ct);
+        /// <summary>Acknowledges only selected incoming messages in a participant-owned conversation.</summary>
+        Task<int> MarkReadAsync(long bookingId, long userId, IReadOnlyCollection<long> ids, DateTime readAt, CancellationToken ct);
     }
 }

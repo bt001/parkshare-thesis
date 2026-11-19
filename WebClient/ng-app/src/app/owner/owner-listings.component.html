@@ -5,7 +5,7 @@
 
 <nav class="workspace-nav" aria-label="Owner workspace">
   <a routerLink="/owner/listings" class="active" aria-current="page">Listings</a>
-  <a routerLink="/owner/bookings">Booking requests</a>
+  <a routerLink="/owner/bookings">Booking requests <app-activity-badge [count]="ownerAttention" /></a>
 </nav>
 
 @if (loadErrors.length) {

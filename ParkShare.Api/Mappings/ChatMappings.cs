@@ -17,6 +17,8 @@ namespace ParkShare.Api.Mappings
             cfg.CreateMap<SendBookingMessageRequest, SendBookingMessageCommand>();
             cfg.CreateMap<GetBookingMessagesResponse, GetBookingMessagesResult>();
             cfg.CreateMap<ChatMessageResponse, ChatMessageResult>();
+            cfg.CreateMap<ReadMessagesRequest, ReadBookingMessagesCommand>();
+            cfg.CreateMap<ReadMessagesResponse, ReadMessagesResult>();
         }
     }
 }

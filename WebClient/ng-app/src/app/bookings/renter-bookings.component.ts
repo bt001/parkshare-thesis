@@ -1,3 +1,6 @@
+import { NotificationStateService } from '../notifications/notification-state.service';
+import { ActivityBadgeComponent } from '../shared/activity-badge.component';
+import { AcknowledgeVisibleDirective } from '../shared/acknowledge-visible.directive';
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
@@ -13,12 +16,19 @@ import { BookingService } from '../api/bookings/booking.service';
 /** Booking history and editable reviews for the authenticated renter. */
 @Component({
   selector: 'app-renter-bookings', standalone: true,
-  imports: [DatePipe, ReactiveFormsModule, RouterLink],
+  imports: [ActivityBadgeComponent, AcknowledgeVisibleDirective, DatePipe, ReactiveFormsModule, RouterLink],
   templateUrl: './renter-bookings.component.html',
   styleUrl: './renter-bookings.component.scss',
   host: { class: 'ui-controls' }
 })
 export class RenterBookingsComponent implements OnInit, OnDestroy {
+  /** Activity state inherited from the authenticated shell. */
+  readonly activity = inject(NotificationStateService, { optional: true });
+  /** Distinct owned bookings requiring attention. */
+  get ownerAttention(): number | null { return this.activity?.ownerCount?.() ?? null; }
+  /** Distinct rented bookings requiring attention. */
+  get renterAttention(): number | null { return this.activity?.renterCount?.() ?? null; }
+
   private readonly ratingService = inject(RatingService);
   private readonly auth = inject(AuthService);
   private session?: Subscription;
@@ -40,6 +50,8 @@ export class RenterBookingsComponent implements OnInit, OnDestroy {
   private readonly bookingService = inject(BookingService);
   /** Active request, cancelled before replacement or destruction. */
   private request?: Subscription;
+  private polling?: Subscription;
+  /** Non-blocking background refresh feedback. */ refreshError = '';
   /** Filter snapshot used by pagination, refresh, and retry. */
   private appliedStatus?: BookingStatus;
   /** Last requested page, retained when that request fails. */
@@ -72,6 +84,7 @@ export class RenterBookingsComponent implements OnInit, OnDestroy {
 
   /** Loads all statuses on entry. */
   ngOnInit(): void {
+    this.polling = this.activity?.pulse?.subscribe(() => { if (!this.saving && !this.editingId && (!this.request || this.request.closed)) this.loadPage(this.page, true); });
     this.session = this.auth.session$.pipe(map(session => session?.userId ?? 0), distinctUntilChanged()).subscribe(userId => {
       this.request?.unsubscribe(); this.mutation?.unsubscribe();
       this.cancelRating(); this.bookings = []; this.totalCount = 0; this.page = 1;
@@ -80,7 +93,7 @@ export class RenterBookingsComponent implements OnInit, OnDestroy {
     });
   }
   /** Cancels retrieval when leaving this page. */
-  ngOnDestroy(): void { this.request?.unsubscribe(); this.mutation?.unsubscribe(); this.session?.unsubscribe(); this.cancelRating(); }
+  ngOnDestroy(): void { this.polling?.unsubscribe(); this.request?.unsubscribe(); this.mutation?.unsubscribe(); this.session?.unsubscribe(); this.cancelRating(); }
 
   /** Applies the draft status and starts from page one. */
   applyFilters(): void {
@@ -93,24 +106,23 @@ export class RenterBookingsComponent implements OnInit, OnDestroy {
   refresh(): void { this.loadPage(this.requestedPage); }
 
   /** Loads one page without applying draft filter changes. */
-  loadPage(page: number): void {
+  loadPage(page: number, background = false): void {
     if (page < 1 || this.saving) return;
-    this.cancelRating();
+    if (!background) this.cancelRating();
     this.request?.unsubscribe();
     this.requestedPage = page;
-    this.isLoading = true;
-    this.errorMessages = [];
-    this.bookings = [];
+    if (!background) { this.isLoading = true; this.errorMessages = []; this.bookings = []; }
     this.request = this.bookingService.getForRenter({
       page, pageSize: this.pageSize,
       ...(this.appliedStatus !== undefined ? { statuses: [this.appliedStatus] } : {})
     }).pipe(finalize(() => (this.isLoading = false))).subscribe({
       next: (result) => {
+        this.refreshError = ''; this.errorMessages = [];
         this.bookings = result.items;
         this.page = result.page;
         this.totalCount = result.totalCount;
       },
-      error: (error) => { this.errorMessages = this.getErrors(error); }
+      error: (error) => { if (background) this.refreshError = 'Updates temporarily unavailable. Retrying automatically.'; else this.errorMessages = this.getErrors(error); }
     });
   }
 
