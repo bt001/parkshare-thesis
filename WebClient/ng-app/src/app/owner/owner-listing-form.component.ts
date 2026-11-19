@@ -1,3 +1,4 @@
+import { ListingLocationPickerComponent } from './listing-location-picker.component';
 import { ListingPhotosComponent } from '../listings/listing-photos.component';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
@@ -7,7 +8,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, finalize, of, switchMap, throwError } from 'rxjs';
 
 import { AuthService, SessionChangedError } from '../api/auth/auth.service';
-import { Amenity, CreateListingRequest } from '../api/listings/listing.models';
+import { Amenity, CreateListingRequest, ListingLocation } from '../api/listings/listing.models';
 import { ListingService } from '../api/listings/listing.service';
 
 interface ListingForm {
@@ -19,7 +20,7 @@ interface ListingForm {
 @Component({
   selector: 'app-owner-listing-form',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, ListingPhotosComponent],
+  imports: [ReactiveFormsModule, RouterLink, ListingPhotosComponent, ListingLocationPickerComponent],
   templateUrl: './owner-listing-form.component.html',
   styleUrl: './owner-listing-form.component.scss'
 })
@@ -69,6 +70,19 @@ export class OwnerListingFormComponent implements OnInit {
     this.selectedAmenityIds = checked ? [...new Set([...this.selectedAmenityIds, id])] : this.selectedAmenityIds.filter(value => value !== id);
   }
 
+  /** Original location retained for legacy editing and cancellation. */
+  savedLocation: ListingLocation | null = null;
+  /** Whether the current location is accepted for saving. */
+  locationConfirmed = false;
+  /** Whether required location feedback should be shown. */
+  locationAttempted = false;
+
+  /** Stores only locations explicitly confirmed by the picker. */
+  setLocation(location: ListingLocation | null): void {
+    this.locationConfirmed = location !== null;
+    if (location) this.form.patchValue(location);
+  }
+
   listingId?: number;
   isLoading = false;
   isSubmitting = false;
@@ -101,6 +115,8 @@ export class OwnerListingFormComponent implements OnInit {
     this.listingService.getById(this.listingId).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => (this.isLoading = false))).subscribe({
       next: (listing) => {
         this.isReady = true;
+        this.savedLocation = { address: listing.address ?? '', latitude: listing.latitude, longitude: listing.longitude };
+        this.locationConfirmed = true;
         this.selectedAmenityIds = listing.amenities.map(amenity => amenity.id);
         this.form.setValue({
         title: listing.title, description: listing.description, address: listing.address ?? '', latitude: listing.latitude,
@@ -112,7 +128,8 @@ export class OwnerListingFormComponent implements OnInit {
   }
 
   submit(): void {
-    if (!this.isReady || this.form.invalid || this.isSubmitting || this.isLoading || !this.isCatalogReady) { this.form.markAllAsTouched(); return; }
+    this.locationAttempted = true;
+    if (!this.locationConfirmed || !this.isReady || this.form.invalid || this.isSubmitting || this.isLoading || !this.isCatalogReady) { this.form.markAllAsTouched(); return; }
     const value = this.form.getRawValue();
     const request: CreateListingRequest = {
       ...value, amenityIds: [...this.selectedAmenityIds], latitude: value.latitude!, longitude: value.longitude!, pricePerHour: value.pricePerHour!,

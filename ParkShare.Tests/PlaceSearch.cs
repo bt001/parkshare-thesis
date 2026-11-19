@@ -38,6 +38,45 @@ internal static partial class Program
         catch (OperationCanceledException) { }
     }
 
+    /// <summary>Verifies structured owner lookup, operation-separated caching and safe failures.</summary>
+    private static async Task OwnerAddressSearch()
+    {
+        var options = new PlaceOptions(); options.CurrentValue.ApiKey = "test-key";
+        var transport = new PlaceTransport { Body = """{"results":[{"formatted":"Ευτυχίδου, Αθήνα","street":"Ευτυχίδου","city":"Αθήνα","postcode":"11634","lat":37.97,"lon":23.75}]}""" };
+        using var provider = new GeoapifyPlaceSearchProvider(options, new HttpClient(transport));
+        var service = new PlaceSearchService(provider, NullLogger<PlaceSearchService>.Instance);
+        Check(!(await service.SearchStreetsAsync(" ", Ct)).IsSuccessful && transport.Calls == 0, "street input rejected before transport");
+        var streets = await service.SearchStreetsAsync("Ευτυχίδου", Ct);
+        Check(streets.IsSuccessful && streets.Payload.Items.Single().Street == "Ευτυχίδου"
+            && streets.Payload.Items.Single().City == "Αθήνα" && streets.Payload.Items.Single().Postcode == "11634", "structured street mapping");
+        Check(transport.LastUri!.Contains("type=street") && transport.LastUri.Contains("countrycode%3Agr"), "street-restricted Greek lookup");
+        await service.SearchStreetsAsync("Ευτυχίδου", Ct); Check(transport.Calls == 1, "street cache reused");
+        await service.SearchAsync("Ευτυχίδου", Ct); Check(transport.Calls == 2, "discovery and street caches separated");
+        transport.Body = """{"results":[{"formatted":"Ευτυχίδου 12A, Αθήνα","street":"Ευτυχίδου","housenumber":"12A","city":"Αθήνα","lat":37.9704,"lon":23.7504}]}""";
+        var address = await service.ResolveAddressAsync("Ευτυχίδου", "12A", "Αθήνα", "11634", Ct);
+        Check(address.IsSuccessful && address.Payload.Items.Single().HouseNumber == "12A", "matched building number returned");
+        Check(transport.LastUri!.Contains("&street=") && transport.LastUri.Contains("&housenumber=12A")
+            && transport.LastUri.Contains("&city=") && transport.LastUri.Contains("&postcode=11634")
+            && !transport.LastUri.Contains("&text=") && !transport.LastUri.Contains("&type="), "structured lookup excludes free text and street-only type");
+        await service.ResolveAddressAsync("Ευτυχίδου", "12A", "Αθήνα", "11634", Ct); Check(transport.Calls == 3, "address cache reused");
+        await service.ResolveAddressAsync("Ευτυχίδου", "12A", "Other", "11634", Ct); Check(transport.Calls == 4, "locality participates in cache key");
+        await service.ResolveAddressAsync("Ευτυχίδου", "12B", "Αθήνα", "11634", Ct); Check(transport.Calls == 5, "number participates in cache key");
+        Check(!(await service.ResolveAddressAsync("", "12", null, null, Ct)).IsSuccessful
+            && !(await service.ResolveAddressAsync("Street", new string('x', 21), null, null, Ct)).IsSuccessful, "invalid structured inputs rejected");
+        transport.Body = """{"results":[{"formatted":"Missing coordinates"},{"formatted":"Bad coordinates","lat":"bad","lon":23.75},{"formatted":"No street","lat":37.97,"lon":23.75}]}""";
+        Check((await service.SearchStreetsAsync("Missing", Ct)).Payload.Items.Count == 0, "incomplete street candidates discarded");
+        transport.Body = """{"results":[]}""";
+        Check((await service.ResolveAddressAsync("Street", "99", null, null, Ct)).Payload.Items.Count == 0, "unmatched number returns empty candidates for manual fallback");
+        transport.Status = HttpStatusCode.TooManyRequests;
+        var failure = await service.ResolveAddressAsync("Street", "100", null, null, Ct);
+        Check(!failure.IsSuccessful && !failure.ErrorsSummary.Contains("test-key"), "address failures safe and retryable");
+        using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
+        try { await service.SearchStreetsAsync("Cancel", cancelled.Token); Check(false, "street cancellation must propagate"); }
+        catch (OperationCanceledException) { }
+        try { await service.ResolveAddressAsync("Street", "101", null, null, cancelled.Token); Check(false, "address cancellation must propagate"); }
+        catch (OperationCanceledException) { }
+    }
+
     /// <summary>Mutable options for deterministic provider tests.</summary>
     private sealed class PlaceOptions : IOptionsMonitor<PlaceSearchConfig>
     {
@@ -60,10 +99,13 @@ internal static partial class Program
         public HttpStatusCode Status { get; set; } = HttpStatusCode.OK;
         /// <summary>Simulates a generic business hit followed by an exact city.</summary>
         public bool CityScenario { get; set; }
+        /// <summary>Optional structured lookup fixture.</summary>
+        public string? Body { get; set; }
         /// <inheritdoc/>
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Calls++; LastUri = request.RequestUri!.OriginalString;
+            if (Body is not null) return Task.FromResult(new HttpResponseMessage(Status) { Content = new StringContent(Body) });
             if (CityScenario)
             {
                 var city = LastUri.Contains("type=city");

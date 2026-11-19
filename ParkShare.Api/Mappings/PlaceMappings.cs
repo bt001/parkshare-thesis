@@ -13,6 +13,8 @@ namespace ParkShare.Api.Mappings
         public void CreateMappings(Profile cfg)
         {
             cfg.CreateMap<SearchPlacesRequest, SearchPlacesQuery>();
+            cfg.CreateMap<SearchPlacesRequest, SearchStreetsQuery>();
+            cfg.CreateMap<ResolveAddressRequest, ResolveAddressQuery>();
             cfg.CreateMap<SearchPlacesResponse, SearchPlacesResult>();
             cfg.CreateMap<PlaceResponse, PlaceResult>();
         }

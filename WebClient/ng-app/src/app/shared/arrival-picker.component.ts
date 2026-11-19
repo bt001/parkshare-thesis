@@ -1,17 +1,30 @@
+import { ClockTimeComponent } from './clock-time.component';
 import { DatePipe } from '@angular/common';
 import { ChangeDetectorRef, Component, ElementRef, forwardRef, HostListener, inject, Input, ViewChild } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { departureForStay, nextAthensMinute } from '../services/booking-time';
 
-/** Accessible Athens arrival picker with immediate date and time selection. */
+/** Shared Athens date/time picker with immediate selection and arrival defaults. */
 @Component({
-  selector: 'app-arrival-picker', standalone: true, host: { '[class.compact]': 'compact' }, imports: [DatePipe],
+  selector: 'app-arrival-picker', standalone: true, host: { '[class.compact]': 'compact' }, imports: [DatePipe, ClockTimeComponent],
   providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => ArrivalPickerComponent), multi: true }],
   templateUrl: './arrival-picker.component.html', styleUrl: './arrival-picker.component.scss'
 })
 export class ArrivalPickerComponent implements ControlValueAccessor {
   /** Renders the selected month before modal focus is assigned. */
   private readonly changeDetector = inject(ChangeDetectorRef);
+  /** Describes the date/time purpose in the dialog and empty trigger. */
+  @Input() pickerLabel = 'Choose arrival';
+  /** Restricts renter arrival dates while permitting historical owner-window editing. */
+  @Input() restrictPastDates = true;
+  /** Additional busy-state boundary supplied by a containing workflow. */
+  @Input() interactionDisabled = false;
+  /** Error/help elements associated with the trigger. */
+  @Input() describedBy: string | null = null;
+  /** Whether the containing form reports a validation error for this value. */
+  @Input() invalid = false;
+  /** Combined reactive-form and workflow disabled state. */
+  get isDisabled(): boolean { return this.disabled || this.interactionDisabled; }
   /** Removes the separate input border inside a segmented discovery bar. */
   @Input() compact = false;
   /** Unique control identifier supplied by the containing form. */
@@ -34,10 +47,19 @@ export class ArrivalPickerComponent implements ControlValueAccessor {
   minimumDay = nextAthensMinute().slice(0, 10);
   /** Whether the containing form disables this control. */
   disabled = false;
-  /** Hour options. */
-  readonly hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
-  /** Minute options, retaining exact next-minute suggestions. */
-  readonly minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+  /** Only one calendar/clock view is visible at a time. */
+  view: 'date' | 'time' = 'date';
+  /** Switches views and refits the measured dialog without committing another value. */
+  switchView(view: 'date' | 'time'): void {
+    this.view = view;
+    this.changeDetector.detectChanges();
+    this.position();
+  }
+  /** Adapts a complete clock value to the existing arrival date/time contract. */
+  selectClockTime(value: string): void {
+    if (this.isDisabled) return;
+    this.hour = value.slice(0, 2); this.minute = value.slice(3, 5); this.saveSelection();
+  }
   /** Monday-first calendar headings. */
   readonly weekdays = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
   /** Propagates committed form values. */
@@ -57,7 +79,7 @@ export class ArrivalPickerComponent implements ControlValueAccessor {
     const date = new Date(`${this.value}:00Z`);
     return departureForStay(this.value, 1)
       ? new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(date)
-      : this.value || 'Choose arrival';
+      : this.value || this.pickerLabel;
   }
   /** Builds only the weeks needed for the visible month without browser-timezone conversions. */
   get days(): string[] {
@@ -71,7 +93,8 @@ export class ArrivalPickerComponent implements ControlValueAccessor {
   get weeks(): string[][] { const days = this.days; return Array.from({ length: days.length / 7 }, (_, i) => days.slice(i * 7, i * 7 + 7)); }
   /** Opens at the existing selection, defaulting an empty arrival to the next Athens minute. */
   open(): void {
-    if (this.disabled) return;
+    if (this.isDisabled) return;
+    this.view = 'date';
     this.minimumDay = nextAthensMinute().slice(0, 10);
     this.setDraft(departureForStay(this.value, 1) ? this.value : nextAthensMinute());
     if (!this.value) this.saveSelection();
@@ -109,11 +132,9 @@ export class ArrivalPickerComponent implements ControlValueAccessor {
     this.month = new Date(`${this.day.slice(0, 7)}-01T00:00:00Z`);
   }
   /** Selects today's next future Athens minute immediately. */
-  today(): void { this.setDraft(nextAthensMinute()); this.saveSelection(); }
+  today(): void { if (this.isDisabled) return; this.setDraft(nextAthensMinute()); this.saveSelection(); }
   /** Selects a calendar day immediately while leaving time controls available. */
-  chooseDay(day: string): void { this.day = day; this.saveSelection(); }
-  /** Saves an hour or minute edit without a separate Apply action. */
-  changeTime(part: 'hour' | 'minute', value: string): void { this[part] = value; this.saveSelection(); }
+  chooseDay(day: string): void { if (this.isDisabled) return; this.day = day; this.saveSelection(); }
   /** Changes the displayed calendar month. */
   moveMonth(delta: number): void {
     const next = new Date(this.month); next.setUTCMonth(next.getUTCMonth() + delta);
@@ -122,11 +143,12 @@ export class ArrivalPickerComponent implements ControlValueAccessor {
   /** Publishes each date/time selection without closing the picker. */
   private saveSelection(): void { this.value = `${this.day}T${this.hour}:${this.minute}`; this.change(this.value); this.touched(); }
   /** Clears arrival and closes the picker. */
-  clear(): void { this.value = ''; this.change(''); this.close(); }
+  clear(): void { if (this.isDisabled) return; this.value = ''; this.change(''); this.close(); }
   /** Closes the picker and restores focus; selections are already saved. */
   close(): void { this.dialog.nativeElement.close(); this.touched(); this.trigger.nativeElement.focus(); }
   /** Supports arrow, Home and End navigation within calendar days. */
   navigate(event: KeyboardEvent, day: string): void {
+    if (this.isDisabled) return;
     const offset: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
     const date = new Date(`${day}T00:00:00Z`);
     const weekday = (date.getUTCDay() + 6) % 7;
@@ -134,7 +156,7 @@ export class ArrivalPickerComponent implements ControlValueAccessor {
     if (delta === undefined) return;
     event.preventDefault(); date.setUTCDate(date.getUTCDate() + delta);
     this.day = date.toISOString().slice(0, 10);
-    if (this.day < this.minimumDay) this.day = this.minimumDay;
+    if (this.restrictPastDates && this.day < this.minimumDay) this.day = this.minimumDay;
     this.saveSelection();
     this.month = new Date(`${this.day.slice(0, 7)}-01T00:00:00Z`);
     setTimeout(() => this.dialog.nativeElement.querySelector<HTMLButtonElement>('[aria-selected="true"]')?.focus());
@@ -148,7 +170,7 @@ export class ArrivalPickerComponent implements ControlValueAccessor {
   /** Contains keyboard focus inside the modal calendar. */
   containFocus(event: KeyboardEvent): void {
     if (event.key !== 'Tab') return;
-    const controls = Array.from(this.dialog.nativeElement.querySelectorAll<HTMLElement>('button, select')).filter(el => el.tabIndex >= 0 && !el.matches(':disabled'));
+    const controls = Array.from(this.dialog.nativeElement.querySelectorAll<HTMLElement>('button, [tabindex]')).filter(el => el.tabIndex >= 0 && !el.matches(':disabled'));
     const first = controls[0], last = controls[controls.length - 1];
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }

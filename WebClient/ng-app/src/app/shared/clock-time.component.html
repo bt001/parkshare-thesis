@@ -1,0 +1,18 @@
+<div class="digital-time" aria-label="Selected time">
+  <button type="button" aria-label="Choose hours" [attr.aria-pressed]="stage === 'hour'" [disabled]="disabled" (click)="selectStage('hour')">{{ pad(hour) }}</button>
+  <span aria-hidden="true">:</span>
+  <button type="button" aria-label="Choose minutes" [attr.aria-pressed]="stage === 'minute'" [disabled]="disabled" (click)="selectStage('minute')">{{ pad(minute) }}</button>
+  <small>24-hour time</small>
+</div>
+<div #dial class="clock-dial" role="slider" [attr.tabindex]="disabled ? -1 : 0" [attr.aria-label]="stage === 'hour' ? 'Hours' : 'Minutes'" aria-valuemin="0" [attr.aria-valuemax]="maximum" [attr.aria-valuenow]="selected" [attr.aria-valuetext]="accessibleTime" [attr.aria-disabled]="disabled" (pointerdown)="pointerDown($event)" (pointermove)="pointerMove($event)" (pointerup)="pointerUp($event)" (pointercancel)="cancelPointer($event)" (lostpointercapture)="cancelPointer($event)" (keydown)="keyDown($event)">
+  <svg viewBox="0 0 240 240" aria-hidden="true" focusable="false">
+    <circle class="face" cx="120" cy="120" r="118" />
+    @if (stage === 'minute') { @for (tick of ticks; track tick.value) { <line class="tick" [class.major]="tick.value % 5 === 0" [attr.x1]="tick.start.x" [attr.y1]="tick.start.y" [attr.x2]="tick.end.x" [attr.y2]="tick.end.y" /> } }
+    <line class="hand" x1="120" y1="120" [attr.x2]="hand.x" [attr.y2]="hand.y" />
+    <circle class="selection" [attr.cx]="hand.x" [attr.cy]="hand.y" [attr.r]="stage === 'minute' && selected % 5 !== 0 ? 6 : 15" />
+    <circle class="pin" cx="120" cy="120" r="3" />
+    @for (label of labels; track label.value) { <text [attr.x]="label.x" [attr.y]="label.y" [class.selected]="label.value === selected" [class.inner]="stage === 'hour' && (label.value === 0 || label.value > 12)">{{ stage === 'minute' || label.value === 0 ? pad(label.value) : label.value }}</text> }
+    @if (stage === 'minute' && selected % 5 !== 0) { <circle class="exact-minute" [attr.cx]="hand.x" [attr.cy]="hand.y" r="3" /> }
+  </svg>
+</div>
+<p class="clock-hint">{{ stage === 'hour' ? 'Choose an hour. Inner ring: 00 and 13–23.' : 'Choose any minute. Each small tick is one minute.' }}</p>

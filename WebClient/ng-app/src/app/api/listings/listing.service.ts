@@ -5,6 +5,7 @@ import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
 
 import {
   SearchPlace,
+  StreetPlace,
   Amenity,
   CreateListingRequest,
   GetOwnerListingsResult,
@@ -23,6 +24,18 @@ export class ListingService {
   /** Resolves an explicitly submitted place through the authenticated server adapter. */
   searchPlaces(text: string): Observable<{ items: SearchPlace[] }> {
     return this.http.get<{ items: SearchPlace[] }>('api/place/search', { params: { text } });
+  }
+
+  /** Finds structured streets through the authenticated server adapter. */
+  searchStreets(text: string): Observable<{ items: StreetPlace[] }> {
+    return this.http.get<{ items: StreetPlace[] }>('api/place/streets', { params: { text } });
+  }
+
+  /** Resolves a selected street and building number. */
+  resolveAddress(street: StreetPlace, houseNumber: string): Observable<{ items: StreetPlace[] }> {
+    return this.http.get<{ items: StreetPlace[] }>('api/place/address', {
+      params: { street: street.street, houseNumber, city: street.city ?? '', postcode: street.postcode ?? '' }
+    });
   }
 
   search(request: SearchListingsRequest): Observable<SearchListingsResult> {

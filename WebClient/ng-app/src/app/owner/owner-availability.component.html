@@ -11,9 +11,9 @@
       <h2>{{ editingId ? 'Edit window' : 'Add availability window' }}</h2>
       <form [formGroup]="form" (ngSubmit)="submit()">
         <fieldset [disabled]="isBusy"><legend class="visually-hidden">Window details</legend>
-        <label for="window-start">Start</label><input id="window-start" type="datetime-local" formControlName="startDateTime" [attr.aria-invalid]="form.controls.startDateTime.touched && form.controls.startDateTime.invalid" aria-describedby="window-start-error" />
+        <label for="window-start">Start</label><app-arrival-picker inputId="window-start" pickerLabel="Choose start" [restrictPastDates]="false" [interactionDisabled]="isBusy" formControlName="startDateTime" [invalid]="form.controls.startDateTime.touched && form.controls.startDateTime.invalid" describedBy="window-start-error" />
         @if (form.controls.startDateTime.touched && form.controls.startDateTime.invalid) { <p id="window-start-error" class="field-error">Choose a start date and time.</p> }
-        <label for="window-end">End</label><input id="window-end" type="datetime-local" formControlName="endDateTime" [attr.aria-invalid]="form.controls.endDateTime.touched && form.controls.endDateTime.invalid" aria-describedby="window-end-error window-range-error" />
+        <label for="window-end">End</label><app-arrival-picker inputId="window-end" pickerLabel="Choose end" [restrictPastDates]="false" [interactionDisabled]="isBusy" formControlName="endDateTime" [invalid]="form.controls.endDateTime.touched && form.controls.endDateTime.invalid" describedBy="window-end-error window-range-error" />
         @if (form.controls.endDateTime.touched && form.controls.endDateTime.invalid) { <p id="window-end-error" class="field-error">Choose an end date and time.</p> }
         @if (invalidRange) { <p id="window-range-error" class="field-error">End time must be after start time.</p> }
         <label class="check-row"><input type="checkbox" formControlName="isBlocked" /> Block bookings during this period</label>

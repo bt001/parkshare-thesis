@@ -31,7 +31,7 @@ describe('application routes', () => {
     for (const path of ['owner/listings/new', 'owner/listings/:id/edit']) {
       expect(await children?.find(route => route.path === path)?.loadComponent?.()).toBe(OwnerListingFormComponent);
     }
-    expect(children).toContain(jasmine.objectContaining({ path: 'owner/listings/:id/availability', component: OwnerAvailabilityComponent }));
+    expect(await children?.find(route => route.path === 'owner/listings/:id/availability')?.loadComponent?.()).toBe(OwnerAvailabilityComponent);
     expect(children).toContain(jasmine.objectContaining({ path: 'owner/bookings', component: OwnerBookingsComponent }));
   });
 

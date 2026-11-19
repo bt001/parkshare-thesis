@@ -1,0 +1,37 @@
+@if (!editing && saved) {
+  <p class="address-summary">{{ saved.address || 'Saved parking location' }}</p>
+  <app-location-map [point]="saved" [editable]="false" [disabled]="disabled" />
+  <button type="button" [disabled]="disabled" (click)="changeLocation()">Change location</button>
+} @else {
+  <label for="listing-street">Street</label>
+  <p id="street-hint" class="hint">Search for a street in Greece. Include the city to narrow the suggestions.</p>
+  <input id="listing-street" type="text" autocomplete="off" role="combobox" aria-autocomplete="list"
+    aria-controls="street-suggestions" [attr.aria-expanded]="suggestions.length > 0"
+    [attr.aria-activedescendant]="activeIndex >= 0 ? 'street-option-' + activeIndex : null"
+    aria-describedby="street-hint" [value]="streetText" [disabled]="disabled" maxlength="200"
+    (input)="streetChanged($any($event.target).value)" (keydown)="streetKey($event)" />
+  @if (searching) { <p role="status">Finding streets…</p> }
+  <ul id="street-suggestions" role="listbox" aria-label="Street suggestions" [hidden]="!suggestions.length">
+    @for (street of suggestions; track $index) {
+      <li role="option" [id]="'street-option-' + $index" [attr.aria-selected]="activeIndex === $index" (click)="selectStreet(street)">
+        <button type="button" tabindex="-1" [disabled]="disabled">{{ street.label }}</button>
+      </li>
+    }
+  </ul>
+  @if (empty) { <p role="status">No streets found. Try the Greek street name or include the city.</p> }
+  @if (error) { <p role="alert" class="field-error">{{ error }}</p>@if (!selected) { <button type="button" [disabled]="disabled" (click)="streetChanged(streetText)">Retry street search</button> } }
+  <label for="listing-number">Building number</label>
+  <input id="listing-number" type="text" autocomplete="off" maxlength="20" placeholder="e.g. 12A or 12–14"
+    [value]="houseNumber" [disabled]="disabled" (input)="numberChanged($any($event.target).value)" />
+  <button type="button" [disabled]="disabled || !selected || !houseNumber.trim() || houseNumber.length > 20 || locating" (click)="locate()">{{ locating ? 'Locating…' : 'Locate address' }}</button>
+  @if (draft) {
+    <p class="address-summary">{{ draft.address }}</p>
+    <p class="hint">Place the pin at the parking entrance by dragging it, clicking the map, or panning and choosing Use map centre.</p>
+    @if (approximate) { <p role="status">No exact building match was found. The map shows the selected street. Place the pin at the entrance before confirming.</p> }
+    <app-location-map [point]="draft" [disabled]="disabled" (pointChanged)="movePin($event)" (available)="mapAvailability($event)" />
+    <button type="button" class="primary-button" [disabled]="disabled || !mapReady || (approximate && !placed) || confirmed" (click)="confirm()">{{ confirmed ? 'Location confirmed' : 'Confirm location' }}</button>
+    @if (confirmed) { <p role="status">Location confirmed. You can save the listing.</p> }
+  }
+  @if (saved) { <button type="button" [disabled]="disabled" (click)="cancelChange()">Cancel location change</button> }
+  @if (showErrors && !confirmed) { <p class="field-error" role="alert">Select a street, enter the building number and confirm the parking entrance on the map.</p> }
+}

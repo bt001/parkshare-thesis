@@ -1,0 +1,13 @@
+:host { display: block; min-width: 0; }
+.digital-time { display: flex; justify-content: center; align-items: center; gap: .3rem; margin: .6rem 0 .8rem; }
+.digital-time button { min-width: 3.1rem; min-height: 2.8rem; border: 0; border-radius: .6rem; padding: .2rem .5rem; font: inherit; font-size: 1.65rem; font-weight: 600; background: var(--page); color: var(--ink); cursor: pointer; }
+.digital-time button[aria-pressed=true] { background: var(--soft); color: var(--accent); box-shadow: inset 0 -2px var(--accent); }
+.digital-time > span { font-size: 1.5rem; color: var(--muted); }.digital-time small { font-size: .7rem; color: var(--muted); margin-left: .5rem; }
+.clock-dial { width: min(100%, 260px, max(180px, calc(100dvh - 180px))); aspect-ratio: 1; margin: auto; border-radius: 50%; touch-action: none; -webkit-tap-highlight-color: transparent; user-select: none; cursor: pointer; }
+.clock-dial svg { display: block; width: 100%; height: 100%; pointer-events: none; }.face { fill: var(--page); }.hand { stroke: var(--accent); stroke-width: 2; }.selection, .pin { fill: var(--accent); }
+text { font: 15px "Segoe UI", sans-serif; fill: var(--ink); text-anchor: middle; dominant-baseline: central; }text.inner { font-size: 12px; fill: var(--muted); }text.selected { fill: white; font-weight: 700; }
+.tick { stroke: #a9b9c4; stroke-width: 1; }.tick.major { stroke: var(--muted); }.exact-minute { fill: white; }
+.clock-hint { text-align: center; color: var(--muted); font-size: .75rem; margin: .6rem 0 0; }
+.clock-dial[aria-disabled=true] { opacity: .55; cursor: default; }
+
+.clock-dial:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }

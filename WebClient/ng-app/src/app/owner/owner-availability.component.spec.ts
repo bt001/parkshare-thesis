@@ -4,6 +4,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 
+import { By } from '@angular/platform-browser';
+import { ArrivalPickerComponent } from '../shared/arrival-picker.component';
 import { AvailabilityService } from '../api/availability/availability.service';
 import { ListingService } from '../api/listings/listing.service';
 import { OwnerAvailabilityComponent } from './owner-availability.component';
@@ -24,6 +26,19 @@ describe('OwnerAvailabilityComponent', () => {
     availabilityService.delete.and.returnValue(of({ availabilityWindowId: 4 }));
     await TestBed.configureTestingModule({ imports: [OwnerAvailabilityComponent], providers: [provideRouter([]), { provide: BookingService, useValue: { getForOwner: () => of({ page: 1, pageSize: 100, totalCount: 0, items: [] }) } }, { provide: ListingService, useValue: listingService }, { provide: AvailabilityService, useValue: availabilityService }, { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => '3' } } } }] }).compileComponents();
     fixture = TestBed.createComponent(OwnerAvailabilityComponent); component = fixture.componentInstance; fixture.detectChanges();
+  });
+
+  it('connects both owner time fields to the shared clock while preserving past-window editing', () => {
+    component.form.patchValue({ startDateTime: '2020-01-15T10:00', endDateTime: '2020-01-15T12:00' }); fixture.detectChanges();
+    const pickers = fixture.debugElement.queryAll(By.directive(ArrivalPickerComponent));
+    expect(pickers.length).toBe(2); expect(fixture.nativeElement.querySelector('input[type="datetime-local"]')).toBeNull();
+    const start = pickers[0].componentInstance as ArrivalPickerComponent;
+    expect(start.restrictPastDates).toBeFalse(); start.open(); start.switchView('time'); start.selectClockTime('09:01');
+    expect(component.form.controls.startDateTime.value).toBe('2020-01-15T09:01'); start.close();
+    const end = pickers[1].componentInstance as ArrivalPickerComponent;
+    end.open(); end.switchView('time'); end.selectClockTime('12:59'); end.close();
+    expect(component.form.controls.endDateTime.value).toBe('2020-01-15T12:59');
+    component.submit(); expect(availabilityService.create).toHaveBeenCalledWith(jasmine.objectContaining({startDateTime: '2020-01-15T09:01', endDateTime: '2020-01-15T12:59'}));
   });
 
   it('prevents invalid ranges and creates valid open windows', () => {

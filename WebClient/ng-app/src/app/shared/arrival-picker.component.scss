@@ -1,8 +1,8 @@
 :host { display: block; min-width: 0; }
-button, select { font: inherit; cursor: pointer; }
+button { font: inherit; cursor: pointer; }
 .arrival-trigger { width: 100%; display: flex; align-items: center; gap: .65rem; min-height: 2.85rem; padding: .65rem .8rem; border: 1px solid #a9b9c4; border-radius: .65rem; background: var(--surface); color: var(--ink); text-align: left; }
 .arrival-trigger svg { flex-shrink: 0; color: var(--accent); }.empty { color: var(--muted); }
-dialog { position: fixed; inset: var(--picker-top, 12px) auto auto var(--picker-left, 12px); margin: 0; width: 340px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow: auto; padding: 1rem; border: 1px solid var(--line); border-radius: 1rem; color: var(--ink); background: var(--surface); box-shadow: 0 16px 60px #16324f33; }
+dialog { position: fixed; inset: var(--picker-top, 12px) auto auto var(--picker-left, 12px); margin: 0; width: 340px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow: hidden; padding: 1rem; border: 1px solid var(--line); border-radius: 1rem; color: var(--ink); background: var(--surface); box-shadow: 0 16px 60px #16324f33; }
 dialog::backdrop { background: #16324f18; }
 .picker-heading, .month-heading, .picker-actions { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
 .picker-heading small { display: block; color: var(--muted); margin-top: .2rem; font-size: .75rem; }
@@ -11,13 +11,18 @@ button:hover { background: var(--soft); }.month-heading { margin: .8rem 0 .5rem;
 .calendar-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: .12rem; }.weekday { text-align: center; font-size: .75rem; color: var(--muted); padding: .4rem 0; }
 .calendar button { min-height: 2rem; padding: .35rem; font-size: .85rem; min-width: 0; }.calendar .outside { color: var(--muted); opacity: .65; }
 .calendar button[aria-selected=true], .done { background: var(--accent); color: white; }.done:hover { background: #12584f; }
-.time-fields { display: flex; align-items: end; gap: .55rem; border-top: 1px solid var(--line); padding-top: .8rem; margin-top: .65rem; }.time-fields label { display: grid; gap: .2rem; font-size: .75rem; font-weight: 600; }.time-fields select { padding: .5rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--page); color: var(--ink); }.time-fields > span { padding-bottom: .5rem; }.time-fields > button { margin-left: auto; }
-.picker-actions { margin-top: 1rem; }
+
 @media(max-width: 560px) { dialog { inset: var(--picker-top, 12px) auto auto var(--picker-left, 12px); width: calc(100vw - 24px); max-height: calc(100dvh - 24px); } dialog::backdrop { background: #16324f66; } }
 
 .selection-note { color: var(--muted); font-size: .75rem; margin: .8rem 0 0; }
 .calendar button:disabled { cursor: default; color: var(--muted); opacity: .35; }
 .calendar button[aria-current=date]:not([aria-selected=true]) { box-shadow: inset 0 0 0 1px var(--accent); }
-.picker-actions { position: sticky; bottom: -1rem; background: var(--surface); padding: .6rem 0; margin-bottom: -.6rem; }
+dialog[open] { display: flex; flex-direction: column; }
+.picker-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 .2rem; }
+.picker-actions { flex-shrink: 0; background: var(--surface); padding-top: .65rem; margin-top: .4rem; border-top: 1px solid var(--line); }
 
 :host(.compact) .arrival-trigger { border: 0; min-height: 32px; padding: .15rem 0; border-radius: .25rem; font-size: .9rem; }
+
+.view-switch { display: flex; gap: .25rem; padding: .25rem; margin-top: .8rem; border-radius: .65rem; background: var(--page); }.view-switch button { flex: 1; min-height: 2.25rem; padding: .3rem; font-size: .85rem; }.view-switch button[aria-pressed=true] { background: var(--surface); color: var(--accent); box-shadow: 0 1px 4px #16324f18; }
+.time-summary { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); margin-top: .5rem; padding-top: .5rem; }.time-summary button { font-size: .8rem; }.time-summary strong { color: var(--accent); margin-left: .4rem; }
+.clock-date { font-size: .8rem; color: var(--muted); text-align: center; margin: .65rem 0 0; }.today-time { display: block; margin: .4rem auto 0; font-size: .75rem; color: var(--accent); }

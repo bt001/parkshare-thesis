@@ -15,6 +15,14 @@ namespace ParkShare.Api.Controllers
     {
         /// <summary>Creates the place controller.</summary>
         public PlaceController(IMediator mediator, IMapper mapper) : base(mediator, mapper) { }
+        /// <summary>Returns streets with locality information for owner address selection.</summary>
+        [HttpGet("streets")]
+        public Task<IActionResult> Streets([FromQuery] SearchPlacesRequest request)
+            => ProcessQueryAsync<SearchPlacesRequest, SearchPlacesResult, SearchStreetsQuery, SearchPlacesResponse>(request);
+        /// <summary>Resolves a structured building address.</summary>
+        [HttpGet("address")]
+        public Task<IActionResult> Address([FromQuery] ResolveAddressRequest request)
+            => ProcessQueryAsync<ResolveAddressRequest, SearchPlacesResult, ResolveAddressQuery, SearchPlacesResponse>(request);
         /// <summary>Returns candidates for an explicitly submitted place name.</summary>
         [HttpGet("search")]
         public Task<IActionResult> Search([FromQuery] SearchPlacesRequest request)

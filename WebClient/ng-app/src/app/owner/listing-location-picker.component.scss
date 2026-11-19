@@ -1,0 +1,12 @@
+:host { display: block; min-width: 0; }
+label { display: block; font-weight: 600; margin-top: 1rem; }
+input { width: 100%; box-sizing: border-box; margin: .4rem 0 .75rem; padding: .65rem; border: 1px solid var(--line); border-radius: .45rem; color: var(--ink); background: var(--surface); }
+button { margin: .35rem .5rem .35rem 0; min-height: 2.5rem; padding: .55rem .8rem; border: 1px solid var(--line); border-radius: .45rem; background: var(--surface); color: var(--ink); font-weight: 600; cursor: pointer; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+.primary-button { background: var(--accent); color: white; border-color: var(--accent); }
+.hint { color: var(--muted); font-size: .9rem; }
+.address-summary { font-weight: 600; overflow-wrap: anywhere; margin-top: 1rem; }
+ul { list-style: none; margin: 0 0 1rem; padding: .25rem; border: 1px solid #c8d5cf; border-radius: 8px; max-height: 230px; overflow-y: auto; }
+li button { display: block; width: 100%; text-align: left; margin: 0; border: 0; background: transparent; overflow-wrap: anywhere; }
+li[aria-selected="true"], li:hover { background: #e6f2ec; border-radius: 6px; }
+.field-error { color: #a22828; }

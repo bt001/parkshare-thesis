@@ -11,7 +11,7 @@ describe('OwnerListingFormComponent', () => {
   let component: OwnerListingFormComponent;
   let fixture: ComponentFixture<OwnerListingFormComponent>;
   let router: Router;
-  const listingService = jasmine.createSpyObj<ListingService>('ListingService', ['create', 'update', 'getById', 'getAmenities']);
+  const listingService = jasmine.createSpyObj<ListingService>('ListingService', ['create', 'update', 'getById', 'getAmenities', 'searchStreets', 'resolveAddress']);
   const authService = jasmine.createSpyObj<AuthService>('AuthService', ['refresh']);
 
   beforeEach(async () => {
@@ -41,6 +41,7 @@ describe('OwnerListingFormComponent', () => {
     component.form.setValue({ title: 'Space', description: 'Secure space', address: 'Main St', latitude: 44.4, longitude: 26.1, pricePerHour: 12.5, size: '', isAlwaysAvailable: true });
     component.toggleAmenity(1, true); component.toggleAmenity(2, true); component.toggleAmenity(2, false);
     listingService.create.and.returnValue(throwError(() => new Error('failed')));
+    component.setLocation({ address: 'Main St', latitude: 44.4, longitude: 26.1 });
     component.submit();
     expect(listingService.create).toHaveBeenCalledWith(jasmine.objectContaining({ amenityIds: [1] }));
     expect(component.selectedAmenityIds).toEqual([1]);
@@ -64,6 +65,7 @@ describe('OwnerListingFormComponent', () => {
 
   it('creates a scheduled listing and refreshes the owner session', () => {
     component.form.setValue({ title: 'Space', description: 'Secure space', address: 'Main St', latitude: 44.4, longitude: 26.1, pricePerHour: 12.5, size: 'Medium', isAlwaysAvailable: false });
+    component.setLocation({ address: 'Main St', latitude: 44.4, longitude: 26.1 });
     component.submit();
     expect(listingService.create).toHaveBeenCalledWith(jasmine.objectContaining({ isAlwaysAvailable: false, size: 'Medium' }));
     expect(authService.refresh).toHaveBeenCalled();
@@ -86,12 +88,18 @@ describe('OwnerListingFormComponent', () => {
     component.loadListing(); expect(component.form.controls.title.value).toBe('Saved');
     component.form.controls.title.setValue('Draft'); component.loadListing(); expect(component.form.controls.title.value).toBe('Draft');
   });
-  it('shows associated coordinate and price validation', () => {
+  it('requires a confirmed location and shows associated price validation', () => {
     component.submit(); fixture.detectChanges();
-    for (const id of ['latitude', 'longitude', 'price']) {
-      expect(fixture.nativeElement.querySelector('#' + id).getAttribute('aria-invalid')).toBe('true');
-      expect(fixture.nativeElement.querySelector('#' + id + '-error')).not.toBeNull();
-    }
+    expect(fixture.nativeElement.querySelector('#latitude')).toBeNull();
+    expect(fixture.nativeElement.querySelector('#longitude')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('confirm the parking entrance');
+    expect(fixture.nativeElement.querySelector('#price').getAttribute('aria-invalid')).toBe('true');
   });
 
+  it('does not submit stale coordinates after location confirmation is cleared', () => {
+    component.form.setValue({ title: 'Space', description: 'Secure space', address: 'Main St', latitude: 44.4, longitude: 26.1, pricePerHour: 12, size: '', isAlwaysAvailable: true });
+    component.setLocation({ address: 'Main St', latitude: 44.4, longitude: 26.1 });
+    component.setLocation(null); component.submit();
+    expect(listingService.create).not.toHaveBeenCalled();
+  });
 });

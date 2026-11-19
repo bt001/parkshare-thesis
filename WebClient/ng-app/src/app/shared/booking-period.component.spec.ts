@@ -80,7 +80,7 @@ describe('ArrivalPickerComponent', () => {
       const component = fixture.componentInstance; const change = jasmine.createSpy(); component.registerOnChange(change);
       component.open(); expect(component.day).toBe('2026-11-19'); expect(component.hour).toBe('14'); expect(component.minute).toBe('35');
       expect(change).toHaveBeenCalledWith('2026-11-19T14:35');
-      component.changeTime('hour', '16'); expect(change).toHaveBeenCalledWith('2026-11-19T16:35');
+      component.selectClockTime('16:35'); expect(change).toHaveBeenCalledWith('2026-11-19T16:35');
       component.close(); expect(component.value).toBe('2026-11-19T16:35');
       component.open(); expect(component.hour).toBe('16');
       component.chooseDay('2026-11-20'); expect(change).toHaveBeenCalledWith('2026-11-20T16:35');
@@ -88,6 +88,16 @@ describe('ArrivalPickerComponent', () => {
       expect(document.activeElement).toBe(component.trigger.nativeElement);
       fixture.destroy();
     } finally { jasmine.clock().uninstall(); }
+  });
+  it('switches date/time views, preserves selections and starts on Date when reopened', () => {
+    const fixture = TestBed.createComponent(ArrivalPickerComponent); fixture.detectChanges();
+    const component = fixture.componentInstance; component.writeValue('2099-01-15T23:59'); component.open();
+    component.switchView('time'); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-clock-time')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('select')).toBeNull();
+    component.selectClockTime('00:01'); component.switchView('date'); expect(component.value).toBe('2099-01-15T00:01');
+    component.close(); component.open(); expect(component.view).toBe('date'); expect(component.hour).toBe('00'); expect(component.minute).toBe('01');
+    component.close();
   });
   it('keeps its measured panel inside a short viewport', () => {
     const fixture = TestBed.createComponent(ArrivalPickerComponent); fixture.detectChanges();

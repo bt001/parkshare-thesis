@@ -135,3 +135,18 @@ export interface SearchPlace {
   /** Centre latitude. */ latitude: number;
   /** Centre longitude. */ longitude: number;
 }
+
+/** Structured street candidate for owner address selection. */
+export interface StreetPlace extends SearchPlace {
+  /** Selected street name. */ street: string;
+  /** Matched building number, when available. */ houseNumber?: string | null;
+  /** City or locality. */ city?: string | null;
+  /** Postal code. */ postcode?: string | null;
+}
+
+/** Confirmed listing address and parking entrance. */
+export interface ListingLocation {
+  /** Formatted address. */ address: string;
+  /** Entrance latitude. */ latitude: number;
+  /** Entrance longitude. */ longitude: number;
+}

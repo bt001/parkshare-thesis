@@ -73,6 +73,7 @@ internal static partial class Program
             await Test("amenity rollback, listing locks and concurrent replacement", AmenityTransactions);
             await Test("photo persistence, bounds, isolation and private storage", PhotoWorkflow);
             await Test("photo concurrency, fresh ownership, rollback and cleanup failures", PhotoTransactions);
+            await Test("owner structured address lookup, cache separation and safe failures", OwnerAddressSearch);
             await Test("place provider configuration, cache, budget and safe failures", PlaceSearch);
             await Test("search periods, geography, paging and fresh booking checks", SearchAvailability);
             await Test("search quality projections, filters, sorting and estimates", SearchQuality);

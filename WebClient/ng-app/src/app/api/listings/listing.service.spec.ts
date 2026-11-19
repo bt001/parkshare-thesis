@@ -19,6 +19,20 @@ describe('ListingService', () => {
 
   afterEach(() => http.verify());
 
+  it('uses authenticated structured street and address lookup endpoints', () => {
+    service.searchStreets('Ευτυχίδου').subscribe();
+    const streets = http.expectOne(candidate => candidate.url === 'api/place/streets');
+    expect(streets.request.params.get('text')).toBe('Ευτυχίδου');
+    expect(streets.request.context.get(ANONYMOUS_API)).toBeFalse(); streets.flush({ items: [] });
+    service.resolveAddress({ label: 'Street, Athens', street: 'Street', city: 'Athens', postcode: '11634', latitude: 37.97, longitude: 23.75 }, '12A').subscribe();
+    const address = http.expectOne(candidate => candidate.url === 'api/place/address');
+    expect(address.request.params.get('houseNumber')).toBe('12A');
+    expect(address.request.params.get('street')).toBe('Street');
+    expect(address.request.params.get('city')).toBe('Athens');
+    expect(address.request.params.get('postcode')).toBe('11634');
+    expect(address.request.context.get(ANONYMOUS_API)).toBeFalse(); address.flush({ items: [] });
+  });
+
   it('loads the catalog anonymously', () => {
     service.getAmenities().subscribe(result => expect(result.items[0].name).toBe('Lighting'));
     const req = http.expectOne('api/amenity');

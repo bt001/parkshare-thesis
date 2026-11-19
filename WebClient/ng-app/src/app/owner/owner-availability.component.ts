@@ -1,3 +1,4 @@
+import { ArrivalPickerComponent } from '../shared/arrival-picker.component';
 import { AvailabilityCalendarComponent } from './availability-calendar.component';
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -19,7 +20,7 @@ interface AvailabilityForm {
 @Component({
   selector: 'app-owner-availability',
   standalone: true,
-  imports: [DatePipe, ReactiveFormsModule, RouterLink, AvailabilityCalendarComponent],
+  imports: [ArrivalPickerComponent, DatePipe, ReactiveFormsModule, RouterLink, AvailabilityCalendarComponent],
   templateUrl: './owner-availability.component.html',
   styleUrl: './owner-workspace.scss'
 })
