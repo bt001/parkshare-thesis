@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 
-import { AuthService } from '../api/auth/auth.service';
+import { AuthService, SessionChangedError } from '../api/auth/auth.service';
 import { ListingService } from '../api/listings/listing.service';
 import { OwnerListingFormComponent } from './owner-listing-form.component';
 
@@ -16,11 +16,12 @@ describe('OwnerListingFormComponent', () => {
 
   beforeEach(async () => {
     listingService.create.calls.reset();
+    listingService.update.calls.reset();
     listingService.getAmenities.and.returnValue(of({ items: [{ id: 1, name: 'Lighting' }, { id: 2, name: 'CCTV' }] }));
     authService.refresh.calls.reset();
     listingService.create.and.returnValue(of({ listingId: 2, isActive: true }));
     authService.refresh.and.returnValue(of({ userId: 1, userName: 'owner', email: 'owner@test', role: 'Renter,Owner', roles: ['Renter', 'Owner'], name: 'Owner', accessToken: 'token', accessTokenExpiresAt: '2099-01-01', tokenType: 'Bearer', refreshToken: 'refresh', refreshTokenExpiresAt: '2099-01-02' }));
-    await TestBed.configureTestingModule({ imports: [OwnerListingFormComponent], providers: [provideRouter([]), { provide: ListingService, useValue: listingService }, { provide: AuthService, useValue: authService }, { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => null } } } }] }).compileComponents();
+    await TestBed.configureTestingModule({ imports: [OwnerListingFormComponent], providers: [provideRouter([]), { provide: ListingService, useValue: listingService }, { provide: AuthService, useValue: authService }, { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => null }, queryParamMap: { get: () => null } } } }] }).compileComponents();
     router = TestBed.inject(Router); spyOn(router, 'navigateByUrl').and.resolveTo(true);
     fixture = TestBed.createComponent(OwnerListingFormComponent); component = fixture.componentInstance; fixture.detectChanges();
   });
@@ -69,7 +70,62 @@ describe('OwnerListingFormComponent', () => {
     component.submit();
     expect(listingService.create).toHaveBeenCalledWith(jasmine.objectContaining({ isAlwaysAvailable: false, size: 'Medium' }));
     expect(authService.refresh).toHaveBeenCalled();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/owner/listings/2/edit?created=1', { replaceUrl: true });
+  });
+
+  it('waits for owner-role refresh and prevents duplicate creation before and after navigation', () => {
+    const refresh = new Subject<any>();
+    authService.refresh.and.returnValue(refresh);
+    component.form.setValue({ title: 'Space', description: 'Secure space', address: 'Main St', latitude: 44.4, longitude: 26.1, pricePerHour: 12, size: '', isAlwaysAvailable: true });
+    component.setLocation({ address: 'Main St', latitude: 44.4, longitude: 26.1 });
+    component.submit(); component.submit();
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(component.isSubmitting).toBeTrue();
+    refresh.next({}); refresh.complete(); component.submit();
+    expect(listingService.create).toHaveBeenCalledTimes(1);
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/owner/listings/2/edit?created=1', { replaceUrl: true });
+  });
+
+  it('continues to saved photos on transient refresh failure but stops on an account change', () => {
+    component.form.setValue({ title: 'Space', description: 'Secure space', address: 'Main St', latitude: 44.4, longitude: 26.1, pricePerHour: 12, size: '', isAlwaysAvailable: true });
+    component.setLocation({ address: 'Main St', latitude: 44.4, longitude: 26.1 });
+    authService.refresh.and.returnValue(throwError(() => new Error('offline')));
+    component.submit();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/owner/listings/2/edit?created=1', { replaceUrl: true });
+    component.createdListingId = undefined;
+    (router.navigateByUrl as jasmine.Spy).calls.reset();
+    authService.refresh.and.returnValue(throwError(() => new SessionChangedError()));
+    component.submit(); component.submit();
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(component.errorMessages[0]).toContain('was created, but your session changed');
+    expect(listingService.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('offers focused photo handoff and scheduled availability for the saved listing', () => {
+    spyOn(TestBed.inject(ActivatedRoute).snapshot.paramMap, 'get').and.returnValue('7');
+    spyOn(TestBed.inject(ActivatedRoute).snapshot.queryParamMap, 'get').and.returnValue('1');
+    listingService.getById.and.returnValue(of({ id: 7, ownerId: 1, title: 'Saved', description: 'Space', latitude: 44, longitude: 26, pricePerHour: 12, isActive: true, isAlwaysAvailable: false, createdAt: '', amenities: [] }));
+    component.isReady = false; component.ngOnInit(); fixture.detectChanges();
+    const banner: HTMLElement = fixture.nativeElement.querySelector('.creation-handoff');
+    expect(banner.textContent).toContain('Listing created');
+    expect(banner.textContent).toContain('before renters can book');
+    expect(banner.querySelector('a')?.getAttribute('href')).toBe('/owner/listings/7/availability');
+    const section: HTMLElement = fixture.nativeElement.querySelector('.photo-manager');
+    spyOn(section, 'focus'); spyOn(section, 'scrollIntoView');
+    banner.querySelector('button')!.click();
+    expect(section.focus).toHaveBeenCalled(); expect(section.scrollIntoView).toHaveBeenCalled();
+    listingService.update.and.returnValue(of({ listingId: 7, isActive: true }));
+    component.submit();
+    expect(listingService.update).toHaveBeenCalledWith(7, jasmine.objectContaining({ isAlwaysAvailable: false }));
+    expect(authService.refresh).not.toHaveBeenCalled();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/owner/listings');
+  });
+
+  it('shows scheduled guidance before creation without exposing an uploader', () => {
+    component.form.controls.isAlwaysAvailable.setValue(false); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('After saving, add photos and set availability');
+    expect(fixture.nativeElement.querySelector('app-listing-photos')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.creation-handoff')).toBeNull();
   });
 
   it('hides the form and blocks mutations on invalid edit routes', () => {

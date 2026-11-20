@@ -4,6 +4,16 @@
   @if (loadErrors.length) { <div class="message error" role="alert">@for (message of loadErrors; track message) { <p>{{ message }}</p> }@if (listingId) { <button type="button" (click)="loadListing()">Retry listing</button> }</div> }
   @if (errorMessages.length) { <div class="message error" role="alert">@for (message of errorMessages; track message) { <p>{{ message }}</p> }</div> }
   @if (isLoading) { <div class="message" role="status">Loading listing…</div> } @else if (isReady) {
+    @if (wasCreated) {
+      <div class="message creation-handoff" role="status">
+        <h2>Listing created</h2>
+        <p>Add photos so renters can see your parking space. Photos save separately from the listing details.</p>
+        <div class="actions"><button class="primary-button" type="button" (click)="focusPhotos(photos)">Add photos</button>
+          @if (!form.controls.isAlwaysAvailable.value) { <a [routerLink]="['/owner/listings', listingId, 'availability']">Set availability</a> }
+        </div>
+        @if (!form.controls.isAlwaysAvailable.value) { <p>Add open availability windows before renters can book this scheduled space.</p> }
+      </div>
+    }
     <form [formGroup]="form" (ngSubmit)="submit()">
       <fieldset [disabled]="isSubmitting"><legend>Space details</legend>
       <label for="title">Title</label><input id="title" formControlName="title" [attr.aria-invalid]="form.controls.title.touched && form.controls.title.invalid" aria-describedby="title-error" />
@@ -21,6 +31,10 @@
       </div>
       <label class="check-row"><input type="checkbox" formControlName="isAlwaysAvailable" /> Always available except for blocked periods</label>
       <p class="hint">Turn this off to publish explicit open availability windows.</p>
+      @if (!form.controls.isAlwaysAvailable.value) {
+        <p class="hint">Renters can book only within open availability windows. {{ isEditing ? 'Use Availability to add or update them.' : 'After saving, add photos and set availability for this space.' }}</p>
+        @if (listingId) { <a [routerLink]="['/owner/listings', listingId, 'availability']">Manage availability</a> }
+      }
       </fieldset>
       <fieldset class="amenity-options" [disabled]="isSubmitting || isCatalogLoading">
         <legend>Amenities</legend>
@@ -38,11 +52,13 @@
         }
         @if (isCatalogReady && !amenities.length) { <p>No amenities are available.</p> }
       </fieldset>
-      <button class="primary-button" type="submit" [disabled]="isSubmitting || !isCatalogReady">{{ isSubmitting ? 'Saving…' : (isEditing ? 'Save changes' : 'Create listing') }}</button>
+      <button class="primary-button" type="submit" [disabled]="isSubmitting || !isCatalogReady || !!createdListingId">{{ isSubmitting ? 'Saving…' : (createdListingId ? 'Listing created' : (isEditing ? 'Save changes' : 'Create listing')) }}</button>
     </form>
   }
 </section>
 
-@if (listingId && isReady) {
-  @defer (on immediate) { <app-listing-photos [listingId]="listingId" [editable]="true" /> }
-} @else if (!isEditing) { <p>After creating your listing, open Edit to add photos.</p> }
+<div #photos class="photo-manager" tabindex="-1" role="region" aria-label="Listing photos">
+  @if (listingId && isReady) {
+    @defer (on immediate) { <app-listing-photos [listingId]="listingId" [editable]="true" /> }
+  } @else if (!isEditing) { <p>Save your listing first. You can add photos on the next screen.</p> }
+</div>

@@ -5,7 +5,7 @@ import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, finalize, of, switchMap, throwError } from 'rxjs';
+import { catchError, finalize, map, of, switchMap, tap, throwError } from 'rxjs';
 
 import { AuthService, SessionChangedError } from '../api/auth/auth.service';
 import { Amenity, CreateListingRequest, ListingLocation } from '../api/listings/listing.models';
@@ -95,6 +95,17 @@ export class OwnerListingFormComponent implements OnInit {
   /** Retrieval feedback, separate from failed saves. */
   loadErrors: string[] = [];
 
+  /** Committed creation identity, preventing resubmission while navigation finishes. */
+  createdListingId?: number;
+  /** Whether this edit page follows a successful creation. */
+  get wasCreated(): boolean { return this.isEditing && this.route.snapshot.queryParamMap.get('created') === '1'; }
+
+  /** Moves keyboard focus and the viewport to the saved listing's photo manager. */
+  focusPhotos(section: HTMLElement): void {
+    section.focus({ preventScroll: true });
+    section.scrollIntoView({ block: 'start' });
+  }
+
   ngOnInit(): void {
     this.loadAmenities();
     const rawId = this.route.snapshot.paramMap.get('id');
@@ -129,7 +140,7 @@ export class OwnerListingFormComponent implements OnInit {
 
   submit(): void {
     this.locationAttempted = true;
-    if (!this.locationConfirmed || !this.isReady || this.form.invalid || this.isSubmitting || this.isLoading || !this.isCatalogReady) { this.form.markAllAsTouched(); return; }
+    if (this.createdListingId || !this.locationConfirmed || !this.isReady || this.form.invalid || this.isSubmitting || this.isLoading || !this.isCatalogReady) { this.form.markAllAsTouched(); return; }
     const value = this.form.getRawValue();
     const request: CreateListingRequest = {
       ...value, amenityIds: [...this.selectedAmenityIds], latitude: value.latitude!, longitude: value.longitude!, pricePerHour: value.pricePerHour!,
@@ -140,11 +151,20 @@ export class OwnerListingFormComponent implements OnInit {
     const mutation = this.listingId ? this.listingService.update(this.listingId, request) : this.listingService.create(request);
     mutation.pipe(
       takeUntilDestroyed(this.destroyRef),
-      switchMap(() => this.listingId ? of(null) : this.authService.refresh().pipe(catchError(error => error instanceof SessionChangedError ? throwError(() => error) : of(null)))),
+      tap(result => { if (!this.isEditing) this.createdListingId = result.listingId; }),
+      switchMap(result => this.isEditing ? of(result) : this.authService.refresh().pipe(
+        catchError(error => error instanceof SessionChangedError ? throwError(() => error) : of(null)),
+        map(() => result)
+      )),
       finalize(() => (this.isSubmitting = false))
     ).subscribe({
-      next: () => void this.router.navigateByUrl('/owner/listings'),
-      error: (error) => (this.errorMessages = this.getErrors(error, `The listing could not be ${this.isEditing ? 'updated' : 'created'}.`))
+      next: result => {
+        if (this.isEditing) void this.router.navigateByUrl('/owner/listings');
+        else void this.router.navigateByUrl(`/owner/listings/${result.listingId}/edit?created=1`, { replaceUrl: true });
+      },
+      error: (error) => (this.errorMessages = this.createdListingId
+        ? ['Your listing was created, but your session changed. Reopen owner listings to continue.']
+        : this.getErrors(error, `The listing could not be ${this.isEditing ? 'updated' : 'created'}.`))
     });
   }
 
