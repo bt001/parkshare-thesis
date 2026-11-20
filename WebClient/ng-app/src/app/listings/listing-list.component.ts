@@ -17,6 +17,21 @@ import { MapViewport, readDiscoveryNavigation, writeDiscoveryNavigation, discove
 
 type ListingViewMode = 'list' | 'map';
 
+/** Secondary criteria that can be removed independently from applied results. */
+type AppliedFilterKey = 'titleContains' | 'addressContains' | 'minPrice' | 'maxPrice' | 'minRating' | 'amenityIds' | 'onlyAlwaysAvailable';
+
+/** A removable criterion from the applied search, independent of form drafts. */
+interface AppliedFilterChip {
+  /** Stable identity for rendering and keyboard targets. */
+  id: string;
+  /** Applied criterion represented by this chip. */
+  key: AppliedFilterKey;
+  /** Human-readable applied value. */
+  label: string;
+  /** Individual amenity removed without clearing other selections. */
+  amenityId?: number;
+}
+
 @Component({
   selector: 'app-listing-list',
   standalone: true,
@@ -49,7 +64,7 @@ export class ListingListComponent implements OnInit, OnDestroy {
     if (!this.appliedDraft) return false;
     const applied = JSON.parse(this.appliedDraft).values;
     const values = this.filterForm.getRawValue();
-    return (['radiusKm', 'titleContains', 'addressContains', 'minPrice', 'maxPrice', 'minRating', 'amenityIds', 'sortBy', 'onlyAlwaysAvailable'] as const)
+    return (['radiusKm', 'titleContains', 'addressContains', 'minPrice', 'maxPrice', 'minRating', 'amenityIds', 'onlyAlwaysAvailable'] as const)
       .some(key => JSON.stringify(applied[key]) !== JSON.stringify(values[key]));
   }
 
@@ -476,6 +491,72 @@ export class ListingListComponent implements OnInit, OnDestroy {
     return Object.keys(this.appliedFilters).some(key => key !== 'onlyActive' && key !== 'sortBy');
   }
 
+  /** Displays only applied secondary criteria, including catalog-independent amenities. */
+  get appliedFilterChips(): AppliedFilterChip[] {
+    if (this.restorationError) return [];
+    const criteria = this.appliedFilters;
+    const chips: AppliedFilterChip[] = [];
+    for (const key of ['titleContains', 'addressContains', 'minPrice', 'maxPrice', 'minRating'] as const) {
+      const value = criteria[key];
+      if (value === undefined) continue;
+      const labels = {
+        titleContains: `Title: ${value}`, addressContains: `Address: ${value}`,
+        minPrice: `Min: ${value} €/h`, maxPrice: `Max: ${value} €/h`, minRating: `Rating: ${value}+`
+      };
+      chips.push({ id: key, key, label: labels[key] });
+    }
+    for (const id of new Set(criteria.amenityIds ?? [])) {
+      chips.push({ id: `amenity-${id}`, key: 'amenityIds', amenityId: id,
+        label: this.amenities.find(amenity => amenity.id === id)?.name ?? `Amenity #${id}` });
+    }
+    if (criteria.onlyAlwaysAvailable) chips.push({ id: 'onlyAlwaysAvailable', key: 'onlyAlwaysAvailable', label: 'Always available' });
+    return chips;
+  }
+
+  /** Applies toolbar sorting without submitting or validating pending form edits. */
+  applySort(): void {
+    if (this.restorationError) return;
+    const sort = this.filterForm.controls.sortBy.value;
+    if ((this.appliedFilters.sortBy ?? 'newest') === sort) return;
+    const criteria = { ...this.appliedFilters };
+    if (sort === 'newest') delete criteria.sortBy;
+    else criteria.sortBy = sort;
+    this.appliedFilters = criteria;
+    this.updateAppliedValue('sortBy', sort);
+    this.refreshResults(true);
+  }
+
+  /** Removes one applied criterion while retaining unrelated applied values and drafts. */
+  removeAppliedFilter(chip: AppliedFilterChip): void {
+    if (this.restorationError || !this.appliedFilterChips.some(value => value.id === chip.id)) return;
+    const criteria = { ...this.appliedFilters };
+    const controls = this.filterForm.controls;
+    const key = chip.key;
+    if (key === 'amenityIds') {
+      const ids = (criteria.amenityIds ?? []).filter(id => id !== chip.amenityId);
+      if (ids.length) criteria.amenityIds = ids;
+      else delete criteria.amenityIds;
+      controls.amenityIds.setValue(controls.amenityIds.value.filter(id => id !== chip.amenityId));
+      this.updateAppliedValue(key, ids);
+    } else {
+      delete criteria[key];
+      if (key === 'titleContains' || key === 'addressContains') controls[key].setValue('');
+      else if (key === 'onlyAlwaysAvailable') controls[key].setValue(false);
+      else controls[key].setValue(null);
+      this.updateAppliedValue(key, controls[key].value);
+    }
+    this.appliedFilters = criteria;
+    this.refreshResults(true);
+  }
+
+  /** Rebases only the changed applied field so unrelated draft comparisons stay intact. */
+  private updateAppliedValue(key: AppliedFilterKey | 'sortBy', value: unknown): void {
+    if (!this.appliedDraft) return;
+    const snapshot = JSON.parse(this.appliedDraft);
+    snapshot.values[key] = value;
+    this.appliedDraft = JSON.stringify(snapshot);
+  }
+
   /** Applies valid draft values without retaining blank text or an unchecked toggle. */
   applyFilters(): void {
     this.dismissPlaces();
@@ -490,11 +571,11 @@ export class ListingListComponent implements OnInit, OnDestroy {
   }
 
   /** Refreshes applied criteria without dismissing primary controls or stealing focus. */
-  private refreshResults(): void {
+  private refreshResults(preserveViewport = false): void {
     this.restoredSecondary = undefined;
     this.restorationError = '';
     this.selectedId = null;
-    if (!this.bounds) this.viewport = null;
+    if (!preserveViewport && !this.bounds) this.viewport = null;
     this.invalidateMap();
     this.loadPage(1);
     if (this.viewMode === 'map') this.loadMapListings();

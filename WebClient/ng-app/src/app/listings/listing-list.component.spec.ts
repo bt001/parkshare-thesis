@@ -65,6 +65,140 @@ describe('ListingListComponent', () => {
     fixture.detectChanges();
   });
 
+  it('sorts immediately using applied criteria while preserving invalid secondary and primary drafts', () => {
+    component.filterForm.patchValue({ minPrice: 4, maxPrice: 20, amenityIds: [1] }); component.applyFilters();
+    component.loadPage(2);
+    component.filterForm.patchValue({ minPrice: 30, radiusKm: -1, titleContains: 'Draft', where: 'Unresolved', startDateTime: 'bad' });
+    component.filterForm.controls.minPrice.markAsTouched();
+    fixture.detectChanges();
+    const select = fixture.nativeElement.querySelector('#filter-sort') as HTMLSelectElement;
+    select.value = 'priceAsc'; select.dispatchEvent(new Event('change'));
+    expect(listingService.search.calls.mostRecent().args[0]).toEqual({ onlyActive: true, minPrice: 4, maxPrice: 20, amenityIds: [1], sortBy: 'priceAsc', page: 1, pageSize: 12 });
+    expect(component.detailParams['sortBy']).toBe('priceAsc');
+    expect(component.detailParams['page']).toBeUndefined();
+    expect(component.filterForm.controls.minPrice.value).toBe(30);
+    expect(component.filterForm.controls.minPrice.touched).toBeTrue();
+    expect(component.filterForm.controls.where.value).toBe('Unresolved');
+    expect(component.filterForm.controls.startDateTime.value).toBe('bad');
+    expect(component.filterForm.controls.radiusKm.value).toBe(-1);
+    expect(component.hasSecondaryDraftChanges).toBeTrue();
+  });
+
+  it('deduplicates sort changes and removes default sorting from the URL and applied snapshot', () => {
+    component.filterForm.controls.sortBy.setValue('ratingDesc'); component.applySort();
+    expect(component.hasDraftChanges).toBeFalse();
+    expect(component.hasSecondaryDraftChanges).toBeFalse();
+    const count = listingService.search.calls.count();
+    component.applySort(); expect(listingService.search.calls.count()).toBe(count);
+    component.filterForm.controls.sortBy.setValue('newest'); component.applySort();
+    expect(component.detailParams['sortBy']).toBeUndefined();
+    expect(listingService.search.calls.mostRecent().args[0].sortBy).toBeUndefined();
+    expect(component.hasDraftChanges).toBeFalse();
+  });
+
+  it('renders applied-only chips with a distinct amenity count and catalog fallback', () => {
+    component.filterForm.patchValue({ titleContains: 'Central', addressContains: 'Athens', minPrice: 0, maxPrice: 12.5, minRating: 4.5, amenityIds: [1, 2, 1], onlyAlwaysAvailable: true });
+    component.applyFilters();
+    component.filterForm.patchValue({ titleContains: 'Draft', minPrice: -1, amenityIds: [3] });
+    fixture.detectChanges();
+    expect(component.appliedFilterChips.map(chip => chip.label)).toEqual(['Title: Central', 'Address: Athens', 'Min: 0 €/h', 'Max: 12.5 €/h', 'Rating: 4.5+', 'Amenity #1', 'Amenity #2', 'Always available']);
+    expect(fixture.nativeElement.querySelector('.applied-filters').textContent).toContain('8 applied filters');
+    expect(fixture.nativeElement.querySelectorAll('.filter-chip').length).toBe(8);
+    component.amenities = [{ id: 1, name: 'Covered' }];
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[aria-label="Remove Covered"]')).not.toBeNull();
+  });
+
+  it('removes just one scalar criterion and retains applied geography, period and unrelated invalid drafts', () => {
+    (component as any).restoreNavigation(convertToParamMap({ lat: '38', lng: '24', radiusKm: '3', place: 'Athens', startDateTime: '2099-01-15T10:00', endDateTime: '2099-01-15T12:00', minPrice: '4', maxPrice: '20', titleContains: 'Central' }));
+    component.filterForm.patchValue({ titleContains: 'Draft', minPrice: 50, radiusKm: -1 });
+    component.filterForm.controls.titleContains.markAsDirty();
+    component.removeAppliedFilter(component.appliedFilterChips.find(chip => chip.key === 'maxPrice')!);
+    expect(listingService.search.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({ lat: 38, lng: 24, radiusKm: 3, startDateTime: '2099-01-15T10:00', endDateTime: '2099-01-15T12:00', minPrice: 4, titleContains: 'Central' }));
+    expect(component.detailParams['maxPrice']).toBeUndefined();
+    expect(component.filterForm.controls.maxPrice.value).toBeNull();
+    expect(component.filterForm.controls.minPrice.value).toBe(50);
+    expect(component.filterForm.controls.radiusKm.value).toBe(-1);
+    expect(component.filterForm.controls.titleContains.value).toBe('Draft');
+    expect(component.filterForm.controls.titleContains.dirty).toBeTrue();
+    expect(component.hasSecondaryDraftChanges).toBeTrue();
+  });
+
+  it('removes individual amenities from applied and draft selections without losing other IDs', () => {
+    component.filterForm.controls.amenityIds.setValue([1, 2]); component.applyFilters();
+    component.filterForm.controls.amenityIds.setValue([1, 3]);
+    component.removeAppliedFilter(component.appliedFilterChips.find(chip => chip.amenityId === 1)!);
+    expect(component.detailParams['amenityIds']).toEqual([2]);
+    expect(component.filterForm.controls.amenityIds.value).toEqual([3]);
+    expect(component.hasSecondaryDraftChanges).toBeTrue();
+    component.removeAppliedFilter(component.appliedFilterChips[0]);
+    expect(component.detailParams['amenityIds']).toBeUndefined();
+    expect(component.filterForm.controls.amenityIds.value).toEqual([3]);
+  });
+
+  it('clears each scalar chip and rebases the applied snapshot without creating draft changes', () => {
+    component.filterForm.patchValue({ titleContains: 'Central', addressContains: 'Athens', minPrice: 0, maxPrice: 20, minRating: 4, onlyAlwaysAvailable: true }); component.applyFilters();
+    for (const chip of component.appliedFilterChips) {
+      component.removeAppliedFilter(chip);
+      expect(component.detailParams[chip.key]).toBeUndefined();
+      expect(component.hasDraftChanges).toBeFalse();
+    }
+    expect(component.hasFilters).toBeFalse();
+    expect(component.appliedFilterChips).toEqual([]);
+  });
+
+  it('preserves camera and shared map/list criteria while cancelling superseded sort and chip requests', () => {
+    component.filterForm.controls.minPrice.setValue(4); component.applyFilters();
+    component.showOnMap(component.listings[0]);
+    const viewport = { latitude: 38, longitude: 24, zoom: 14 }; component.saveViewport(viewport);
+    const oldList = new Subject<SearchListingsResult>(); const oldMap = new Subject<SearchListingItem[]>();
+    listingService.search.and.returnValue(oldList); listingService.searchAll.and.returnValue(oldMap);
+    component.filterForm.controls.sortBy.setValue('priceAsc'); component.applySort();
+    expect(oldList.observed).toBeTrue(); expect(oldMap.observed).toBeTrue();
+    expect(component.selectedMapListing).toBeNull(); expect(component.detailParams['selectedId']).toBeUndefined();
+    expect(component.viewport).toEqual(viewport);
+    listingService.search.and.returnValue(of({ items: [], totalCount: 0, page: 1, pageSize: 12 })); listingService.searchAll.and.returnValue(of([]));
+    component.removeAppliedFilter(component.appliedFilterChips[0]);
+    expect(oldList.observed).toBeFalse(); expect(oldMap.observed).toBeFalse();
+    expect(component.detailParams['mapZoom']).toBe(14);
+    expect(listingService.searchAll.calls.mostRecent().args[0]).toEqual({ onlyActive: true, sortBy: 'priceAsc' });
+    expect(listingService.search.calls.mostRecent().args[0]).toEqual({ onlyActive: true, sortBy: 'priceAsc', page: 1, pageSize: 12 });
+    oldMap.next([{ id: 999 } as SearchListingItem]); expect(component.mapListings).toEqual([]);
+  });
+
+  it('restores sorting and chips and ignores their own URL echoes without overwriting drafts', () => {
+    const route = TestBed.inject(ActivatedRoute);
+    const params = new BehaviorSubject<ParamMap>(convertToParamMap({})); Object.defineProperty(route, 'queryParamMap', { value: params }); component.ngOnInit();
+    params.next(convertToParamMap({ minPrice: '4', sortBy: 'ratingDesc', amenityIds: ['1', '2'] }));
+    expect(component.filterForm.controls.sortBy.value).toBe('ratingDesc'); expect(component.appliedFilterChips.length).toBe(3);
+    component.filterForm.controls.titleContains.setValue('Draft');
+    component.filterForm.controls.sortBy.setValue('priceDesc'); component.applySort();
+    const count = listingService.search.calls.count();
+    params.next(convertToParamMap({ minPrice: '4', sortBy: 'priceDesc', amenityIds: ['1', '2'] }));
+    expect(listingService.search.calls.count()).toBe(count); expect(component.filterForm.controls.titleContains.value).toBe('Draft');
+    params.next(convertToParamMap({ minPrice: '8', sortBy: 'newest' }));
+    expect(component.filterForm.controls.sortBy.value).toBe('newest'); expect(component.appliedFilterChips[0].label).toBe('Min: 8 €/h');
+  });
+
+  it('blocks sorting and chip removal for invalid saved criteria', () => {
+    component.filterForm.controls.minPrice.setValue(4); component.applyFilters(); const chip = component.appliedFilterChips[0];
+    (component as any).restoreNavigation(convertToParamMap({ minPrice: 'bad' }));
+    const count = listingService.search.calls.count(); component.filterForm.controls.sortBy.setValue('priceAsc'); component.applySort(); component.removeAppliedFilter(chip);
+    expect(listingService.search.calls.count()).toBe(count); expect(component.restorationError).toBeTruthy(); expect(component.appliedFilterChips).toEqual([]);
+    fixture.detectChanges(); expect(fixture.nativeElement.querySelector('#filter-sort').matches(':disabled')).toBeTrue();
+    component.resetFilters(); expect(component.restorationError).toBe(''); expect(component.filterForm.controls.sortBy.value).toBe('newest');
+  });
+
+  it('disables sorting on the initial invalid route and enables it after Reset', () => {
+    fixture.destroy();
+    const route = TestBed.inject(ActivatedRoute);
+    spyOnProperty(route.snapshot, 'queryParamMap', 'get').and.returnValue(convertToParamMap({ minPrice: 'bad' }));
+    fixture = TestBed.createComponent(ListingListComponent); component = fixture.componentInstance; fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#filter-sort').matches(':disabled')).toBeTrue();
+    component.resetFilters(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#filter-sort').matches(':disabled')).toBeFalse();
+  });
+
   it('retains malformed saved criteria without passing invalid values to date formatting', () => {
     (component as any).restoreNavigation(convertToParamMap({ startDateTime: 'bad', endDateTime: 'bad', minPrice: 'bad' }));
     expect(() => fixture.detectChanges()).not.toThrow();

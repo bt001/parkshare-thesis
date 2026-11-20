@@ -112,17 +112,27 @@
 </form>
 <section class="results" aria-label="Parking results" [attr.aria-busy]="isLoading || isMapLoading">
   <div class="results-toolbar">
-    <button #filterTrigger class="filter-trigger" type="button" (click)="openFilters()">Filters{{ hasFilters ? ' (applied)' : '' }}</button>
+    <button #filterTrigger class="filter-trigger" type="button" (click)="openFilters()">Filters{{ appliedFilterChips.length ? ' (' + appliedFilterChips.length + ')' : '' }}</button>
     @if (!isLoading && !isMapLoading && !restorationError && errorMessages.length === 0 && mapErrorMessages.length === 0) { <span class="result-count" role="status">{{ viewMode === 'map' ? mapListings.length : totalCount }} {{ (viewMode === 'map' ? mapListings.length : totalCount) === 1 ? 'space' : 'spaces' }}</span> }
       <div><label for="filter-sort">Sort by</label>
-        <select id="filter-sort" [formControl]="filterForm.controls.sortBy">
+        <fieldset class="sort-control" [disabled]="!!restorationError" aria-label="Result sorting">
+        <select id="filter-sort" [formControl]="filterForm.controls.sortBy" (change)="applySort()">
           <option value="newest">Newest</option><option value="priceAsc">Price: low to high</option>
           <option value="priceDesc">Price: high to low</option><option value="ratingDesc">Highest rated</option>
         </select>
+        </fieldset>
       </div>    <div class="view-switch" role="group" aria-label="Listings view"><button type="button" [attr.aria-pressed]="viewMode === 'list'" (click)="setViewMode('list')">List</button><button type="button" [attr.aria-pressed]="viewMode === 'map'" (click)="setViewMode('map')">Map</button></div>
   </div>
   @if (hasSecondaryDraftChanges) { <p class="draft-notice" role="status">Filter changes are not applied. <button type="button" (click)="applyFilters()">Apply filters</button></p> }
-  @if (hasFilters) { <p class="applied-notice">Filters applied to these results. <button type="button" (click)="resetFilters()">Clear filters</button></p> }
+  @if (hasFilters) {
+    <div class="applied-filters" role="group" aria-label="Applied filters">
+      @if (appliedFilterChips.length) { <span>{{ appliedFilterChips.length }} applied {{ appliedFilterChips.length === 1 ? 'filter' : 'filters' }}</span> }
+      @for (chip of appliedFilterChips; track chip.id) {
+        <button class="filter-chip" type="button" [attr.aria-label]="'Remove ' + chip.label" (click)="removeAppliedFilter(chip)">{{ chip.label }} <span aria-hidden="true">&times;</span></button>
+      }
+      <button type="button" (click)="resetFilters()">Clear filters</button>
+    </div>
+  }
 @if (restorationError) {
   <div class="message error" role="alert">{{ restorationError }}</div>
 } @else if (viewMode === 'list') {
