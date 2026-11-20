@@ -65,6 +65,88 @@ describe('ListingListComponent', () => {
     fixture.detectChanges();
   });
 
+  it('reserves initial loading cards with an accessible status and no result actions', () => {
+    fixture.destroy();
+    listingService.search.and.returnValue(new Subject<SearchListingsResult>());
+    fixture = TestBed.createComponent(ListingListComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelectorAll('.loading-card').length).toBe(12);
+    expect(host.querySelector('.list-results')?.getAttribute('aria-busy')).toBe('true');
+    expect(host.querySelector('.loading-status')?.textContent).toContain('Loading available parking');
+    expect(host.querySelector('.listing-grid')?.getAttribute('aria-hidden')).toBe('true');
+    expect(host.querySelector('.list-results a, .list-results button')).toBeNull();
+    expect(host.textContent).not.toContain('No active listings yet');
+  });
+
+  it('replaces old results during paging and preserves their measured height', () => {
+    const pending = new Subject<SearchListingsResult>();
+    const results = fixture.nativeElement.querySelector('.list-results') as HTMLElement;
+    spyOn(results, 'getBoundingClientRect').and.returnValue({ height: 920 } as DOMRect);
+    listingService.search.and.returnValue(pending);
+    component.loadPage(2); fixture.detectChanges();
+    expect(results.style.minHeight).toBe('920px');
+    expect(results.querySelectorAll('.loading-card').length).toBe(1);
+    expect(results.querySelector('[data-card-id]')).toBeNull();
+    expect(results.querySelector('a, button')).toBeNull();
+    pending.next({ page: 2, pageSize: 12, totalCount: 13, items: [] }); pending.complete();
+    fixture.detectChanges();
+    expect(results.style.minHeight).toBe('');
+    expect(results.getAttribute('aria-busy')).toBe('false');
+    expect(results.querySelector('.loading-card')).toBeNull();
+  });
+
+  it('shows only the latest response after rapid searches, including late old failures', () => {
+    const old = new Subject<SearchListingsResult>();
+    const latest = new Subject<SearchListingsResult>();
+    const item = component.listings[0];
+    listingService.search.and.returnValues(old, latest);
+    component.filterForm.controls.sortBy.setValue('priceAsc'); component.applySort();
+    component.filterForm.controls.sortBy.setValue('ratingDesc'); component.applySort();
+    expect(old.observed).toBeFalse();
+    old.error(new Error('Obsolete failure'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.loading-card')).not.toBeNull();
+    expect(component.errorMessages).toEqual([]);
+    latest.next({ page: 1, pageSize: 12, totalCount: 1, items: [{ ...item, title: 'Latest match' }] }); latest.complete();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-card-id] h2').textContent).toBe('Latest match');
+    expect(fixture.nativeElement.querySelector('.loading-card')).toBeNull();
+  });
+
+  it('distinguishes failed loading, retrying and genuine empty results', () => {
+    const failed = new Subject<SearchListingsResult>();
+    const retry = new Subject<SearchListingsResult>();
+    listingService.search.and.returnValues(failed, retry);
+    component.loadPage(1); failed.error(new HttpErrorResponse({ status: 503, error: ['Search unavailable'] }));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.list-results [role="alert"]').textContent).toContain('Search unavailable');
+    expect(fixture.nativeElement.querySelector('.loading-card')).toBeNull();
+    fixture.nativeElement.querySelector('.list-results button').click(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.loading-card')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.list-results [role="alert"]')).toBeNull();
+    retry.next({ page: 1, pageSize: 12, totalCount: 0, items: [] }); retry.complete(); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('No active listings yet');
+    expect(fixture.nativeElement.querySelector('.loading-card')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.loading-status').textContent.trim()).toBe('');
+  });
+
+  it('reserves the map area and hides old cards and preview during a delayed replacement', () => {
+    component.setViewMode('map'); fixture.detectChanges();
+    const pending = new Subject<SearchListingItem[]>();
+    listingService.searchAll.and.returnValue(pending);
+    component.filterForm.controls.sortBy.setValue('priceAsc'); component.applySort(); fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('.loading-map')).not.toBeNull();
+    expect(host.querySelector('.loading-status')?.textContent).toContain('Loading all parking locations');
+    expect(host.querySelector('.loading-map')?.parentElement?.getAttribute('aria-hidden')).toBe('true');
+    expect(host.querySelector('[data-card-id], app-listing-map, .map-preview')).toBeNull();
+    pending.error(new Error('offline')); fixture.detectChanges();
+    expect(host.querySelector('.loading-map')).toBeNull();
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('Listings could not be loaded');
+  });
+
   it('sorts immediately using applied criteria while preserving invalid secondary and primary drafts', () => {
     component.filterForm.patchValue({ minPrice: 4, maxPrice: 20, amenityIds: [1] }); component.applyFilters();
     component.loadPage(2);

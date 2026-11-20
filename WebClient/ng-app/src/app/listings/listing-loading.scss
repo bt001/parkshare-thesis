@@ -1,0 +1,32 @@
+.loading-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skeleton-line, .skeleton-block {
+  background: var(--line);
+}
+
+.skeleton-line {
+  display: block;
+  width: 85%;
+  height: .85rem;
+  border-radius: .25rem;
+}
+
+.loading-card .card-body {
+  display: grid;
+  gap: .8rem;
+  min-height: 13rem;
+}
+
+.skeleton-title { width: 70%; height: 1.25rem; }
+.skeleton-short { width: 55%; }
+.skeleton-action { width: 65%; height: 2.5rem; }
+.loading-map { min-height: 42rem; border-radius: var(--radius); }
+.loading-pagination { display: grid; place-items: center; height: 2.5rem; margin-top: 1.25rem; }
+.loading-pagination .skeleton-line { width: 15rem; height: 2.5rem; }

@@ -110,7 +110,8 @@
     @if (!filtersInline && (periodError || placeError)) { <p class="field-error" role="alert">Check your search fields. {{ periodError || placeError }} @if (periodError || placeError) { Close filters to correct location and dates. }</p> }
   </dialog>
 </form>
-<section class="results" aria-label="Parking results" [attr.aria-busy]="isLoading || isMapLoading">
+<section class="results" aria-label="Parking results">
+  <p class="loading-status" role="status">@if (!restorationError && (viewMode === 'list' ? isLoading : isMapLoading)) { {{ viewMode === 'list' ? 'Loading available parking…' : 'Loading all parking locations…' }} }</p>
   <div class="results-toolbar">
     <button #filterTrigger class="filter-trigger" type="button" (click)="openFilters()">Filters{{ appliedFilterChips.length ? ' (' + appliedFilterChips.length + ')' : '' }}</button>
     @if (!isLoading && !isMapLoading && !restorationError && errorMessages.length === 0 && mapErrorMessages.length === 0) { <span class="result-count" role="status">{{ viewMode === 'map' ? mapListings.length : totalCount }} {{ (viewMode === 'map' ? mapListings.length : totalCount) === 1 ? 'space' : 'spaces' }}</span> }
@@ -136,6 +137,7 @@
 @if (restorationError) {
   <div class="message error" role="alert">{{ restorationError }}</div>
 } @else if (viewMode === 'list') {
+  <div class="list-results" [attr.aria-busy]="isLoading" [style.min-height.px]="isLoading ? loadingHeight : null">
   @if (errorMessages.length > 0) {
     <div class="message error" role="alert">
       @for (message of errorMessages; track message) {
@@ -144,7 +146,10 @@
       <button type="button" (click)="loadPage(page)">Try again</button>
     </div>
   } @else if (isLoading) {
-    <div class="message" aria-live="polite">Loading available parking&hellip;</div>
+    <div class="listing-grid" aria-hidden="true">
+      @for (slot of loadingCards; track slot) { <ng-container *ngTemplateOutlet="loadingCard" /> }
+    </div>
+    <div class="loading-pagination" aria-hidden="true"><span class="skeleton-line"></span></div>
   } @else if (listings.length === 0) {
     <div class="message">
       @if (hasFilters) {
@@ -169,7 +174,9 @@
       <button type="button" [disabled]="!canGoForward" (click)="loadPage(page + 1)">Next</button>
     </nav>
   }
+  </div>
 } @else {
+  <div [attr.aria-busy]="isMapLoading">
   @if (mapErrorMessages.length > 0) {
     <div class="message error" role="alert">
       @for (message of mapErrorMessages; track message) {
@@ -178,7 +185,14 @@
       <button type="button" (click)="retryMap()">Try map again</button>
     </div>
   } @else if (isMapLoading) {
-    <div class="message" aria-live="polite">Loading all parking locations&hellip;</div>
+    <div class="connected-results" aria-hidden="true">
+      <div class="map-result-list">
+        <span class="skeleton-line"></span>
+        <ng-container *ngTemplateOutlet="loadingCard" />
+        <ng-container *ngTemplateOutlet="loadingCard" />
+      </div>
+      <div class="loading-map skeleton-block"></div>
+    </div>
   } @else if (isMapLoaded && mapListings.length === 0) {
     <div class="message">
       @if (hasFilters) {
@@ -191,7 +205,7 @@
       }
     </div>
   }
-  @if (isMapLoaded) {
+  @if (isMapLoaded && !isMapLoading) {
     <div class="connected-results">
       <section class="map-result-list" aria-label="Mapped parking spaces">
         <p>{{ mapListings.length }} spaces on the map</p>
@@ -224,10 +238,22 @@
       </div>
     </div>
   }
+  </div>
 }
 
 </section>
 </div>
+
+<ng-template #loadingCard>
+  <div class="listing-card loading-card">
+    <div class="card-map-placeholder skeleton-block"></div>
+    <div class="card-body">
+      <span class="skeleton-line"></span><span class="skeleton-line skeleton-title"></span>
+      <span class="skeleton-line"></span><span class="skeleton-line skeleton-short"></span>
+      <span class="skeleton-line skeleton-action"></span>
+    </div>
+  </div>
+</ng-template>
 
 <ng-template #resultCard let-listing>
   <article class="listing-card" [class.selected-card]="selectedMapListing?.id === listing.id" [attr.data-card-id]="listing.id">

@@ -37,7 +37,7 @@ interface AppliedFilterChip {
   standalone: true,
   imports: [BookingPeriodComponent, DatePipe, NgTemplateOutlet, DecimalPipe, RouterLink, ListingMapComponent, ReactiveFormsModule],
   templateUrl: './listing-list.component.html',
-  styleUrls: ['./listing-list.component.scss', './listing-search-bar.scss']
+  styleUrls: ['./listing-list.component.scss', './listing-search-bar.scss', './listing-loading.scss']
 })
 export class ListingListComponent implements OnInit, OnDestroy {
   /** Single filter panel, presented inline only when there is sufficient room. */
@@ -694,6 +694,10 @@ export class ListingListComponent implements OnInit, OnDestroy {
   }
 
   readonly pageSize = 12;
+  /** Placeholder slots retain the previous page's density without exposing stale results. */
+  loadingCards = Array.from({ length: this.pageSize }, (_, index) => index);
+  /** Last rendered list height reserved while its replacement is loading. */
+  loadingHeight = 0;
   listings: SearchListingItem[] = [];
   page = 1;
   totalCount = 0;
@@ -809,6 +813,9 @@ export class ListingListComponent implements OnInit, OnDestroy {
     }
 
     this.listRequest?.unsubscribe();
+    const resultHeight = this.element.nativeElement.querySelector('.list-results')?.getBoundingClientRect().height;
+    if (resultHeight) this.loadingHeight = resultHeight;
+    if (this.listings.length) this.loadingCards = Array.from({ length: this.listings.length }, (_, index) => index);
     this.page = page;
     this.syncNavigation();
     this.isLoading = true;
