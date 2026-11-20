@@ -1,10 +1,13 @@
+import { ParkingPeriodPipe, AthensTimestampPipe } from '../shared/parking-date.pipe';
 import { NotificationStateService } from '../notifications/notification-state.service';
 import { AcknowledgeVisibleDirective } from '../shared/acknowledge-visible.directive';
-import { DatePipe, DOCUMENT } from '@angular/common';
+import { DOCUMENT } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { Subscription, combineLatest, distinctUntilChanged, finalize, map } from 'rxjs';
+import { Subscription, combineLatest, distinctUntilChanged, finalize, map, switchMap } from 'rxjs';
+import { BookingService } from '../api/bookings/booking.service';
+import { ListingService } from '../api/listings/listing.service';
 import { AuthService } from '../api/auth/auth.service';
 import { ChatMessage } from '../api/chat/chat.models';
 import { ChatService } from '../api/chat/chat.service';
@@ -12,10 +15,38 @@ import { ChatService } from '../api/chat/chat.service';
 /** Shared participant conversation with automatic refresh. */
 @Component({
   selector: 'app-booking-chat', standalone: true,
-  imports: [AcknowledgeVisibleDirective, DatePipe, ReactiveFormsModule, RouterLink],
+  imports: [ParkingPeriodPipe, AthensTimestampPipe, AcknowledgeVisibleDirective, ReactiveFormsModule, RouterLink],
   templateUrl: './booking-chat.component.html', styleUrl: './booking-chat.component.scss'
 })
 export class BookingChatComponent implements OnInit, OnDestroy {
+  /** Participant-scoped booking reader. */
+  private readonly bookings = inject(BookingService);
+  /** Current listing reader used after authorized booking retrieval. */
+  private readonly listings = inject(ListingService);
+  /** Supplementary context request cancelled on account or route changes. */
+  private headerRequest?: Subscription;
+  /** Authorized current listing title and saved booking interval. */
+  bookingContext: { title: string; start: string; end: string } | null = null;
+  /** Non-blocking context failure, independent of conversation access. */
+  contextError = '';
+  /** Whether the supplementary booking header is loading. */
+  contextLoading = false;
+  /** Loads authorized context without interrupting messages or a draft. */
+  loadContext(): void {
+    this.headerRequest?.unsubscribe();
+    if (!this.userId || !Number.isSafeInteger(this.bookingId) || this.bookingId <= 0) return;
+    const userId = this.userId, bookingId = this.bookingId;
+    this.contextLoading = true; this.contextError = '';
+    this.headerRequest = this.bookings.getById(bookingId).pipe(
+      switchMap(booking => this.listings.getById(booking.listingId).pipe(map(listing => ({
+        title: listing.title, start: booking.startDateTime, end: booking.endDateTime
+      })))),
+      finalize(() => this.contextLoading = false)
+    ).subscribe({
+      next: context => { if (this.userId === userId && this.bookingId === bookingId) this.bookingContext = context; },
+      error: () => { if (this.userId === userId && this.bookingId === bookingId) this.contextError = 'Booking details are unavailable.'; }
+    });
+  }
   /** Activity state inherited from the authenticated shell. */
   readonly activity = inject(NotificationStateService, { optional: true });
   /** Distinct owned bookings requiring attention. */
@@ -61,12 +92,13 @@ export class BookingChatComponent implements OnInit, OnDestroy {
       this.route.paramMap.pipe(map(params => Number(params.get('id')))),
       this.auth.session$.pipe(map(session => session?.userId ?? 0))
     ]).pipe(distinctUntilChanged(([a, b], [c, d]) => a === c && b === d)).subscribe(([bookingId, userId]) => {
+      this.headerRequest?.unsubscribe(); this.bookingContext = null; this.contextError = ''; this.contextLoading = false;
       this.request?.unsubscribe(); this.mutation?.unsubscribe(); this.probe?.unsubscribe(); this.newMessages = false;
       this.bookingId = bookingId; this.userId = userId;
       this.items = []; this.totalCount = 0; this.page = 1; this.requestedPage = 1;
       this.accessible = false; this.error = ''; this.sendError = ''; this.draft.reset();
       this.ownerId = 0; this.backLink = '/bookings';
-      if (userId && Number.isSafeInteger(bookingId) && bookingId > 0) this.load(1);
+      if (userId && Number.isSafeInteger(bookingId) && bookingId > 0) { this.load(1); this.loadContext(); }
       else this.error = 'Booking not found.';
     });
   }
@@ -121,5 +153,5 @@ export class BookingChatComponent implements OnInit, OnDestroy {
     return message.senderId === this.userId ? 'You' : message.senderId === this.ownerId ? 'Owner' : 'Renter';
   }
   /** Cancels all conversation work on navigation. */
-  ngOnDestroy(): void { this.polling?.unsubscribe(); this.probe?.unsubscribe(); this.context?.unsubscribe(); this.request?.unsubscribe(); this.mutation?.unsubscribe(); this.probe?.unsubscribe(); this.newMessages = false; }
+  ngOnDestroy(): void { this.headerRequest?.unsubscribe(); this.polling?.unsubscribe(); this.probe?.unsubscribe(); this.context?.unsubscribe(); this.request?.unsubscribe(); this.mutation?.unsubscribe(); this.newMessages = false; }
 }

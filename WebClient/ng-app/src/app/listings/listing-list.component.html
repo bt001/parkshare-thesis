@@ -44,29 +44,9 @@
   </section>
   <dialog #filterDialog class="filter-panel" [open]="filtersInline" aria-labelledby="filter-panel-title" (cancel)="closeFilters()" (keydown)="containFilterFocus($event)">
     <div class="panel-heading"><h2 id="filter-panel-title">Filters</h2><button class="panel-close" type="button" (click)="closeFilters()" aria-label="Close filters">&times;</button></div>
-  <div class="distance-field">
-    <label for="search-radius">Distance from place (km)</label>
-    <input id="search-radius" type="number" formControlName="radiusKm" min="0.1" max="100" step="0.1" />
-    @if (filterForm.controls.radiusKm.touched && filterForm.controls.radiusKm.invalid) { <p class="field-error" role="alert">Choose a distance from 0.1 to 100 km.</p> }
-    @if (bounds) { <p>Distance is unavailable while searching a map area.</p> }
-  </div>
   <fieldset class="secondary-filters">
     <legend>Refine your search</legend>
     <div class="filter-fields">
-    <div>
-      <label for="filter-title">Title</label>
-      <input id="filter-title" type="text" formControlName="titleContains" aria-describedby="title-error" />
-      @if (filterForm.controls.titleContains.touched && filterForm.controls.titleContains.invalid) {
-        <p id="title-error" class="field-error">Title must be at most 120 characters.</p>
-      }
-    </div>
-    <div>
-      <label for="filter-address">Address</label>
-      <input id="filter-address" type="text" formControlName="addressContains" aria-describedby="address-error" />
-      @if (filterForm.controls.addressContains.touched && filterForm.controls.addressContains.invalid) {
-        <p id="address-error" class="field-error">Address must be at most 200 characters.</p>
-      }
-    </div>
     <div>
       <label for="filter-min">Minimum price (EUR/hour)</label>
       <input id="filter-min" type="number" min="0" step="any" formControlName="minPrice" aria-describedby="min-error price-range-error" />
@@ -82,6 +62,12 @@
       }
     </div>
   </div>
+    <fieldset><legend>Amenities · Matches all selected</legend>
+      @for (amenity of amenities; track amenity.id) {
+        <label class="availability-filter"><input type="checkbox" [checked]="filterForm.controls.amenityIds.value.includes(amenity.id)" (change)="toggleAmenity(amenity.id)" />{{ amenity.name }}</label>
+      }
+      @if (amenityError) { <p role="alert">{{ amenityError }} <button type="button" (click)="loadAmenities()">Retry amenities</button></p> }
+    </fieldset>
     <div class="filter-fields">
       <div><label for="filter-rating">Minimum rating</label>
         <select id="filter-rating" formControlName="minRating">
@@ -91,18 +77,37 @@
       </div>
 
     </div>
-    <fieldset><legend>Amenities (all selected must match)</legend>
-      @for (amenity of amenities; track amenity.id) {
-        <label class="availability-filter"><input type="checkbox" [checked]="filterForm.controls.amenityIds.value.includes(amenity.id)" (change)="toggleAmenity(amenity.id)" />{{ amenity.name }}</label>
-      }
-      @if (amenityError) { <p role="alert">{{ amenityError }} <button type="button" (click)="loadAmenities()">Retry amenities</button></p> }
-    </fieldset>
   </fieldset>
   <label class="availability-filter">
     <input type="checkbox" formControlName="onlyAlwaysAvailable" aria-describedby="availability-help" />
     Always available only
   </label>
   <p id="availability-help">Always available describes the listing schedule. Existing bookings may still limit available times.</p>
+  <details class="more-options" [open]="advancedFiltersInvalid">
+    <summary>More options</summary>
+    <div class="filter-fields">
+    <div>
+      <label for="filter-title">Title</label>
+      <input id="filter-title" type="text" formControlName="titleContains" aria-describedby="title-error" />
+      @if (filterForm.controls.titleContains.touched && filterForm.controls.titleContains.invalid) {
+        <p id="title-error" class="field-error">Title must be at most 120 characters.</p>
+      }
+    </div>
+    <div>
+      <label for="filter-address">Address</label>
+      <input id="filter-address" type="text" formControlName="addressContains" aria-describedby="address-error" />
+      @if (filterForm.controls.addressContains.touched && filterForm.controls.addressContains.invalid) {
+        <p id="address-error" class="field-error">Address must be at most 200 characters.</p>
+      }
+    </div>
+  <div class="distance-field">
+    <label for="search-radius">Distance from place (km)</label>
+    <input id="search-radius" type="number" formControlName="radiusKm" min="0.1" max="100" step="0.1" />
+    @if (filterForm.controls.radiusKm.touched && filterForm.controls.radiusKm.invalid) { <p class="field-error" role="alert">Choose a distance from 0.1 to 100 km.</p> }
+    @if (bounds) { <p>Distance is unavailable while searching a map area.</p> }
+  </div>
+    </div>
+  </details>
   @if (filterForm.touched && filterForm.hasError('priceRange')) {
     <p id="price-range-error" class="field-error" role="alert">Minimum price cannot exceed maximum price.</p>
   }
@@ -208,7 +213,6 @@
   @if (isMapLoaded && !isMapLoading) {
     <div class="connected-results">
       <section class="map-result-list" aria-label="Mapped parking spaces">
-        <p>{{ mapListings.length }} spaces on the map</p>
         @for (listing of mapListings; track listing.id) {
           <ng-container *ngTemplateOutlet="resultCard; context: { $implicit: listing }" />
         }
@@ -220,7 +224,7 @@
           <article class="map-preview" aria-live="polite">
             <button class="preview-close" type="button" aria-label="Close listing preview" (click)="closeMapPreview()">&times;</button>
             <span class="availability-badge">
-              {{ listing.isAlwaysAvailable ? 'Always available' : 'Scheduled availability' }}
+              {{ listing.isAlwaysAvailable ? 'Always available' : 'Selected hours' }}
             </span>
             @if (listing.coverPhotoUrl && !brokenPhotos.has(listing.coverPhotoUrl)) {
               <img class="cover-photo" [src]="imageUrl(listing.coverPhotoUrl)" [alt]="listing.title" loading="lazy" (error)="brokenPhotos.add(listing.coverPhotoUrl)" />
@@ -264,7 +268,7 @@
     <div class="card-body">
       <div class="card-topline">
         <span class="availability-badge">
-          {{ listing.isAlwaysAvailable ? 'Always available' : 'Scheduled availability' }}
+          {{ listing.isAlwaysAvailable ? 'Always available' : 'Selected hours' }}
         </span>
       </div>
       <h2><a class="card-title-link" [routerLink]="['/listings', listing.id]" [queryParams]="detailParams">{{ listing.title }}</a></h2>

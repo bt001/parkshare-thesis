@@ -40,6 +40,14 @@ interface AppliedFilterChip {
   styleUrls: ['./listing-list.component.scss', './listing-search-bar.scss', './listing-loading.scss', './listing-result-card.scss']
 })
 export class ListingListComponent implements OnInit, OnDestroy {
+  /** Reveals advanced validation feedback without changing search drafts. */
+  get advancedFiltersInvalid(): boolean {
+    return ['titleContains', 'addressContains', 'radiusKm'].some(key => {
+      const control = this.filterForm.get(key);
+      return !!control?.touched && control.invalid;
+    });
+  }
+
   /** Single filter panel, presented inline only when there is sufficient room. */
   @ViewChild('filterDialog') private filterDialog?: ElementRef<HTMLDialogElement>;
   /** Trigger receiving focus after modal dismissal. */

@@ -1,7 +1,7 @@
+import { ParkingPeriodPipe, AthensTimestampPipe } from '../shared/parking-date.pipe';
 import { NotificationStateService } from '../notifications/notification-state.service';
 import { ActivityBadgeComponent } from '../shared/activity-badge.component';
 import { AcknowledgeVisibleDirective } from '../shared/acknowledge-visible.directive';
-import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -16,7 +16,7 @@ import { BookingService } from '../api/bookings/booking.service';
 /** Booking history and editable reviews for the authenticated renter. */
 @Component({
   selector: 'app-renter-bookings', standalone: true,
-  imports: [ActivityBadgeComponent, AcknowledgeVisibleDirective, DatePipe, ReactiveFormsModule, RouterLink],
+  imports: [ParkingPeriodPipe, AthensTimestampPipe, ActivityBadgeComponent, AcknowledgeVisibleDirective, ReactiveFormsModule, RouterLink],
   templateUrl: './renter-bookings.component.html',
   styleUrl: './renter-bookings.component.scss',
   host: { class: 'ui-controls' }

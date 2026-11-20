@@ -29,7 +29,7 @@
       @if (!isLoading && !loadErrors.length && !windows.length) { <div class="message">No availability windows for this listing.</div> }
       @if (!isLoading && !loadErrors.length) {
       @for (window of windows; track window.availabilityWindowId) {
-        <article class="window-card"><span class="badge" [class.inactive]="window.isBlocked">{{ window.isBlocked ? 'Blocked' : 'Open' }}</span><dl class="window-period"><dt>Start</dt><dd>{{ window.startDateTime | date:'medium' }}</dd><dt>End</dt><dd>{{ window.endDateTime | date:'medium' }}</dd></dl>@if (window.note) { <p>{{ window.note }}</p> }
+        <article class="window-card"><span class="badge" [class.inactive]="window.isBlocked">{{ window.isBlocked ? 'Blocked' : 'Open' }}</span><dl class="window-period"><dt>Time</dt><dd>{{ window.startDateTime | parkingPeriod:window.endDateTime }}</dd></dl>@if (window.note) { <p>{{ window.note }}</p> }
           <div class="actions"><button type="button" [disabled]="isBusy" (click)="edit(window)">Edit</button>@if (confirmingDeleteId === window.availabilityWindowId) { <button class="danger" type="button" [disabled]="isBusy" (click)="delete(window.availabilityWindowId)">{{ deletingId === window.availabilityWindowId ? 'Deleting…' : 'Confirm delete' }}</button><button type="button" [disabled]="isBusy" (click)="cancelDelete()">Cancel</button> } @else { <button type="button" [disabled]="isBusy" (click)="requestDelete(window.availabilityWindowId)">Delete</button> }</div>
         </article>
       }

@@ -15,6 +15,14 @@ describe('ListingListComponent', () => {
 
   const location = { unavailableReason: '', locate: jasmine.createSpy('locate') };
 
+  it('reveals invalid advanced drafts without losing them', () => {
+    component.filterForm.controls.titleContains.setValue('x'.repeat(121));
+    component.filterForm.controls.titleContains.markAsTouched(); fixture.detectChanges();
+    expect(component.advancedFiltersInvalid).toBeTrue();
+    expect(fixture.nativeElement.querySelector('.more-options').open).toBeTrue();
+    expect(component.filterForm.controls.titleContains.value.length).toBe(121);
+  });
+
   beforeEach(async () => {
     location.unavailableReason = '';
     location.locate.calls.reset();
@@ -557,7 +565,7 @@ describe('ListingListComponent', () => {
   it('loads and renders active listings', () => {
     expect(listingService.search).toHaveBeenCalledWith({ page: 1, pageSize: 12, onlyActive: true });
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Central parking space');
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Scheduled availability');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Selected hours');
   });
 
   it('loads the next page when results remain', () => {

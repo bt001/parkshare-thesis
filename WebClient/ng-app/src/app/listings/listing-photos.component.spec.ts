@@ -31,6 +31,24 @@ describe('ListingPhotosComponent', () => {
     expect(component.error).toContain('Retry');
     api.get.and.returnValue(of({ items: [] })); component.load(); expect(component.ready).toBeTrue();
   });
+  it('navigates public photos, follows scrolling and resets on listing changes', () => {
+    fixture.componentRef.setInput('editable', false);
+    api.get.and.returnValue(of({ items: [photo, { ...photo, id: 5 }] }));
+    component.load(); fixture.detectChanges();
+    const strip = fixture.nativeElement.querySelector('.photo-grid') as HTMLElement;
+    const figures = strip.querySelectorAll('figure');
+    spyOn(strip, 'getBoundingClientRect').and.returnValue({ left: 0 } as DOMRect);
+    spyOn(figures[0], 'getBoundingClientRect').and.returnValue({ left: -200 } as DOMRect);
+    spyOn(figures[1], 'getBoundingClientRect').and.returnValue({ left: 0 } as DOMRect);
+    component.updatePhotoPosition(); fixture.detectChanges();
+    expect(component.activePhoto).toBe(1);
+    expect(fixture.nativeElement.querySelector('[aria-label="Next photo"]').disabled).toBeTrue();
+    spyOn(strip, 'scrollTo'); component.movePhoto(-1); fixture.detectChanges();
+    expect(strip.scrollTo).toHaveBeenCalled(); expect(component.activePhoto).toBe(0);
+    fixture.componentRef.setInput('listingId', 8); fixture.detectChanges(); expect(component.activePhoto).toBe(0);
+    api.get.and.returnValue(of({ items: [photo] })); component.load(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.gallery-controls')).toBeNull();
+  });
   it('reconciles an uncertain upload and requires explicit file reselection', () => {
     const refresh = new Subject<{ items: ListingPhoto[] }>();
     api.upload.and.returnValue(throwError(() => new Error('lost response'))); api.get.and.returnValue(refresh);

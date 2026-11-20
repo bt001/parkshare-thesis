@@ -8,18 +8,28 @@ import { testSession } from '../api/auth/auth-test.helpers';
 import { ChatMessage, ChatPage } from '../api/chat/chat.models';
 import { ChatService } from '../api/chat/chat.service';
 import { BookingChatComponent } from './booking-chat.component';
+import { BookingService } from '../api/bookings/booking.service';
+import { ListingService } from '../api/listings/listing.service';
+import { BookingResult } from '../api/bookings/booking.models';
+import { ListingDetails } from '../api/listings/listing.models';
 
 describe('BookingChatComponent', () => {
   const pulse = new Subject<void>();
   let fixture: ComponentFixture<BookingChatComponent>;
   let component: BookingChatComponent;
   let api: jasmine.SpyObj<ChatService>;
+  let bookings: jasmine.SpyObj<BookingService>;
+  let listings: jasmine.SpyObj<ListingService>;
   let session: BehaviorSubject<AuthSession | null>;
   let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
   const message: ChatMessage = { id: 7, bookingId: 9, senderId: 2, messageText: '<b>Hello</b>\nLine two', sentAt: '2026-10-12T10:00:00Z' };
   const result: ChatPage = { page: 1, pageSize: 50, totalCount: 51, ownerId: 2, renterId: 1,
     items: [message, { ...message, id: 6, senderId: 1, messageText: 'Earlier' }] };
   beforeEach(async () => {
+    bookings = jasmine.createSpyObj('BookingService', ['getById']);
+    listings = jasmine.createSpyObj('ListingService', ['getById']);
+    bookings.getById.and.returnValue(of({ listingId: 7, startDateTime: '2026-11-27T10:00:00', endDateTime: '2026-11-27T12:00:00' } as BookingResult));
+    listings.getById.and.returnValue(of({ title: 'Pangrati courtyard' } as ListingDetails));
     api = jasmine.createSpyObj('ChatService', ['get', 'send']);
     api.get.and.returnValue(of(result)); api.send.and.returnValue(of(message));
     session = new BehaviorSubject<AuthSession | null>(testSession());
@@ -27,9 +37,31 @@ describe('BookingChatComponent', () => {
     await TestBed.configureTestingModule({ imports: [BookingChatComponent], providers: [{ provide: NotificationStateService, useValue: { pulse, canAcknowledge: false, refresh: () => {} } },
       provideRouter([]), { provide: ActivatedRoute, useValue: { paramMap: params } },
       { provide: ChatService, useValue: api },
+      { provide: BookingService, useValue: bookings }, { provide: ListingService, useValue: listings },
       { provide: AuthService, useValue: { session$: session } }
     ] }).compileComponents();
     fixture = TestBed.createComponent(BookingChatComponent); component = fixture.componentInstance;
+  });
+  it('shows authorized context independently of conversation access and retries a failed header', () => {
+    bookings.getById.and.returnValue(throwError(() => new Error('offline')));
+    fixture.detectChanges();
+    expect(component.accessible).toBeTrue(); expect(component.bookingContext).toBeNull();
+    expect(component.contextError).toContain('unavailable');
+    expect(listings.getById).not.toHaveBeenCalled();
+    component.draft.setValue('Keep my draft');
+    bookings.getById.and.returnValue(of({ listingId: 7, startDateTime: '2026-11-27T10:00:00', endDateTime: '2026-11-27T12:00:00' } as BookingResult));
+    component.loadContext(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.booking-context').textContent).toContain('Pangrati courtyard');
+    expect(fixture.nativeElement.querySelector('.booking-context').textContent).toContain('10:00–12:00');
+    expect(component.draft.value).toBe('Keep my draft');
+  });
+  it('cancels private header work on account replacement and route changes', () => {
+    const pending = new Subject<BookingResult>(); bookings.getById.and.returnValue(pending);
+    fixture.detectChanges(); expect(pending.observed).toBeTrue();
+    session.next(null); expect(pending.observed).toBeFalse(); expect(component.bookingContext).toBeNull();
+    session.next(testSession()); expect(pending.observed).toBeTrue();
+    params.next(convertToParamMap({ id: '10' })); expect(bookings.getById).toHaveBeenCalledWith(10);
+    fixture.destroy(); expect(pending.observed).toBeFalse();
   });
   it('renders chronological escaped text, sender labels, paging and participant return links', () => {
     fixture.detectChanges();

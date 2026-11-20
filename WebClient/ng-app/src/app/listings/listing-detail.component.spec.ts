@@ -155,8 +155,8 @@ describe('ListingDetailComponent', () => {
     pending.next({ bookingId: 99 } as BookingResult); pending.complete();
     fixture.detectChanges();
     expect(component.submittedPeriod).toEqual({ startDateTime: '2099-07-14T09:00', endDateTime: '2099-07-14T11:00' });
-    expect(fixture.nativeElement.querySelector('.confirmation-period').textContent).toContain('Jul 14, 2099');
-    expect(fixture.nativeElement.querySelector('.confirmation-period').textContent).not.toContain('Jul 20');
+    expect(fixture.nativeElement.querySelector('.confirmation-period').textContent).toContain('14 Jul 2099');
+    expect(fixture.nativeElement.querySelector('.confirmation-period').textContent).not.toContain('20 Jul');
     component.selectWindow(openWindow); component.submitBooking();
     expect(bookingService.create).toHaveBeenCalledTimes(1);
     fixture.nativeElement.querySelector('.another-request').click(); fixture.detectChanges();
@@ -281,6 +281,14 @@ describe('ListingDetailComponent', () => {
     expect(component.bookingForm.getRawValue()).toEqual(period);
     component.submitBooking();
     expect(bookingService.create).toHaveBeenCalledWith({ listingId: 10, ...period });
+  });
+  it('offers an external location marker only for valid coordinates', () => {
+    component.listing = { ...listing, latitude: 37.97, longitude: 23.75 }; fixture.detectChanges();
+    const link = fixture.nativeElement.querySelector('a.coordinates');
+    expect(link.getAttribute('href')).toContain('mlat=37.97&mlon=23.75');
+    expect(link.target).toBe('_blank'); expect(link.rel).toContain('noopener');
+    component.listing = { ...listing, latitude: NaN }; fixture.detectChanges();
+    expect(component.locationUrl).toBeNull(); expect(fixture.nativeElement.querySelector('a.coordinates')).toBeNull();
   });
 });
 

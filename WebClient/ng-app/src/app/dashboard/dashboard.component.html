@@ -6,8 +6,8 @@
     <a class="primary-link" routerLink="/listings">Find parking</a>
   </div>
   <div class="details-grid">
-    <article><span class="step">01</span><h2>Find your next space</h2><p>Explore parking on the map and choose a space for the time you need.</p><a routerLink="/listings">Explore spaces &rarr;</a></article>
-    <article><span class="step">02</span><h2>Your bookings</h2><p>Check requests, message your host and review your completed stays.</p><a routerLink="/bookings">My bookings <app-activity-badge [count]="renterAttention" /> &rarr;</a></article>
-    <article><span class="step">03</span><h2>{{ auth.hasRole('Owner') ? 'Manage your spaces' : 'Share your space' }}</h2><p>{{ auth.hasRole('Owner') ? 'Update availability and respond to parking requests in your workspace.' : 'Have a parking space to spare? Create your first listing and welcome drivers.' }}</p><a routerLink="/owner/listings">{{ auth.hasRole('Owner') ? 'Open owner workspace' : 'List your space' }} <app-activity-badge [count]="ownerAttention" /> &rarr;</a></article>
+    <article><h2>Find your next space</h2><p>Explore parking on the map and choose a space for the time you need.</p><a routerLink="/listings">Explore spaces &rarr;</a></article>
+    <article><h2>Your bookings</h2><p>Check requests, message your host and review your completed stays.</p><a routerLink="/bookings">My bookings <app-activity-badge [count]="renterAttention" /> &rarr;</a></article>
+    <article><h2>{{ auth.hasRole('Owner') ? 'Manage your spaces' : 'Share your space' }}</h2><p>{{ auth.hasRole('Owner') ? 'Update availability and respond to parking requests in your workspace.' : 'Have a parking space to spare? Create your first listing and welcome drivers.' }}</p><a routerLink="/owner/listings">{{ auth.hasRole('Owner') ? 'Open owner workspace' : 'List your space' }} <app-activity-badge [count]="ownerAttention" /> &rarr;</a></article>
   </div>
 </section>

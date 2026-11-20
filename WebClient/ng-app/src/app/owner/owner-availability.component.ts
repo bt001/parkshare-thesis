@@ -1,6 +1,6 @@
+import { ParkingPeriodPipe } from '../shared/parking-date.pipe';
 import { ArrivalPickerComponent } from '../shared/arrival-picker.component';
 import { AvailabilityCalendarComponent } from './availability-calendar.component';
-import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -20,7 +20,7 @@ interface AvailabilityForm {
 @Component({
   selector: 'app-owner-availability',
   standalone: true,
-  imports: [ArrivalPickerComponent, DatePipe, ReactiveFormsModule, RouterLink, AvailabilityCalendarComponent],
+  imports: [ParkingPeriodPipe, ArrivalPickerComponent, ReactiveFormsModule, RouterLink, AvailabilityCalendarComponent],
   templateUrl: './owner-availability.component.html',
   styleUrl: './owner-workspace.scss'
 })

@@ -20,3 +20,5 @@ form { display: grid; gap: .6rem; margin-block: 1rem; }
 textarea { width: 100%; min-width: 0; resize: vertical; padding: .65rem; border: 1px solid #a9b9c4; border-radius: .4rem; color: var(--ink); }
 .pagination { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-block: 1rem; font-size: .85rem; }
 .refresh-controls { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.booking-context { border-left: 3px solid var(--accent); padding: .5rem 1rem; background: var(--surface); }
+.booking-context p { margin: .25rem 0 0; color: var(--muted); font-size: .9rem; }

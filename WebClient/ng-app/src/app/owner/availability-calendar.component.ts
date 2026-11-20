@@ -1,3 +1,4 @@
+import { ParkingPeriodPipe } from '../shared/parking-date.pipe';
 import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, EventEmitter, Input, OnChanges, Output, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -21,7 +22,7 @@ interface CalendarPeriod {
 
 /** Read-only monthly overview of the owner's published schedule. */
 @Component({
-  selector: 'app-availability-calendar', standalone: true, imports: [DatePipe],
+  selector: 'app-availability-calendar', standalone: true, imports: [ParkingPeriodPipe, DatePipe],
   templateUrl: './availability-calendar.component.html', styleUrl: './availability-calendar.component.scss'
 })
 export class AvailabilityCalendarComponent implements OnChanges {

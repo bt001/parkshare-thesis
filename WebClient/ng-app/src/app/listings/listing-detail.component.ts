@@ -1,7 +1,8 @@
+import { ParkingPeriodPipe } from '../shared/parking-date.pipe';
 import { BookingPeriodComponent, BookingPeriodEdit } from '../shared/booking-period.component';
 import { ListingPhotosComponent } from './listing-photos.component';
 import { ListingReviewsComponent } from './listing-reviews.component';
-import { DecimalPipe, DatePipe } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -26,11 +27,19 @@ interface BookingForm {
 @Component({
   selector: 'app-listing-detail',
   standalone: true,
-  imports: [BookingPeriodComponent, DecimalPipe, DatePipe, ReactiveFormsModule, RouterLink, ListingReviewsComponent, ListingPhotosComponent],
+  imports: [ParkingPeriodPipe, BookingPeriodComponent, DecimalPipe, ReactiveFormsModule, RouterLink, ListingReviewsComponent, ListingPhotosComponent],
   templateUrl: './listing-detail.component.html',
   styleUrl: './listing-detail.component.scss'
 })
 export class ListingDetailComponent implements OnInit {
+  /** External marker link for finite, valid listing coordinates. */
+  get locationUrl(): string | null {
+    const listing = this.listing;
+    if (!listing || !Number.isFinite(listing.latitude) || !Number.isFinite(listing.longitude)
+      || Math.abs(listing.latitude) > 90 || Math.abs(listing.longitude) > 180) return null;
+    return `https://www.openstreetmap.org/?mlat=${listing.latitude}&mlon=${listing.longitude}#map=18/${listing.latitude}/${listing.longitude}`;
+  }
+
   private readonly route = inject(ActivatedRoute);
   private readonly listingService = inject(ListingService);
   private readonly availabilityService = inject(AvailabilityService);

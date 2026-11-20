@@ -172,24 +172,27 @@ export class ListingMapComponent implements AfterViewInit, OnChanges, OnDestroy 
       const coordinate: [number, number] = [listing.latitude, listing.longitude];
       coordinates.push(coordinate);
 
-      const price = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(listing.pricePerHour);
+      const estimated = listing.estimatedPeriodCost != null;
+      const price = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(estimated ? listing.estimatedPeriodCost! : listing.pricePerHour);
+      const units = estimated ? 'estimated total EUR' : 'EUR per hour';
+      const suffix = estimated ? '€' : '€/h';
       const icon = this.leaflet.divIcon({
         className: 'listing-price-marker-shell',
-        html: `<span class="listing-map-marker" data-listing-id="${listing.id}">${price} €/h</span>`,
+        html: `<span class="listing-map-marker" data-listing-id="${listing.id}">${price} ${suffix}</span>`,
         iconAnchor: [36, 16]
       });
 
       const marker = this.leaflet.marker(coordinate, {
         icon,
         title: listing.title,
-        alt: `${listing.title}, ${price} EUR per hour`,
+        alt: `${listing.title}, ${price} ${units}`,
         riseOnHover: true
       })
         .on('click', () => this.listingSelected.emit(listing))
         .addTo(this.markerLayer);
       this.markers.set(listing.id, marker);
       const element = marker.getElement();
-      element?.setAttribute('aria-label', `${listing.title}, ${price} EUR per hour`);
+      element?.setAttribute('aria-label', `${listing.title}, ${price} ${units}`);
       element?.addEventListener('keydown', event => {
         if (event.key === ' ' || event.key === 'Enter') {
           event.preventDefault();

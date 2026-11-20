@@ -1,8 +1,8 @@
 <section class="page-heading">
-  <div><p class="eyebrow">Renter workspace</p><h1>My bookings</h1><p>Revisit your requests and check the latest owner decisions.</p></div>
+  <div><p class="eyebrow">Renter workspace</p><h1>My bookings</h1></div>
   <button type="button" [disabled]="isLoading || saving" (click)="refresh()">Refresh</button>
 </section>
-<p class="time-note">Updates automatically every few seconds.</p>
+<p class="time-note">Athens local time · Updates automatically.</p>
 @if (refreshError) { <p class="message" role="status">{{ refreshError }}</p> }
 <div class="filter-bar" [formGroup]="filters">
   <div class="filter-field">
@@ -16,7 +16,7 @@
   </select>
   </div>
 </div>
-<p class="time-note">Parking start and end times are shown in Athens local time.</p>
+
 @if (ratingSuccess) { <p class="message" role="status">{{ ratingSuccess }}</p> }
 @if (isLoading) {
   <div class="message" role="status">Loading your bookings…</div>
@@ -33,15 +33,15 @@
       <a routerLink="/listings">Browse parking</a>
     </div>
   } @else {
-    <p class="results-summary">{{ totalCount }} bookings · Page {{ page }}</p>
+    <p class="results-summary">{{ totalCount }} {{ totalCount === 1 ? 'booking' : 'bookings' }} · Page {{ page }}</p>
     <div class="card-grid">
       @for (booking of bookings; track booking.bookingId) {
         <article [appAcknowledgeVisible]="booking.unreadNotificationIds" class="workspace-card booking-card">
           <div class="card-heading"><span class="badge status-{{ booking.statusText.toLowerCase() }}">{{ booking.statusText }}</span><small>Request #{{ booking.bookingId }}</small>@if (booking.unreadNotificationIds?.length) { <span class="badge">New update</span> }</div>
           <div class="booking-details"><h2>{{ booking.listingTitle }}</h2>
           <p>{{ booking.listingAddress }}</p>
-          <small>Requested {{ booking.createdAt | date:'medium' }}</small></div>
-          <dl class="booking-period"><dt>Start</dt><dd>{{ booking.startDateTime | date:'medium' }}</dd><dt>End</dt><dd>{{ booking.endDateTime | date:'medium' }}</dd></dl>
+          <small>Requested {{ booking.createdAt | athensTimestamp }}</small></div>
+          <dl class="booking-period"><dt>Parking time</dt><dd>{{ booking.startDateTime | parkingPeriod:booking.endDateTime }}</dd></dl>
           <div class="actions"><a [routerLink]="['/listings', booking.listingId]">View listing</a><a [routerLink]="['/bookings', booking.bookingId, 'chat']">Chat <app-activity-badge [count]="booking.unreadMessageCount" description="unread messages" /></a></div>
           @if (booking.status === BookingStatus.Completed) {
             <div class="rating-section">
@@ -68,7 +68,7 @@
   @if (totalCount > 0 || page > 1) {
     <nav class="pagination" aria-label="My booking pages">
       <button type="button" [disabled]="!canGoBack || saving" (click)="loadPage(page - 1)">Previous</button>
-      <span>Page {{ page }} · {{ totalCount }} bookings</span>
+      <span>Page {{ page }} · {{ totalCount }} {{ totalCount === 1 ? 'booking' : 'bookings' }}</span>
       <button type="button" [disabled]="!canGoForward || saving" (click)="loadPage(page + 1)">Next</button>
     </nav>
   }

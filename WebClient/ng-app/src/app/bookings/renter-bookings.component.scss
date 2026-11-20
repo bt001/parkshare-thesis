@@ -1,1 +1,3 @@
 @use './booking-list';
+
+.filter-bar { width: fit-content; min-width: min(100%, 18rem); max-width: 100%; }

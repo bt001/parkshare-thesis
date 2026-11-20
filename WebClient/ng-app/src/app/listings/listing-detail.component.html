@@ -34,8 +34,7 @@
         <div class="booking-confirmation" role="status">
           <p class="confirmation-sent">Request #{{ bookingResult.bookingId }} sent</p>
           <dl class="confirmation-period">
-            <div><dt>Arrival</dt><dd>{{ submittedPeriod.startDateTime | date:'medium' }}</dd></div>
-            <div><dt>Departure</dt><dd>{{ submittedPeriod.endDateTime | date:'medium' }}</dd></div>
+            <div><dt>Parking time</dt><dd>{{ submittedPeriod.startDateTime | parkingPeriod:submittedPeriod.endDateTime }}</dd></div>
           </dl>
           <p class="booking-note">The owner will review your request. Your space is confirmed after approval.</p>
           <a class="confirmation-link" routerLink="/bookings">View my bookings</a>
@@ -68,9 +67,9 @@
           @if (listing.size) {
             <div><dt>Space size</dt><dd>{{ listing.size }}</dd></div>
           }
-          <div><dt>Availability</dt><dd>{{ listing.isAlwaysAvailable ? 'Always available' : 'Scheduled windows' }}</dd></div>
+          <div><dt>Availability</dt><dd>{{ listing.isAlwaysAvailable ? 'Always available' : 'Selected hours' }}</dd></div>
         </dl>
-        <details class="coordinates"><summary>Location coordinates</summary><p>{{ listing.latitude }}, {{ listing.longitude }}</p></details>
+        @if (locationUrl) { <a class="coordinates" [href]="locationUrl" target="_blank" rel="noopener noreferrer">View on map ↗</a> }
       </section>
 
       <section class="panel" aria-labelledby="amenities-heading">
@@ -86,19 +85,19 @@
             <p class="eyebrow">Plan your visit</p>
             <h2>Availability</h2>
           </div>
-          <span>{{ availabilityWindows.length }} future {{ availabilityWindows.length === 1 ? 'window' : 'windows' }}</span>
+          <span>{{ availabilityWindows.length }} upcoming {{ availabilityWindows.length === 1 ? 'time period' : 'time periods' }}</span>
         </div>
 
         @if (listing.isAlwaysAvailable) {
           <p class="availability-note">This space is generally available at any time, except during the blocked periods shown below.</p>
         } @else if (openWindows.length === 0) {
-          <p class="availability-note">The owner has not published any future open windows.</p>
+          <p class="availability-note">The owner has not published any upcoming available times.</p>
         }
 
         @if (openWindows.length > 0) {
-          <h3>Open windows ({{ openWindows.length }})</h3>
-          <p class="muted window-help">Select a window to fill its whole available interval, then shorten it to fit your visit. Ongoing windows start at the next available minute.</p>
-          @if (bookingResult) { <p class="muted">Choose Make another request before selecting a new window.</p> }
+          <h3>Available times ({{ openWindows.length }})</h3>
+          <p class="muted window-help">Choose an available time, then shorten it to fit your visit. If it has already started, your arrival will be the next available minute.</p>
+          @if (bookingResult) { <p class="muted">Choose Make another request before choosing another time.</p> }
           <div class="window-list">
             @for (window of visibleOpenWindows; track window.availabilityWindowId) {
               <button
@@ -108,9 +107,8 @@
                 [attr.aria-pressed]="selectedWindowId === window.availabilityWindowId"
                 [disabled]="!canSelectWindow(window)"
                 (click)="selectWindow(window)">
-                <span>{{ window.startDateTime | date:'medium' }}</span>
-                <span>to {{ window.endDateTime | date:'medium' }}</span>
-                <strong>Select this window</strong>
+                <span>{{ window.startDateTime | parkingPeriod:window.endDateTime }}</span>
+                <strong>Choose this time</strong>
               </button>
             }
           </div>
@@ -121,8 +119,7 @@
           <div class="window-list">
             @for (window of visibleBlockedWindows; track window.availabilityWindowId) {
               <div class="window-card blocked">
-                <span>{{ window.startDateTime | date:'medium' }}</span>
-                <span>to {{ window.endDateTime | date:'medium' }}</span>
+                <span>{{ window.startDateTime | parkingPeriod:window.endDateTime }}</span>
                 @if (window.note) { <small>{{ window.note }}</small> }
               </div>
             }
@@ -130,7 +127,7 @@
         }
         @if (hasMoreAvailability) {
           <button class="schedule-toggle" type="button" [attr.aria-expanded]="showAllAvailability" (click)="showAllAvailability = !showAllAvailability">
-            {{ showAllAvailability ? 'Show fewer windows' : 'Show all windows' }}
+            {{ showAllAvailability ? 'Show fewer times' : 'Show all times' }}
           </button>
         }
       </section>

@@ -15,7 +15,14 @@
   @if (error) { <p role="alert">{{ error }}</p> }
   @if (!sessionChanged && (editable || error || broken.size)) { <button type="button" (click)="load()" [disabled]="loading || !!busy">{{ error || (!editable && broken.size) ? 'Retry photos' : 'Refresh photos' }}</button> }
   @if (ready && !photos.length) { <p>No photos yet.</p> }
-  <div class="photo-grid" [attr.tabindex]="!editable && photos.length > 1 ? 0 : null"
+  @if (!editable && ready && photos.length > 1) {
+    <nav class="gallery-controls" aria-label="Photo navigation">
+      <button type="button" aria-label="Previous photo" [disabled]="loading || activePhoto === 0" (click)="movePhoto(-1)">← Previous</button>
+      <span role="status">{{ activePhoto + 1 }} / {{ photos.length }}</span>
+      <button type="button" aria-label="Next photo" [disabled]="loading || activePhoto === photos.length - 1" (click)="movePhoto(1)">Next →</button>
+    </nav>
+  }
+  <div #photoStrip class="photo-grid" (scroll)="updatePhotoPosition()" (window:resize)="updatePhotoPosition()" [attr.tabindex]="!editable && photos.length > 1 ? 0 : null"
     [attr.role]="!editable && photos.length > 1 ? 'region' : null" [attr.aria-label]="!editable && photos.length > 1 ? 'Parking space photos; scroll for more' : null">
     @for (photo of photos; track photo.id; let index = $index) {
       <figure>

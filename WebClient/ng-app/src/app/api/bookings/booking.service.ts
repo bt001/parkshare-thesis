@@ -8,6 +8,11 @@ import { BookingResult, CreateBookingRequest, GetOwnerBookingsRequest, GetOwnerB
 export class BookingService {
   private readonly http = inject(HttpClient);
 
+  /** Retrieves a booking only when the authenticated user is a participant. */
+  getById(bookingId: number): Observable<BookingResult> {
+    return this.http.get<BookingResult>(`api/booking/${bookingId}`);
+  }
+
   create(request: CreateBookingRequest): Observable<BookingResult> {
     return this.http.post<BookingResult>('api/booking/bookingrequest', request);
   }

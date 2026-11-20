@@ -20,9 +20,7 @@ a { color: var(--accent); }
 dl { display: flex; flex-wrap: wrap; gap: 1rem 2rem; margin: 1rem 0 0; }
 dt { color: var(--muted); font-size: .8rem; }
 dd { margin: .2rem 0 0; font-weight: 600; }
-.coordinates { margin-top: 1rem; color: var(--muted); font-size: .85rem; }
-.coordinates summary { cursor: pointer; padding: .3rem 0; }
-.coordinates p { margin: .5rem 0 0; }
+.coordinates { display: inline-block; margin-top: 1rem; color: var(--muted); font-size: .85rem; }
 .amenities { display: flex; flex-wrap: wrap; gap: .5rem; list-style: none; padding: 0; margin: 0; }
 .amenities li { padding: .35rem .65rem; border-radius: .4rem; background: var(--soft); color: var(--accent); }
 .availability-note { padding: .75rem; border-radius: .4rem; background: var(--soft); color: var(--accent); font-size: .9rem; }

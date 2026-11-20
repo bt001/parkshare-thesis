@@ -55,7 +55,7 @@ describe('AvailabilityCalendarComponent', () => {
     expect(pending.observed).toBeTrue(); fixture.destroy(); expect(pending.observed).toBeFalse();
   });
   it('explains both baselines and uses labelled date buttons', () => {
-    expect(fixture.nativeElement.textContent).toContain('only within published open windows');
+    expect(fixture.nativeElement.textContent).toContain('during the hours you set');
     fixture.componentRef.setInput('alwaysAvailable', true); fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Available by default');
     const day = fixture.nativeElement.querySelector('.day'); day.click(); fixture.detectChanges();

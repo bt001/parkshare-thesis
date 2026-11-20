@@ -37,14 +37,28 @@ describe('ListingMapComponent', () => {
 
   afterEach(() => TestBed.resetTestingModule());
 
+  it('uses estimated totals including zero and restores hourly labels when estimates disappear', async () => {
+    const { fixture } = await createComponent();
+    fixture.componentRef.setInput('listings', [{ ...listing, estimatedPeriodCost: 0 }]); fixture.detectChanges();
+    let marker = fixture.nativeElement.querySelector('.leaflet-marker-icon');
+    expect(marker.textContent).toContain('0.00 €');
+    expect(marker.getAttribute('aria-label')).toContain('estimated total');
+    fixture.componentRef.setInput('listings', [{ ...listing, estimatedPeriodCost: 3.125 }]); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.leaflet-marker-icon').textContent).toContain('3.13 €');
+    fixture.componentRef.setInput('listings', [listing]); fixture.detectChanges();
+    marker = fixture.nativeElement.querySelector('.leaflet-marker-icon');
+    expect(marker.getAttribute('aria-label')).toContain('12.00 EUR per hour');
+    fixture.destroy();
+  });
+
   it('creates a safe price marker and emits the selected listing', async () => {
     const { component, fixture } = await createComponent();
     const selectionSpy = spyOn(component.listingSelected, 'emit');
     const marker = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('[data-listing-id="7"]');
 
     expect(marker).not.toBeNull();
-    expect(marker?.textContent).toContain('12 €/h');
-    expect(marker?.closest('.leaflet-marker-icon')?.getAttribute('aria-label')).toBe('<Central parking>, 12 EUR per hour');
+    expect(marker?.textContent).toContain('12.00 €/h');
+    expect(marker?.closest('.leaflet-marker-icon')?.getAttribute('aria-label')).toBe('<Central parking>, 12.00 EUR per hour');
     expect(marker?.innerHTML).not.toContain('<central parking>');
     marker?.closest<HTMLElement>('.leaflet-marker-icon')?.click();
     expect(selectionSpy).toHaveBeenCalledWith(listing);

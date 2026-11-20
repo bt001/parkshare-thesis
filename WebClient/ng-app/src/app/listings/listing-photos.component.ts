@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, Input, OnChanges, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, ElementRef, Input, OnChanges, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { Subscription, distinctUntilChanged, map, skip } from 'rxjs';
 import { AuthService } from '../api/auth/auth.service';
 import { resolveApiUrl } from '../api/api-request';
@@ -12,6 +12,30 @@ import { ListingPhotoService } from '../api/listings/listing-photo.service';
   templateUrl: './listing-photos.component.html', styleUrl: './listing-photos.component.scss'
 })
 export class ListingPhotosComponent implements OnChanges, OnInit, OnDestroy {
+  /** Scrollable public photo strip. */
+  @ViewChild('photoStrip') private photoStrip?: ElementRef<HTMLElement>;
+  /** Nearest visible public photo, zero based. */
+  activePhoto = 0;
+  /** Keeps the visible count aligned with manual scrolling and resizing. */
+  updatePhotoPosition(): void {
+    const strip = this.photoStrip?.nativeElement;
+    if (!strip || !this.photos.length) { this.activePhoto = 0; return; }
+    const figures = Array.from(strip.querySelectorAll('figure'));
+    const left = strip.getBoundingClientRect().left;
+    this.activePhoto = figures.reduce((nearest, figure, index) =>
+      Math.abs(figure.getBoundingClientRect().left - left) < Math.abs(figures[nearest].getBoundingClientRect().left - left) ? index : nearest, 0);
+  }
+  /** Moves to an adjacent image while keeping keyboard focus on the control. */
+  movePhoto(direction: number): void {
+    const strip = this.photoStrip?.nativeElement;
+    if (!strip || this.editable || !this.ready || this.loading) return;
+    const index = Math.max(0, Math.min(this.photos.length - 1, this.activePhoto + direction));
+    const figure = strip.querySelectorAll('figure')[index];
+    if (!figure) return;
+    const left = strip.scrollLeft + figure.getBoundingClientRect().left - strip.getBoundingClientRect().left;
+    strip.scrollTo({ left, behavior: 'auto' });
+    this.activePhoto = index;
+  }
   /** Parent listing identity. */ @Input({ required: true }) listingId = 0;
   /** Enables owner upload and removal controls. */ @Input() editable = false;
   private readonly api = inject(ListingPhotoService);
@@ -90,6 +114,8 @@ export class ListingPhotosComponent implements OnChanges, OnInit, OnDestroy {
   }
   /** Cancels work and clears mutation eligibility. */
   private cancel(): void {
+    this.activePhoto = 0;
+    if (this.photoStrip) this.photoStrip.nativeElement.scrollLeft = 0;
     this.read?.unsubscribe(); this.mutation?.unsubscribe(); this.ready = false; this.loading = false; this.busy = '';
   }
   /** Releases subscriptions and selected file references on navigation. */

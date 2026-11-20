@@ -1,7 +1,7 @@
+import { ParkingPeriodPipe, AthensTimestampPipe } from '../shared/parking-date.pipe';
 import { NotificationStateService } from '../notifications/notification-state.service';
 import { ActivityBadgeComponent } from '../shared/activity-badge.component';
 import { AcknowledgeVisibleDirective } from '../shared/acknowledge-visible.directive';
-import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -15,7 +15,7 @@ import { ListingService } from '../api/listings/listing.service';
 
 /** Owner decisions with server-refreshed results and applied-filter paging. */
 @Component({
-  selector: 'app-owner-bookings', standalone: true, imports: [ActivityBadgeComponent, AcknowledgeVisibleDirective, DatePipe, ReactiveFormsModule, RouterLink],
+  selector: 'app-owner-bookings', standalone: true, imports: [ParkingPeriodPipe, AthensTimestampPipe, ActivityBadgeComponent, AcknowledgeVisibleDirective, ReactiveFormsModule, RouterLink],
   templateUrl: './owner-bookings.component.html', styleUrl: '../bookings/booking-list.scss',
   host: { class: 'ui-controls' }
 })

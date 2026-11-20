@@ -1,8 +1,8 @@
 <section class="page-heading">
-  <div><p class="eyebrow">Owner workspace</p><h1>Booking requests</h1><p>Review requests across your parking spaces.</p></div>
+  <div><p class="eyebrow">Owner workspace</p><h1>Booking requests</h1></div>
   <button type="button" [disabled]="isLoading || !!changingId" (click)="refresh()">Refresh</button>
 </section>
-<p class="time-note">Updates automatically every few seconds.</p>
+<p class="time-note">Athens local time · Updates automatically.</p>
 @if (refreshError) { <p class="message" role="status">{{ refreshError }}</p> }
 <nav class="workspace-nav" aria-label="Owner workspace"><a routerLink="/owner/listings">Listings</a><a routerLink="/owner/bookings" class="active" aria-current="page">Booking requests <app-activity-badge [count]="ownerAttention" /></a></nav>
 <form class="filter-bar" [formGroup]="filters" (ngSubmit)="applyFilters()">
@@ -16,7 +16,7 @@
   </div>
   <button type="submit" [disabled]="!!changingId">Apply filters</button>
 </form>
-<p class="time-note">Parking start and end times are shown in Athens local time.</p>
+
 @if (successMessage) { <div class="message" role="status">{{ successMessage }}</div> }
 @if (errorMessages.length) { <div class="message error" role="alert">@for (message of errorMessages; track message) { <p>{{ message }}</p> }@if (!bookings.length) { <button type="button" [disabled]="isLoading || !!changingId" (click)="refresh()">Retry</button> }</div> }
 @if (isLoading) {
@@ -26,13 +26,13 @@
     <div class="message"><h2>No matching requests</h2><p>Try another listing or status. New requests will appear here when renters book your spaces.</p><a routerLink="/owner/listings">Manage listings</a></div>
   }
 } @else {
-  <p class="results-summary">{{ totalCount }} booking requests · Page {{ page }}</p>
+  <p class="results-summary">{{ totalCount }} {{ totalCount === 1 ? 'booking request' : 'booking requests' }} · Page {{ page }}</p>
   <div class="card-grid">
     @for (booking of bookings; track booking.bookingId) {
       <article [appAcknowledgeVisible]="booking.unreadNotificationIds" class="workspace-card booking-card">
         <div class="card-heading"><span class="badge status-{{ booking.statusText.toLowerCase() }}">{{ booking.statusText }}</span><small>Request #{{ booking.bookingId }}</small>@if (booking.unreadNotificationIds?.length) { <span class="badge">New update</span> }</div>
-        <div class="booking-details"><h2>{{ booking.listingTitle }}</h2><small>Requested {{ booking.createdAt | date:'medium' }}</small></div>
-        <dl class="booking-period"><dt>Start</dt><dd>{{ booking.startUtc | date:'medium' }}</dd><dt>End</dt><dd>{{ booking.endUtc | date:'medium' }}</dd></dl>
+        <div class="booking-details"><h2>{{ booking.listingTitle }}</h2><small>Requested {{ booking.createdAt | athensTimestamp }}</small></div>
+        <dl class="booking-period"><dt>Parking time</dt><dd>{{ booking.startUtc | parkingPeriod:booking.endUtc }}</dd></dl>
         <div class="actions" aria-live="polite">
           @if (booking.status === BookingStatus.Pending) {
             <button class="primary-button" type="button" [disabled]="isLoading || !!changingId" (click)="decide(booking, true)">{{ changingId === booking.bookingId && changingAction === 'approve' ? 'Approving…' : 'Approve' }}</button>
@@ -44,5 +44,5 @@
       </article>
     }
   </div>
-  <nav class="pagination" aria-label="Booking pages"><button type="button" [disabled]="!canGoBack" (click)="load(page - 1)">Previous</button><span>Page {{ page }} · {{ totalCount }} bookings</span><button type="button" [disabled]="!canGoForward" (click)="load(page + 1)">Next</button></nav>
+  <nav class="pagination" aria-label="Booking pages"><button type="button" [disabled]="!canGoBack" (click)="load(page - 1)">Previous</button><span>Page {{ page }} · {{ totalCount }} {{ totalCount === 1 ? 'booking' : 'bookings' }}</span><button type="button" [disabled]="!canGoForward" (click)="load(page + 1)">Next</button></nav>
 }
