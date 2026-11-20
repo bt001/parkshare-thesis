@@ -1,9 +1,9 @@
-<p class="time-note" aria-live="polite">Updates automatically every few seconds.</p>
-@if (refreshError) { <p class="message" role="status">{{ refreshError }}</p> }
 <section class="page-heading">
   <div><p class="eyebrow">Owner workspace</p><h1>Booking requests</h1><p>Review requests across your parking spaces.</p></div>
-  <button type="button" [disabled]="isLoading || !!changingId" (click)="refresh()">Refresh / retry</button>
+  <button type="button" [disabled]="isLoading || !!changingId" (click)="refresh()">Refresh</button>
 </section>
+<p class="time-note">Updates automatically every few seconds.</p>
+@if (refreshError) { <p class="message" role="status">{{ refreshError }}</p> }
 <nav class="workspace-nav" aria-label="Owner workspace"><a routerLink="/owner/listings">Listings</a><a routerLink="/owner/bookings" class="active" aria-current="page">Booking requests <app-activity-badge [count]="ownerAttention" /></a></nav>
 <form class="filter-bar" [formGroup]="filters" (ngSubmit)="applyFilters()">
   <div class="filter-field">
@@ -18,7 +18,7 @@
 </form>
 <p class="time-note">Parking start and end times are shown in Athens local time.</p>
 @if (successMessage) { <div class="message" role="status">{{ successMessage }}</div> }
-@if (errorMessages.length) { <div class="message error" role="alert">@for (message of errorMessages; track message) { <p>{{ message }}</p> }</div> }
+@if (errorMessages.length) { <div class="message error" role="alert">@for (message of errorMessages; track message) { <p>{{ message }}</p> }@if (!bookings.length) { <button type="button" [disabled]="isLoading || !!changingId" (click)="refresh()">Retry</button> }</div> }
 @if (isLoading) {
   <div class="message" role="status">Loading booking requests…</div>
 } @else if (!bookings.length) {
@@ -33,10 +33,10 @@
         <div class="card-heading"><span class="badge status-{{ booking.statusText.toLowerCase() }}">{{ booking.statusText }}</span><small>Request #{{ booking.bookingId }}</small>@if (booking.unreadNotificationIds?.length) { <span class="badge">New update</span> }</div>
         <div class="booking-details"><h2>{{ booking.listingTitle }}</h2><small>Requested {{ booking.createdAt | date:'medium' }}</small></div>
         <dl class="booking-period"><dt>Start</dt><dd>{{ booking.startUtc | date:'medium' }}</dd><dt>End</dt><dd>{{ booking.endUtc | date:'medium' }}</dd></dl>
-        <div class="actions">
+        <div class="actions" aria-live="polite">
           @if (booking.status === BookingStatus.Pending) {
-            <button class="primary-button" type="button" [disabled]="isLoading || !!changingId" (click)="decide(booking, true)">Approve</button>
-            <button class="danger" type="button" [disabled]="isLoading || !!changingId" (click)="decide(booking, false)">Reject</button>
+            <button class="primary-button" type="button" [disabled]="isLoading || !!changingId" (click)="decide(booking, true)">{{ changingId === booking.bookingId && changingAction === 'approve' ? 'Approving…' : 'Approve' }}</button>
+            <button class="danger" type="button" [disabled]="isLoading || !!changingId" (click)="decide(booking, false)">{{ changingId === booking.bookingId && changingAction === 'reject' ? 'Rejecting…' : 'Reject' }}</button>
           }
           @if (booking.canComplete) { <button class="primary-button" type="button" [disabled]="isLoading || !!changingId" (click)="complete(booking)">{{ changingId === booking.bookingId ? 'Completing…' : 'Complete' }}</button> }
           <a [routerLink]="['/bookings', booking.bookingId, 'chat']">Chat <app-activity-badge [count]="booking.unreadMessageCount" description="unread messages" /></a>

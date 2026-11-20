@@ -49,9 +49,37 @@ describe('OwnerBookingsComponent', () => {
     expect(component.successMessage).toContain('approved');
   });
 
+  for (const approve of [true, false]) {
+    it(`identifies the pending ${approve ? 'approval' : 'rejection'} and allows retry after failure`, () => {
+      const transport = new Subject<any>();
+      const operation = approve ? service.approve : service.reject;
+      operation.calls.reset(); operation.and.returnValue(transport);
+      component.bookings = [{ ...pending }, { ...pending, bookingId: 9 }];
+      fixture.detectChanges();
+      const buttons = fixture.nativeElement.querySelector('article .actions').querySelectorAll('button');
+      buttons[approve ? 0 : 1].click(); fixture.detectChanges();
+      expect(buttons[approve ? 0 : 1].textContent.trim()).toBe(approve ? 'Approving…' : 'Rejecting…');
+      expect(buttons[approve ? 1 : 0].textContent.trim()).toBe(approve ? 'Reject' : 'Approve');
+      expect(fixture.nativeElement.querySelectorAll('article')[1].textContent).not.toContain('…');
+      expect(Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('article button')).every(button => button.disabled)).toBeTrue();
+      component.decide(pending, approve); expect(operation).toHaveBeenCalledTimes(1);
+      transport.error(new Error('offline')); fixture.detectChanges();
+      expect(component.changingId).toBeUndefined(); expect(component.changingAction).toBeUndefined();
+      expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('Please try the action again');
+      expect(buttons[approve ? 0 : 1].disabled).toBeFalse();
+      operation.and.returnValue(of({ bookingId: 8 } as any));
+      buttons[approve ? 0 : 1].click(); fixture.detectChanges();
+      expect(operation).toHaveBeenCalledTimes(2);
+      expect(component.errorMessages).toEqual([]);
+      expect(component.successMessage).toContain(approve ? 'approved' : 'rejected');
+    });
+  }
+
   it('retains applied Pending zero filters during refresh and paging', () => {
     component.filters.setValue({ listingId: '2', status: '0' }); component.applyFilters();
+    const calls = service.getForOwner.calls.count();
     component.filters.setValue({ listingId: '3', status: '1' }); component.refresh();
+    expect(service.getForOwner.calls.count()).toBe(calls + 1);
     expect(service.getForOwner.calls.mostRecent().args[0]).toEqual({ page: 1, pageSize: 20, listingId: 2, statuses: [0] });
   });
 
@@ -85,7 +113,8 @@ describe('OwnerBookingsComponent', () => {
     expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('could not be loaded');
     expect(fixture.nativeElement.textContent).not.toContain('No matching requests');
     service.getForOwner.and.returnValue(of(page()));
-    component.refresh(); fixture.detectChanges();
+    const retry = Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(button => button.textContent?.trim() === 'Retry');
+    expect(retry).toBeDefined(); retry!.click(); fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
     expect(fixture.nativeElement.querySelectorAll('article').length).toBe(1);
   });

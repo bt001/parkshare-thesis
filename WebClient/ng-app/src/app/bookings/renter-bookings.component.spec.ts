@@ -79,18 +79,18 @@ import { RenterBookingsComponent } from './renter-bookings.component';
     expect(component.canGoForward).toBeTrue();
   });
 
-  it('applies Pending zero and resets pagination without applying later draft changes', () => {
+  it('immediately applies status changes from a later page and reuses the selection for refresh', () => {
     fixture.detectChanges();
+    component.page = 2;
     const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
     select.value = '0'; select.dispatchEvent(new Event('change'));
-    fixture.nativeElement.querySelector('button[type="submit"]').click();
     expect(service.getForRenter).toHaveBeenCalledWith({ page: 1, pageSize: 20, statuses: [0] });
-    component.status.setValue('2');
+    expect(fixture.nativeElement.textContent).not.toContain('Apply filters');
     service.getForRenter.and.returnValue(of({ ...result, page: 2 }));
     component.loadPage(2); component.refresh();
     expect(service.getForRenter.calls.mostRecent().args[0]).toEqual({ page: 2, pageSize: 20, statuses: [0] });
     expect(component.canGoBack).toBeTrue(); expect(component.canGoForward).toBeFalse();
-    component.status.setValue(''); component.applyFilters();
+    select.value = ''; select.dispatchEvent(new Event('change'));
     expect(service.getForRenter.calls.mostRecent().args[0]).toEqual({ page: 1, pageSize: 20 });
   });
 

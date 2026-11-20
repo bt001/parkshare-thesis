@@ -58,9 +58,9 @@ export class RenterBookingsComponent implements OnInit, OnDestroy {
   private requestedPage = 1;
   /** Status options supported by the stored booking lifecycle. */
   readonly BookingStatus = BookingStatus;
-  /** Draft status; blank means all statuses. */
+  /** Immediately applied status; blank means all statuses. */
   readonly status = new FormControl('', { nonNullable: true });
-  /** Reactive form binding for status filter submission. */
+  /** Reactive form binding for the status filter. */
   readonly filters = new FormGroup({ status: this.status });
   /** Fixed number of bookings requested per page. */
   readonly pageSize = 20;
@@ -95,7 +95,7 @@ export class RenterBookingsComponent implements OnInit, OnDestroy {
   /** Cancels retrieval when leaving this page. */
   ngOnDestroy(): void { this.polling?.unsubscribe(); this.request?.unsubscribe(); this.mutation?.unsubscribe(); this.session?.unsubscribe(); this.cancelRating(); }
 
-  /** Applies the draft status and starts from page one. */
+  /** Applies the selected status and starts from page one. */
   applyFilters(): void {
     if (this.saving) return;
     this.appliedStatus = this.status.value === '' ? undefined : Number(this.status.value);

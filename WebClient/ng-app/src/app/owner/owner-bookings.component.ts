@@ -46,6 +46,8 @@ export class OwnerBookingsComponent implements OnInit, OnDestroy {
   totalCount = 0;
   isLoading = false;
   changingId?: number;
+  /** Operation currently pending for the affected booking. */
+  changingAction?: 'approve' | 'reject' | 'complete';
   errorMessages: string[] = [];
   /** Decision success remains visible even if the following retrieval fails. */
   successMessage = '';
@@ -115,15 +117,16 @@ export class OwnerBookingsComponent implements OnInit, OnDestroy {
   decide(booking: OwnerBookingItem, approve: boolean): void {
     if (booking.status !== BookingStatus.Pending || this.changingId || this.isLoading) return;
     this.changingId = booking.bookingId;
+    this.changingAction = approve ? 'approve' : 'reject';
     this.errorMessages = [];
     this.successMessage = '';
     const operation = approve ? this.bookingService.approve(booking.bookingId) : this.bookingService.reject(booking.bookingId);
-    this.decision = operation.pipe(finalize(() => (this.changingId = undefined))).subscribe({
+    this.decision = operation.pipe(finalize(() => { this.changingId = undefined; this.changingAction = undefined; })).subscribe({
       next: () => {
         this.successMessage = `Booking #${booking.bookingId} ${approve ? 'approved' : 'rejected'}.`;
         this.activity?.refresh(); this.load(this.page);
       },
-      error: (error) => { this.errorMessages = this.getErrors(error, 'The booking decision could not be saved.'); }
+      error: (error) => { this.errorMessages = this.getErrors(error, `Booking #${booking.bookingId} could not be ${approve ? 'approved' : 'rejected'}. Please try the action again.`); }
     });
   }
 
@@ -131,7 +134,8 @@ export class OwnerBookingsComponent implements OnInit, OnDestroy {
   complete(booking: OwnerBookingItem): void {
     if (!booking.canComplete || this.changingId || this.isLoading) return;
     this.changingId = booking.bookingId; this.errorMessages = []; this.successMessage = '';
-    this.decision = this.bookingService.complete(booking.bookingId).pipe(finalize(() => this.changingId = undefined)).subscribe({
+    this.changingAction = 'complete';
+    this.decision = this.bookingService.complete(booking.bookingId).pipe(finalize(() => { this.changingId = undefined; this.changingAction = undefined; })).subscribe({
       next: () => { this.successMessage = `Booking #${booking.bookingId} completed.`; this.activity?.refresh(); this.load(this.page); },
       error: error => { this.errorMessages = this.getErrors(error, 'The booking could not be completed.'); }
     });

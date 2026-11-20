@@ -71,7 +71,9 @@ describe('BookingChatComponent', () => {
     pending.error({ status: 503 }); fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[role="alert"]')).not.toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('No messages');
-    api.get.and.returnValue(of({ ...result, totalCount: 0, items: [] })); component.refresh(); fixture.detectChanges();
+    api.get.and.returnValue(of({ ...result, totalCount: 0, items: [] }));
+    const retry = Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(button => button.textContent?.trim() === 'Retry');
+    expect(retry).toBeDefined(); retry!.click(); fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('No messages');
   });
   it('cancels stale reads and sends on booking and account changes', () => {

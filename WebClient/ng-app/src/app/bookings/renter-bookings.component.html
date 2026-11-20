@@ -1,13 +1,13 @@
-<p class="time-note" aria-live="polite">Updates automatically every few seconds.</p>
-@if (refreshError) { <p class="message" role="status">{{ refreshError }}</p> }
 <section class="page-heading">
   <div><p class="eyebrow">Renter workspace</p><h1>My bookings</h1><p>Revisit your requests and check the latest owner decisions.</p></div>
-  <button type="button" class="primary-button" [disabled]="isLoading || saving" (click)="refresh()">Refresh</button>
+  <button type="button" [disabled]="isLoading || saving" (click)="refresh()">Refresh</button>
 </section>
-<form class="filter-bar" [formGroup]="filters" (ngSubmit)="applyFilters()">
+<p class="time-note">Updates automatically every few seconds.</p>
+@if (refreshError) { <p class="message" role="status">{{ refreshError }}</p> }
+<div class="filter-bar" [formGroup]="filters">
   <div class="filter-field">
   <label for="renter-booking-status">Status</label>
-  <select id="renter-booking-status" [formControl]="status">
+  <select id="renter-booking-status" [formControl]="status" [attr.disabled]="saving ? '' : null" (change)="applyFilters()">
     <option value="">All statuses</option>
     <option [value]="BookingStatus.Pending">Pending</option>
     <option [value]="BookingStatus.Confirmed">Confirmed</option>
@@ -15,8 +15,7 @@
     <option [value]="BookingStatus.Completed">Completed</option>
   </select>
   </div>
-  <button class="primary-button" type="submit" [disabled]="saving">Apply filters</button>
-</form>
+</div>
 <p class="time-note">Parking start and end times are shown in Athens local time.</p>
 @if (ratingSuccess) { <p class="message" role="status">{{ ratingSuccess }}</p> }
 @if (isLoading) {
