@@ -25,11 +25,22 @@
   <div class="detail-grid">
     <aside class="panel booking-panel ui-controls" aria-labelledby="booking-heading">
       <p class="eyebrow">Request parking</p>
-      <h2 id="booking-heading">Choose your time</h2>
+      <h2 id="booking-heading">{{ bookingResult ? 'Awaiting owner approval' : 'Choose your time' }}</h2>
       <p id="booking-time-note" class="muted">All booking times are Athens local time.</p>
 
       @if (isOwnListing) {
         <div class="message compact">You own this listing, so you cannot request a booking for it.</div>
+      } @else if (bookingResult && submittedPeriod) {
+        <div class="booking-confirmation" role="status">
+          <p class="confirmation-sent">Request #{{ bookingResult.bookingId }} sent</p>
+          <dl class="confirmation-period">
+            <div><dt>Arrival</dt><dd>{{ submittedPeriod.startDateTime | date:'medium' }}</dd></div>
+            <div><dt>Departure</dt><dd>{{ submittedPeriod.endDateTime | date:'medium' }}</dd></div>
+          </dl>
+          <p class="booking-note">The owner will review your request. Your space is confirmed after approval.</p>
+          <a class="confirmation-link" routerLink="/bookings">View my bookings</a>
+        </div>
+        <button class="another-request" type="button" (click)="makeAnotherRequest()">Make another request</button>
       } @else {
         <form aria-describedby="booking-time-note" [formGroup]="bookingForm" (ngSubmit)="submitBooking()">
           <app-booking-period prefix="booking" [startDateTime]="bookingForm.controls.startDateTime.value" [endDateTime]="bookingForm.controls.endDateTime.value" [pricePerHour]="listing.pricePerHour" (periodChange)="editPeriod($event)" />
@@ -46,13 +57,6 @@
           </div>
         }
 
-        @if (bookingResult) {
-          <div class="message success compact" role="status">
-            <strong>Request #{{ bookingResult.bookingId }} sent</strong>
-            <p>Status: {{ bookingResult.statusText }}</p>
-            <a routerLink="/bookings">My bookings</a>
-          </div>
-        }
       }
     </aside>
     <div class="detail-column">
@@ -92,9 +96,11 @@
         }
 
         @if (openWindows.length > 0) {
-          <h3>Open windows</h3>
+          <h3>Open windows ({{ openWindows.length }})</h3>
+          <p class="muted window-help">Select a window to fill its whole available interval, then shorten it to fit your visit. Ongoing windows start at the next available minute.</p>
+          @if (bookingResult) { <p class="muted">Choose Make another request before selecting a new window.</p> }
           <div class="window-list">
-            @for (window of openWindows; track window.availabilityWindowId) {
+            @for (window of visibleOpenWindows; track window.availabilityWindowId) {
               <button
                 type="button"
                 class="window-card selectable"
@@ -111,9 +117,9 @@
         }
 
         @if (blockedWindows.length > 0) {
-          <h3>Blocked periods</h3>
+          <h3>Blocked periods ({{ blockedWindows.length }})</h3>
           <div class="window-list">
-            @for (window of blockedWindows; track window.availabilityWindowId) {
+            @for (window of visibleBlockedWindows; track window.availabilityWindowId) {
               <div class="window-card blocked">
                 <span>{{ window.startDateTime | date:'medium' }}</span>
                 <span>to {{ window.endDateTime | date:'medium' }}</span>
@@ -121,6 +127,11 @@
               </div>
             }
           </div>
+        }
+        @if (hasMoreAvailability) {
+          <button class="schedule-toggle" type="button" [attr.aria-expanded]="showAllAvailability" (click)="showAllAvailability = !showAllAvailability">
+            {{ showAllAvailability ? 'Show fewer windows' : 'Show all windows' }}
+          </button>
         }
       </section>
     </div>

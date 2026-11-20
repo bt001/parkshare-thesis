@@ -26,7 +26,7 @@ export interface BookingPeriodEdit {
     </div>
     @if (departure && !compact) {
       <div class="period-summary" aria-live="polite"><span>Departure <strong>{{ departure | date:'EEE, d MMM y, HH:mm' }}</strong></span>
-        @if (pricePerHour !== null && duration.value) { <span>Estimated total <strong>{{ pricePerHour * duration.value / 60 | number:'1.0-2' }} €</strong></span> }
+        @if (pricePerHour !== null && duration.value) { <span>Estimated total <strong>{{ pricePerHour * duration.value / 60 | number:'1.2-2' }} €</strong></span> }
       </div>
     }
     @if (endDateTime && !departure) { <p class="period-error">Saved departure: {{ endDateTime }}. Choose a valid arrival and length of stay.</p> }

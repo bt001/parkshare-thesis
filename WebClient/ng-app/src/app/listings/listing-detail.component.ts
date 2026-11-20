@@ -58,6 +58,12 @@ export class ListingDetailComponent implements OnInit {
   availabilityWindows: AvailabilityWindow[] = [];
   selectedWindowId?: number;
   bookingResult?: BookingResult;
+  /** Immutable interval captured when the successful request was submitted. */
+  submittedPeriod?: { startDateTime: string; endDateTime: string };
+  /** Whether the complete open and blocked schedule is expanded. */
+  showAllAvailability = false;
+  /** Maximum windows initially displayed in each availability group. */
+  readonly availabilityPreviewLimit = 3;
   isLoading = false;
   isSubmitting = false;
   errorMessages: string[] = [];
@@ -69,6 +75,32 @@ export class ListingDetailComponent implements OnInit {
 
   get blockedWindows(): AvailabilityWindow[] {
     return this.availabilityWindows.filter((window) => window.isBlocked);
+  }
+
+  /** Open windows in the current schedule preview. */
+  get visibleOpenWindows(): AvailabilityWindow[] {
+    return this.showAllAvailability ? this.openWindows : this.openWindows.slice(0, this.availabilityPreviewLimit);
+  }
+
+  /** Blocked periods in the current schedule preview. */
+  get visibleBlockedWindows(): AvailabilityWindow[] {
+    return this.showAllAvailability ? this.blockedWindows : this.blockedWindows.slice(0, this.availabilityPreviewLimit);
+  }
+
+  /** Whether either schedule group needs an expansion control. */
+  get hasMoreAvailability(): boolean {
+    return this.openWindows.length > this.availabilityPreviewLimit || this.blockedWindows.length > this.availabilityPreviewLimit;
+  }
+
+  /** Explicitly opens a fresh request after the previous request succeeded. */
+  makeAnotherRequest(): void {
+    this.bookingResult = undefined;
+    this.submittedPeriod = undefined;
+    this.selectedWindowId = undefined;
+    this.incompletePeriod = false;
+    this.bookingErrorMessages = [];
+    this.minimumDateTime = nextAthensMinute();
+    this.bookingForm.reset();
   }
 
   get isOwnListing(): boolean {
@@ -120,7 +152,7 @@ export class ListingDetailComponent implements OnInit {
   }
 
   submitBooking(): void {
-    if (!this.listing || this.isOwnListing || this.isSubmitting) {
+    if (!this.listing || this.isOwnListing || this.isSubmitting || this.bookingResult) {
       return;
     }
 
@@ -143,11 +175,12 @@ export class ListingDetailComponent implements OnInit {
 
     this.bookingService.create({
       listingId: this.listing.id,
-      ...this.bookingForm.getRawValue()
+      ...period
     })
       .pipe(finalize(() => (this.isSubmitting = false)))
       .subscribe({
         next: (result) => {
+          this.submittedPeriod = { ...period };
           this.bookingResult = result;
         },
         error: (error) => {
@@ -184,7 +217,7 @@ export class ListingDetailComponent implements OnInit {
 
   /** Whether an open window has a valid future minute available for booking. */
   canSelectWindow(window: AvailabilityWindow): boolean {
-    return !window.isBlocked && bookingTimeError(this.windowStart(window), window.endDateTime.slice(0, 16)) === null;
+    return !this.isSubmitting && !this.bookingResult && !window.isBlocked && bookingTimeError(this.windowStart(window), window.endDateTime.slice(0, 16)) === null;
   }
 
   /** Clips an ongoing window to the next Athens minute. */

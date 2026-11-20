@@ -79,9 +79,9 @@ select {
 /* Shared opt-in form and feedback foundations. */
 .ui-controls :where(label, legend) { font-size: .85rem; font-weight: 600; }
 .ui-controls :where(input:not([type=checkbox]), select) { width: 100%; min-width: 0; border: 1px solid #a9b9c4; border-radius: .4rem; padding: .6rem; background: white; color: var(--ink); }
-.ui-controls :where(button, .card-body a, .map-preview a) { min-height: 2.5rem; padding: .55rem .8rem; border: 1px solid var(--line); border-radius: .45rem; background: white; color: var(--ink); cursor: pointer; font-weight: 600; text-decoration: none; }
-.ui-controls :where(button:hover, .card-body a:hover) { background: var(--soft); }
-.ui-controls :where(button[type=submit], .map-preview a, .card-body a) { background: var(--accent); color: white; border-color: var(--accent); }
+.ui-controls :where(button, .card-body > a, .map-preview a) { min-height: 2.5rem; padding: .55rem .8rem; border: 1px solid var(--line); border-radius: .45rem; background: white; color: var(--ink); cursor: pointer; font-weight: 600; text-decoration: none; }
+.ui-controls :where(button:hover, .card-body > a:hover) { background: var(--soft); }
+.ui-controls :where(button[type=submit], .map-preview a, .card-body > a) { background: var(--accent); color: white; border-color: var(--accent); }
 .ui-controls :where(.filter-actions) { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
 .ui-controls :where(.place-options) { list-style: none; padding: 0; }
 .ui-controls :where(.place-options button) { width: 100%; text-align: left; overflow-wrap: anywhere; }

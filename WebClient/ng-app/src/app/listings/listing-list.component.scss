@@ -204,7 +204,7 @@ h1 {
   font-size: .72rem;
 }
 
-.card-body a, .show-on-map {
+.card-body > a, .show-on-map {
   display: inline-block;
   font-size: .8rem;
   margin: .35rem .25rem 0 0;

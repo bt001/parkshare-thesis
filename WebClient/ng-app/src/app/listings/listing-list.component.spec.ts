@@ -848,17 +848,60 @@ describe('ListingListComponent', () => {
   });
 
   it('renders photos, review summary and period cost with a broken-image fallback', () => {
+    (component as any).restoreNavigation(convertToParamMap({ startDateTime: '2099-01-15T10:00', endDateTime: '2099-01-15T11:15' }));
     component.listings[0] = { ...component.listings[0], coverPhotoUrl: 'api/listing/7/photos/1/content', averageRating: 4.5, ratingCount: 2, estimatedPeriodCost: 18.75 };
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
     expect(element.textContent).toContain('4.5 / 5');
-    expect(element.textContent).toContain('Estimated period cost:');
+    expect(element.textContent).toContain('Estimated total');
     expect(element.textContent).toContain('18.75');
     element.querySelector('img')!.dispatchEvent(new Event('error'));
     fixture.detectChanges();
     expect(element.querySelector('img')).toBeNull();
     expect(element.textContent).toContain('No photo available');
   });
+  it('links photo, fallback and title to the same applied detail destination', () => {
+    (component as any).restoreNavigation(convertToParamMap({ page: '2', titleContains: 'Central', startDateTime: '2099-01-15T10:00', endDateTime: '2099-01-15T11:15' }));
+    fixture.detectChanges();
+    const card = fixture.nativeElement.querySelector('[data-card-id]') as HTMLElement;
+    const links = Array.from(card.querySelectorAll('a'));
+    expect(links.length).toBe(3);
+    expect(new Set(links.map(link => link.getAttribute('href'))).size).toBe(1);
+    expect(links[0].textContent).toContain('No photo available');
+    expect(links[0].getAttribute('aria-label')).toBe('View Central parking space');
+    expect(links[1].textContent).toBe('Central parking space');
+    expect(links[0].getAttribute('href')).toContain('startDateTime=2099-01-15T10:00');
+    expect(card.querySelector('a button, a a')).toBeNull();
+    expect(card.querySelector('button')?.closest('a')).toBeNull();
+  });
+
+  it('uses applied fractional-hour estimates consistently in cards and map preview despite invalid drafts', () => {
+    (component as any).restoreNavigation(convertToParamMap({ startDateTime: '2099-01-15T10:00', endDateTime: '2099-01-15T11:15' }));
+    const listing = { ...component.listings[0], pricePerHour: 2.5, estimatedPeriodCost: 3.125 };
+    component.listings = [listing];
+    component.filterForm.patchValue({ startDateTime: 'bad', endDateTime: '' });
+    fixture.detectChanges();
+    const price = fixture.nativeElement.querySelector('.result-price').textContent.replace(/\s+/g, ' ').trim();
+    expect(price).toBe('Estimated total3.13 €1 h 15 min · 2.50 €/h');
+    component.viewMode = 'map'; component.isMapLoaded = true; component.isMapLoading = false;
+    component.mapListings = [listing]; component.selectedMapListing = listing;
+    fixture.detectChanges();
+    const prices = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.result-price')).map(el => el.textContent?.replace(/\s+/g, ' ').trim());
+    expect(prices).toEqual([price, price]);
+  });
+
+  it('falls back to a precise hourly rate without an applied period or returned estimate', () => {
+    component.listings = [{ ...component.listings[0], pricePerHour: 2.5, estimatedPeriodCost: 3.125 }];
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.result-price').textContent.trim()).toBe('2.50 €/h');
+    (component as any).restoreNavigation(convertToParamMap({ startDateTime: '2099-01-15T10:00', endDateTime: '2099-01-15T10:01' }));
+    component.listings = [{ ...component.listings[0], pricePerHour: 0, estimatedPeriodCost: 0 }]; fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.result-price').textContent).toContain('0.00 €');
+    expect(component.appliedStayDuration).toBe('1 min');
+    component.listings = [{ ...component.listings[0], estimatedPeriodCost: null }]; fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.result-price').textContent).not.toContain('Estimated total');
+  });
+
   it('restores page, selection and camera without passing navigation fields to the API', () => {
     const route = TestBed.inject(ActivatedRoute);
     spyOnProperty(route.snapshot, 'queryParamMap', 'get').and.returnValue(convertToParamMap({

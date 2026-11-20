@@ -1,7 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, DeferBlockBehavior, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
+import { BookingResult } from '../api/bookings/booking.models';
 
 import { AuthService } from '../api/auth/auth.service';
 import { AvailabilityService } from '../api/availability/availability.service';
@@ -137,8 +138,57 @@ describe('ListingDetailComponent', () => {
       endDateTime: '2099-07-14T11:00'
     });
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Request #99 sent');
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Status: Pending');
-    expect(fixture.nativeElement.querySelector('[role="status"] a[href="/bookings"]')?.textContent).toContain('My bookings');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Awaiting owner approval');
+    expect(fixture.nativeElement.querySelector('[role="status"] a[href="/bookings"]')?.textContent).toContain('View my bookings');
+    expect(fixture.nativeElement.querySelector('form')).toBeNull();
+  });
+
+  it('confirms the submitted interval despite edits during the request and prevents implicit resubmission', () => {
+    const pending = new Subject<BookingResult>();
+    bookingService.create.and.returnValue(pending);
+    component.selectWindow(openWindow);
+    component.submitBooking();
+    expect(component.canSelectWindow(openWindow)).toBeFalse();
+    component.selectWindow({ ...openWindow, endDateTime: '2099-07-14T12:00:00' });
+    expect(component.bookingForm.controls.endDateTime.value).toBe('2099-07-14T11:00');
+    component.bookingForm.setValue({ startDateTime: '2099-07-20T15:00', endDateTime: '2099-07-20T16:00' });
+    pending.next({ bookingId: 99 } as BookingResult); pending.complete();
+    fixture.detectChanges();
+    expect(component.submittedPeriod).toEqual({ startDateTime: '2099-07-14T09:00', endDateTime: '2099-07-14T11:00' });
+    expect(fixture.nativeElement.querySelector('.confirmation-period').textContent).toContain('Jul 14, 2099');
+    expect(fixture.nativeElement.querySelector('.confirmation-period').textContent).not.toContain('Jul 20');
+    component.selectWindow(openWindow); component.submitBooking();
+    expect(bookingService.create).toHaveBeenCalledTimes(1);
+    fixture.nativeElement.querySelector('.another-request').click(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('form')).not.toBeNull();
+    expect(component.bookingForm.getRawValue()).toEqual({ startDateTime: '', endDateTime: '' });
+    expect(component.submittedPeriod).toBeUndefined();
+    expect(component.selectedWindowId).toBeUndefined();
+    expect(component.canSelectWindow(openWindow)).toBeTrue();
+    component.selectWindow(openWindow); component.submitBooking();
+    expect(bookingService.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('bounds both schedule groups and keeps every interval reachable through expansion', () => {
+    component.availabilityWindows = Array.from({ length: 8 }, (_, i) => ({
+      ...(i < 4 ? openWindow : blockedWindow), availabilityWindowId: 100 + i
+    }));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.window-card').length).toBe(6);
+    expect(fixture.nativeElement.textContent).toContain('shorten it to fit your visit');
+    const toggle = fixture.nativeElement.querySelector('.schedule-toggle') as HTMLButtonElement;
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    toggle.click(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.window-card').length).toBe(8);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    const lastOpen = fixture.nativeElement.querySelectorAll('.window-card.selectable')[3] as HTMLButtonElement;
+    lastOpen.click(); fixture.detectChanges();
+    expect(component.selectedWindowId).toBe(103);
+    toggle.click(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.window-card').length).toBe(6);
+    expect(component.selectedWindowId).toBe(103);
+    component.availabilityWindows = [blockedWindow]; fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.schedule-toggle')).toBeNull();
   });
 
   it('does not submit an invalid time range', () => {

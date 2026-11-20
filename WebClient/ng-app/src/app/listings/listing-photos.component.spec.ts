@@ -78,4 +78,31 @@ describe('ListingPhotosComponent', () => {
     image.dispatchEvent(new Event('error')); fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Photo unavailable'); expect(fixture.nativeElement.querySelector('input')).toBeNull();
   });
+
+  it('hides routine public refresh but recovers from metadata and image errors', () => {
+    fixture.componentRef.setInput('editable', false); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('button')).toBeNull();
+    api.get.and.returnValue(throwError(() => new Error('offline'))); component.load(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('button').textContent).toContain('Retry photos');
+    api.get.and.returnValue(of({ items: [photo] }));
+    fixture.nativeElement.querySelector('button').click(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('button')).toBeNull();
+    fixture.nativeElement.querySelector('img').dispatchEvent(new Event('error')); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('button').textContent).toContain('Retry photos');
+    fixture.nativeElement.querySelector('button').click(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('img')).not.toBeNull();
+    expect(component.broken.size).toBe(0);
+    expect(fixture.nativeElement.querySelector('button')).toBeNull();
+  });
+
+  it('retains owner refresh, upload and removal controls', () => {
+    expect(fixture.nativeElement.textContent).toContain('Refresh photos');
+    component.selected = file; fixture.detectChanges();
+    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
+    buttons.find(button => button.textContent?.includes('Upload photo'))!.click();
+    expect(api.upload).toHaveBeenCalledWith(7, file);
+    api.get.and.returnValue(of({ items: [photo] })); component.load(); fixture.detectChanges();
+    fixture.nativeElement.querySelector('[aria-label="Remove photo 1"]').click();
+    expect(api.remove).toHaveBeenCalledWith(7, 4);
+  });
 });

@@ -227,11 +227,10 @@
             } @else { <div class="card-map-placeholder">No photo available</div> }
             <h2>{{ listing.title }}</h2>
             <p>{{ listing.address || 'Address available in listing details' }}</p>
-            <strong>{{ listing.pricePerHour | number:'1.0-2' }} €/h</strong>
+            <ng-container *ngTemplateOutlet="resultPrice; context: { $implicit: listing }" />
             <p class="review-summary">@if (listing.ratingCount && listing.averageRating != null) {
                 {{ listing.averageRating | number:'1.1-1' }} / 5 &middot; {{ listing.ratingCount }} reviews
               } @else { No reviews yet }</p>
-              @if (listing.estimatedPeriodCost != null) { <p>Estimated period cost: <strong>{{ listing.estimatedPeriodCost | number:'1.2-2' }} €</strong></p> }
               <a [routerLink]="['/listings', listing.id]" [queryParams]="detailParams">View space</a>
           </article>
         }
@@ -257,24 +256,37 @@
 
 <ng-template #resultCard let-listing>
   <article class="listing-card" [class.selected-card]="selectedMapListing?.id === listing.id" [attr.data-card-id]="listing.id">
+    <a class="card-photo-link" [routerLink]="['/listings', listing.id]" [queryParams]="detailParams" [attr.aria-label]="'View ' + listing.title">
     @if (listing.coverPhotoUrl && !brokenPhotos.has(listing.coverPhotoUrl)) {
       <img class="cover-photo" [src]="imageUrl(listing.coverPhotoUrl)" [alt]="listing.title" loading="lazy" (error)="brokenPhotos.add(listing.coverPhotoUrl)" />
     } @else { <div class="card-map-placeholder">No photo available</div> }
+    </a>
     <div class="card-body">
       <div class="card-topline">
         <span class="availability-badge">
           {{ listing.isAlwaysAvailable ? 'Always available' : 'Scheduled availability' }}
         </span>
-        <strong>{{ listing.pricePerHour | number:'1.0-2' }} €/h</strong>
       </div>
-      <h2>{{ listing.title }}</h2>
+      <h2><a class="card-title-link" [routerLink]="['/listings', listing.id]" [queryParams]="detailParams">{{ listing.title }}</a></h2>
       <p>{{ listing.address || 'Address available in listing details' }}</p>
       <p class="review-summary">@if (listing.ratingCount && listing.averageRating != null) {
         {{ listing.averageRating | number:'1.1-1' }} / 5 &middot; {{ listing.ratingCount }} reviews
       } @else { No reviews yet }</p>
-      @if (listing.estimatedPeriodCost != null) { <p>Estimated period cost: <strong>{{ listing.estimatedPeriodCost | number:'1.2-2' }} €</strong></p> }
+      <ng-container *ngTemplateOutlet="resultPrice; context: { $implicit: listing }" />
       <button class="show-on-map" type="button" [attr.aria-pressed]="selectedMapListing?.id === listing.id" (click)="showOnMap(listing)">Show on map</button>
       <a [routerLink]="['/listings', listing.id]" [queryParams]="detailParams">View space</a>
     </div>
   </article>
+</ng-template>
+
+<ng-template #resultPrice let-listing>
+  <div class="result-price">
+    @if (appliedStayMinutes !== null && listing.estimatedPeriodCost != null) {
+      <span class="price-label">Estimated total</span>
+      <strong class="price-amount">{{ listing.estimatedPeriodCost | number:'1.2-2' }} €</strong>
+      <span class="price-context">{{ appliedStayDuration }} &middot; {{ listing.pricePerHour | number:'1.2-2' }} €/h</span>
+    } @else {
+      <strong class="price-amount">{{ listing.pricePerHour | number:'1.2-2' }} €/h</strong>
+    }
+  </div>
 </ng-template>

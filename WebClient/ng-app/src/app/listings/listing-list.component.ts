@@ -37,7 +37,7 @@ interface AppliedFilterChip {
   standalone: true,
   imports: [BookingPeriodComponent, DatePipe, NgTemplateOutlet, DecimalPipe, RouterLink, ListingMapComponent, ReactiveFormsModule],
   templateUrl: './listing-list.component.html',
-  styleUrls: ['./listing-list.component.scss', './listing-search-bar.scss', './listing-loading.scss']
+  styleUrls: ['./listing-list.component.scss', './listing-search-bar.scss', './listing-loading.scss', './listing-result-card.scss']
 })
 export class ListingListComponent implements OnInit, OnDestroy {
   /** Single filter panel, presented inline only when there is sufficient room. */
@@ -155,6 +155,16 @@ export class ListingListComponent implements OnInit, OnDestroy {
   get draftDeparture(): string {
     const { startDateTime, endDateTime } = this.filterForm.getRawValue();
     return stayMinutes(startDateTime, endDateTime) === null ? '' : endDateTime;
+  }
+  /** Duration of the applied result period, independent of incomplete form drafts. */
+  get appliedStayMinutes(): number | null {
+    return stayMinutes(this.appliedFilters.startDateTime ?? '', this.appliedFilters.endDateTime ?? '');
+  }
+  /** Describes applied stay length without rounding fractional hours. */
+  get appliedStayDuration(): string {
+    const minutes = this.appliedStayMinutes;
+    if (minutes === null) return '';
+    return [minutes >= 60 ? `${Math.floor(minutes / 60)} h` : '', minutes % 60 ? `${minutes % 60} min` : ''].filter(Boolean).join(' ');
   }
   /** Explains an invalid requested period. */
   periodError: string | null = null;

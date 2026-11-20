@@ -11,6 +11,15 @@ describe('BookingPeriodComponent', () => {
     fixture.detectChanges(); await fixture.whenStable(); fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-stay-duration select').value).toBe('120');
   });
+  it('shows fractional-hour estimates with the same precision as discovery', () => {
+    const fixture = TestBed.createComponent(BookingPeriodComponent);
+    fixture.componentRef.setInput('startDateTime', '2099-01-15T10:00');
+    fixture.componentRef.setInput('endDateTime', '2099-01-15T11:15');
+    fixture.componentRef.setInput('pricePerHour', 2.5); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.period-summary').textContent).toContain('Estimated total 3.13 €');
+    fixture.componentRef.setInput('pricePerHour', 4); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.period-summary').textContent).toContain('Estimated total 5.00 €');
+  });
   it('suggests one hour only when the user commits a new arrival', () => {
     const fixture = TestBed.createComponent(BookingPeriodComponent);
     const component = fixture.componentInstance;
